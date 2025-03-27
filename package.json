@@ -17,6 +17,7 @@
     "@solana/spl-token": "^0.4.13",
     "@solana/web3.js": "^1.98.0",
     "@tanstack/react-query": "^5.69.0",
+    "@vercel/analytics": "^1.5.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.483.0",
