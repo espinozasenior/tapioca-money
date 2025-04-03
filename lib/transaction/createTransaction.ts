@@ -25,15 +25,18 @@ export async function createTokenTransferTransaction(
   const fromPublicKey = new PublicKey(from);
   const toPublicKey = new PublicKey(to);
   const tokenMintPublicKey = new PublicKey(tokenMint);
+  const allowOffCurve = true;
 
   // Get associated token accounts for both addresses
   const senderTokenAccount = await getAssociatedTokenAddress(
     tokenMintPublicKey,
-    fromPublicKey
+    fromPublicKey,
+    allowOffCurve
   );
   const recipientTokenAccount = await getAssociatedTokenAddress(
     tokenMintPublicKey,
-    toPublicKey
+    toPublicKey,
+    allowOffCurve
   );
   console.log("Sender token account:", senderTokenAccount);
   console.log("Recipient token account:", recipientTokenAccount);

@@ -93,7 +93,7 @@ export function TransferFunds() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                   <DropdownMenuItem onClick={() => setToken("sol")}>
-                    Solana
+                    SOL
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setToken("usdc")}>
                     USDC
