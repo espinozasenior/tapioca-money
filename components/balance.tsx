@@ -32,17 +32,28 @@ export function WalletBalance() {
     data?.find((t) => t.token === "usdc")?.balances.total || "0";
 
   async function handleOnFund(token: "sol" | "usdc") {
-    await PopupWindow.init(
-      token === "sol"
-        ? "https://faucet.solana.com/"
-        : "https://faucet.circle.com/",
-      {
-        awaitToLoad: false,
-        crossOrigin: true,
-        width: 550,
-        height: 700,
+    try {
+      switch (token) {
+        case "sol":
+          await PopupWindow.init("https://faucet.solana.com", {
+            awaitToLoad: false,
+            crossOrigin: true,
+            width: 550,
+            height: 700,
+          });
+          break;
+        case "usdc":
+          await PopupWindow.init("https://faucet.circle.com", {
+            awaitToLoad: false,
+            crossOrigin: true,
+            width: 550,
+            height: 700,
+          });
+          break;
       }
-    );
+    } catch (err) {
+      console.error("Error funding wallet " + token + " - " + err);
+    }
   }
 
   return (
@@ -74,11 +85,10 @@ export function WalletBalance() {
           + Get free test SOL
         </button>
         <button
-          onClick={() => handleOnFund("sol")}
-          className="flex items-center justify-center gap-1.5 text-sm py-1.5 px-3 rounded-md bg-gray-100 text-gray-500 hover:bg-accent/20 transition-colors"
-          disabled
+          onClick={() => handleOnFund("usdc")}
+          className="flex items-center justify-center gap-1.5 text-sm py-1.5 px-3 rounded-md bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
         >
-          + Get test USDC (coming soon)
+          + Get 10 free test USDC
         </button>
       </div>
     </div>
