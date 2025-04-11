@@ -13,28 +13,13 @@ export function DelegatedSigner() {
   const [delegatedSigners, setDelegatedSigners] = useState<any[]>([]);
   const [newSigner, setNewSigner] = useState<string>("");
 
-  // TODO: remove when wallets sdk version bumps
-  const fetchDelegatedSigners = async () => {
-    try {
-      const walletResponse = await fetch(
-        "https://staging.crossmint.com/api/2022-06-09/wallets/me:solana-smart-wallet",
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": process.env.NEXT_PUBLIC_CROSSMINT_API_KEY || "",
-            Authorization: `Bearer ${jwt}`,
-          },
-        }
-      );
-      const meWallet = await walletResponse.json();
-      const signers = meWallet.config?.delegatedSigners ?? [];
-      setDelegatedSigners(signers);
-    } catch (err) {
-      console.error("Error fetching delegated signers:", err);
-    }
-  };
-
   useEffect(() => {
+    const fetchDelegatedSigners = async () => {
+      if (wallet != null && type === "solana-smart-wallet") {
+        const signers = await wallet.getDelegatedSigners();
+        setDelegatedSigners(signers);
+      }
+    };
     fetchDelegatedSigners();
   }, [wallet, jwt]);
 
@@ -49,7 +34,8 @@ export function DelegatedSigner() {
     try {
       setIsLoading(true);
       await wallet.addDelegatedSigner(`solana-keypair:${newSigner}`);
-      await fetchDelegatedSigners();
+      const signers = await wallet.getDelegatedSigners();
+      setDelegatedSigners(signers);
     } catch (err) {
       // TODO: error returns with message?
       alert(`Delegated Signer: ${err instanceof Error ? err.message : err}`);

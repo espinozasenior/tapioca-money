@@ -12,7 +12,7 @@ export function HomeContent() {
   const { wallet, status: walletStatus } = useWallet();
   const { status, status: authStatus } = useAuth();
 
-  const walletAddress = wallet?.getAddress();
+  const walletAddress = wallet?.address;
   const isLoggedIn = wallet != null && status === "logged-in";
   const isLoading =
     walletStatus === "in-progress" || authStatus === "initializing";
