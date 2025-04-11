@@ -15,7 +15,7 @@ import {
 } from "@solana/spl-token";
 
 const connection = new Connection(
-  process.env.NEXT_PUBLIC_RPC_URL_OPTIONAL || "https://api.devnet.solana.com",
+  process.env.NEXT_PUBLIC_RPC_URL || "https://api.devnet.solana.com",
   "confirmed"
 );
 
