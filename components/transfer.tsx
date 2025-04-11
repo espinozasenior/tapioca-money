@@ -45,20 +45,14 @@ export function TransferFunds() {
 
     try {
       setIsLoading(true);
-      const crossmintWalletAddress = wallet.getAddress();
-
       function buildTransaction() {
         return token === "sol"
-          ? createSolTransferTransaction(
-              crossmintWalletAddress,
-              recipient as string,
-              amount as number
-            )
+          ? createSolTransferTransaction(wallet?.address!, recipient!, amount!)
           : createTokenTransferTransaction(
-              crossmintWalletAddress,
-              recipient as string,
+              wallet?.address!,
+              recipient!,
               "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU", // USDC token mint
-              amount as number
+              amount!
             );
       }
 
