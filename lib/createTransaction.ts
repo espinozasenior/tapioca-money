@@ -39,7 +39,7 @@ export async function createSolTransferTransaction(
   const message = new TransactionMessage({
     instructions,
     recentBlockhash: "11111111111111111111111111111111",
-    payerKey: new PublicKey("11111111111111111111111111111112"),
+    payerKey: fromPublicKey,
   }).compileToV0Message();
 
   return new VersionedTransaction(message);
