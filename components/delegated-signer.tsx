@@ -37,8 +37,8 @@ export function DelegatedSigner() {
       const signers = await wallet.getDelegatedSigners();
       setDelegatedSigners(signers);
     } catch (err) {
-      // TODO: error returns with message?
-      alert(`Delegated Signer: ${err instanceof Error ? err.message : err}`);
+      console.error("Delegated Signer: ", err);
+      alert(`Delegated Signer: ${err}`);
     } finally {
       setIsLoading(false);
     }
