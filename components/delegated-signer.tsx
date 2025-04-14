@@ -49,7 +49,16 @@ export function DelegatedSigner() {
       <div>
         <h2 className="text-lg font-medium">Add Delegated Signer</h2>
         <p className="text-sm text-gray-500">
-          Allow third parties to sign transactions on behalf of your wallet
+          Allow third parties to sign transactions on behalf of your wallet.{" "}
+          <a
+            href="https://docs.crossmint.com/wallets/advanced/delegated-keys"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-accent underline"
+          >
+            Learn more
+          </a>
+          .
         </p>
       </div>
       <input
