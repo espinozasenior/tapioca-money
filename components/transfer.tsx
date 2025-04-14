@@ -51,7 +51,7 @@ export function TransferFunds() {
           : createTokenTransferTransaction(
               wallet?.address!,
               recipient!,
-              "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU", // USDC token mint
+              process.env.NEXT_PUBLIC_USDC_TOKEN_MINT || "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU", // USDC token mint
               amount!
             );
       }
