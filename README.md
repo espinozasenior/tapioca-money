@@ -27,12 +27,12 @@ Create and interact with Crossmint wallets in Solana. This quickstart uses Cross
 ## Deploy
 Easily deploy the template to Vercel with the button below. You will need to set the required environment variables in the Vercel dashboard.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FCrossmint%2Fsolana-smart-wallet-quickstart&env=NEXT_PUBLIC_CROSSMINT_API_KEY)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FCrossmint%2Fsolana-wallets-quickstart&env=NEXT_PUBLIC_CROSSMINT_API_KEY)
 
 ## Setup
 1. Clone the repository and navigate to the project folder:
 ```bash
-git clone https://github.com/crossmint/solana-smart-wallet-quickstart.git && cd solana-smart-wallet-quickstart
+git clone https://github.com/crossmint/solana-wallets-quickstart.git && cd solana-wallets-quickstart
 ```
 
 2. Install all dependencies:
