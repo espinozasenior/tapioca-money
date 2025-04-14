@@ -62,7 +62,7 @@ export function TransferFunds() {
       });
       setTxnHash(`https://solscan.io/tx/${txnHash}?cluster=devnet`);
     } catch (err) {
-      // TODO: error returns with message?
+      console.error("Transfer: ", err);
       alert("Transfer: " + err);
     } finally {
       setIsLoading(false);

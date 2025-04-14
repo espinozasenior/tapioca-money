@@ -16,8 +16,8 @@ export function WalletBalance() {
         // TODO: balances should be typed
         setBalances((balances as any[]) || []);
       } catch (error) {
-        // TODO: error returns with message?
         console.error("Error fetching wallet balances:", error);
+        alert("Error fetching wallet balances: " + error);
       }
     }
     fetchBalances();
