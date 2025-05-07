@@ -2,23 +2,20 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import {
-	useWallet,
-	type WalletBalance as WalletBalanceType,
-} from "@crossmint/client-sdk-react-ui";
+import { useWallet } from "@crossmint/client-sdk-react-ui";
 
 export function WalletBalance() {
 	const { wallet, type } = useWallet();
-	const [balances, setBalances] = useState<WalletBalanceType>([]);
+	const [balances, setBalances] = useState<any>([]);
 	const [copied, setCopied] = useState(false);
 
 	const address = wallet?.address;
 
 	useEffect(() => {
 		async function fetchBalances() {
-			if (!wallet || type !== "solana-smart-wallet") return;
+			if (!wallet || type !== "evm-smart-wallet") return;
 			try {
-				const balances = await wallet.getBalances(["usdc"]);
+				const balances = await wallet.getBalances(["usdc" as any]);
 				setBalances(balances);
 			} catch (error) {
 				console.error("Error fetching wallet balances:", error);
