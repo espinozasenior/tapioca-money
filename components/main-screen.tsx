@@ -69,6 +69,7 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
 			<DepositModal
 				open={showDepositModal}
 				onClose={() => setShowDepositModal(false)}
+				walletAddress={walletAddress || ""}
 			/>
 		</div>
 	);

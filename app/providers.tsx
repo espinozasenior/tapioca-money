@@ -13,10 +13,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
 	return (
 		<CrossmintProvider apiKey={process.env.NEXT_PUBLIC_CROSSMINT_API_KEY || ""}>
 			<CrossmintAuthProvider
-				authModalTitle="Solana Wallets Quickstart"
+				authModalTitle="Wallets Quickstart"
 				embeddedWallets={{
 					createOnLogin: "all-users",
-					type: "solana-smart-wallet",
+					type: "evm-smart-wallet",
+					defaultChain: "base-sepolia",
 					showPasskeyHelpers: true,
 				}}
 				loginMethods={["email", "google"]}
