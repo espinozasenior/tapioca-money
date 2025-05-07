@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { DepositModal } from "@/components/deposit-modal";
+import { WalletBalance } from "@/components/balance";
 
 interface MainScreenProps {
 	walletAddress?: string;
@@ -23,10 +24,7 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
 			</div>
 			{/* Balance Card */}
 			<div className="w-full max-w-4xl bg-white rounded-2xl border shadow-sm flex flex-col md:flex-row items-center md:items-stretch justify-between px-8 py-7 mb-8">
-				<div className="flex flex-col items-start w-full md:w-auto mb-6 md:mb-0">
-					<span className="text-gray-500 text-base mb-1">Your balance</span>
-					<span className="text-4xl font-semibold">$0.00</span>
-				</div>
+				<WalletBalance />
 				<div className="flex gap-4 w-full md:w-auto justify-end">
 					<button
 						type="button"
