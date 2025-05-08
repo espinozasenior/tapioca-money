@@ -22,7 +22,7 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
 	return (
 		<div className="w-full h-full py-8 flex justify-center items-center gap-2">
 			<div className="h-full px-3 space-y-[14px]">
-				<Image src="/crossmint-logo.png" alt="Wallet" width={54} height={54} />
+				<Image src="/crossmint-logo.png" alt="Wallet" width={54} height={54} className="mx-auto" />
 				<div className="space-y-1 cursor-pointer">
 					<div className="p-3 bg-[#E9EEFD] rounded-2xl">
 						<Image src="/home.svg" alt="Home" width={30} height={30} className="mx-auto" />
