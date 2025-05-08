@@ -2,6 +2,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { DepositModal } from "@/components/deposit-modal";
 import { WalletBalance } from "@/components/balance";
+import { SendFundsModal } from "@/components/send-funds-modal";
 
 interface MainScreenProps {
 	walletAddress?: string;
@@ -9,6 +10,10 @@ interface MainScreenProps {
 
 export function MainScreen({ walletAddress }: MainScreenProps) {
 	const [showDepositModal, setShowDepositModal] = useState(false);
+	const [showSendModal, setShowSendModal] = useState(false);
+
+	// Placeholder for balance, ideally get from WalletBalance or context
+	const [usdcBalance, setUsdcBalance] = useState("0.00");
 
 	return (
 		<div className="w-full flex flex-col items-center min-h-screen py-8">
@@ -36,6 +41,7 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
 					<button
 						type="button"
 						className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-full px-8 py-2 text-lg flex items-center gap-2 border transition"
+						onClick={() => setShowSendModal(true)}
 					>
 						<span className="text-xl">↗</span> Send
 					</button>
@@ -68,6 +74,11 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
 				open={showDepositModal}
 				onClose={() => setShowDepositModal(false)}
 				walletAddress={walletAddress || ""}
+			/>
+			<SendFundsModal
+				open={showSendModal}
+				onClose={() => setShowSendModal(false)}
+				balance={usdcBalance}
 			/>
 		</div>
 	);
