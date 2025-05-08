@@ -18,7 +18,7 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
 	const [usdcBalance, setUsdcBalance] = useState("0.00");
 
 	return (
-		<div className="w-full h-full py-8">
+		<div className="w-full h-full py-8 flex justify-center items-center flex-col">
 			{/* Wallet Header */}
 			<div className="w-full max-w-5xl flex items-center gap-2 mb-6 px-4">
 				<Image src="/crossmint-logo.svg" alt="Wallet" width={28} height={28} />

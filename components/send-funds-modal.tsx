@@ -9,6 +9,11 @@ interface SendFundsModalProps {
 	balance: string;
 }
 
+const isEmail = (email: string) => {
+	const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+	return emailRegex.test(email);
+};
+
 export function SendFundsModal({
 	open,
 	onClose,
@@ -27,7 +32,7 @@ export function SendFundsModal({
 		string | null
 	>(null);
 
-	const isAddressValid = method === "address" ? isAddress(address) : true;
+	const isAddressValid = method === "address" ? isAddress(address) : isEmail(email);
 	const isAmountValid =
 		!!amount && !Number.isNaN(Number(amount)) && Number(amount) > 0;
 	const canContinue = isAmountValid && isAddressValid;
@@ -170,38 +175,17 @@ export function SendFundsModal({
 							<div className="flex flex-col gap-4">
 								{/* Send to email */}
 								<label
-									className={`border rounded-xl p-4 flex items-center gap-4 cursor-pointer transition ${method === "email" ? "border-green-400 bg-green-50" : "border-gray-200 bg-white"}`}
+									className={`border rounded-xl p-4 flex items-center gap-4 cursor-pointer transition ${method === "email" ?  "border-[#0D42E4]" : "border-gray-200 bg-white"}`}
 								>
 									<input
 										type="radio"
 										name="send-method"
 										checked={method === "email"}
 										onChange={() => setMethod("email")}
-										className="accent-green-500"
+										className="accent-[#0D42E4]"
 									/>
 									<div className="flex flex-col flex-1">
 										<span className="font-medium flex items-center gap-2">
-											<span className="inline-block w-5 h-5 bg-gray-100 rounded-full flex items-center justify-center mr-2">
-												<svg
-													width="16"
-													height="16"
-													fill="none"
-													viewBox="0 0 16 16"
-													aria-label="Email icon"
-												>
-													<title>Email icon</title>
-													<path
-														d="M2.667 4.667A2 2 0 0 1 4.667 2.667h6.666a2 2 0 0 1 2 2v6.666a2 2 0 0 1-2 2H4.667a2 2 0 0 1-2-2V4.667Z"
-														stroke="#222"
-														strokeWidth="1.2"
-													/>
-													<path
-														d="m3.333 4.667 4.667 3.333 4.667-3.333"
-														stroke="#222"
-														strokeWidth="1.2"
-													/>
-												</svg>
-											</span>
 											Send to email
 										</span>
 										<span className="text-gray-500 text-sm">
@@ -219,14 +203,14 @@ export function SendFundsModal({
 								</label>
 								{/* Send to wallet address */}
 								<label
-									className={`border rounded-xl p-4 flex items-center gap-4 cursor-pointer transition ${method === "address" ? "border-green-400 bg-green-50" : "border-gray-200 bg-white"}`}
+									className={`border rounded-xl p-4 flex items-center gap-4 cursor-pointer transition ${method === "address" ? "border-[#0D42E4]" : "border-gray-200 bg-white"}`}
 								>
 									<input
 										type="radio"
 										name="send-method"
 										checked={method === "address"}
 										onChange={() => setMethod("address")}
-										className="accent-green-500"
+										className="accent-[#0D42E4]"
 									/>
 									<div className="flex flex-col flex-1">
 										<span className="font-medium flex items-center gap-2">
