@@ -4,35 +4,36 @@
 <img width="200" alt="Image" src="https://github.com/user-attachments/assets/8b617791-cd37-4a5a-8695-a7c9018b7c70" />
 <br>
 <br>
-<h1>Solana Wallets Quickstart</h1>
+<h1>Fintech EVM Wallets Quickstart</h1>
 
 <div align="center">
-<a href="https://solana-wallets.demos-crossmint.com/">Live Demo</a> | <a href="https://docs.crossmint.com/introduction/platform/wallets">Docs</a> | <a href="https://github.com/crossmint">See all quickstarts</a>
+<a href="https://fintech-evm-wallets-quickstart-git-main-crossmint.vercel.app/">Live Demo</a> | <a href="https://docs.crossmint.com/introduction/platform/wallets">Docs</a> | <a href="https://github.com/crossmint">See all quickstarts</a>
 </div>
 
 <br>
 <br>
-<img src="https://github.com/user-attachments/assets/76a983ab-499e-4d12-af7a-0ae17cb0b6cd" alt="Image" width="full">
+<img src="https://github.com/user-attachments/assets/73db7690-0af1-4dbd-9522-d8338c91db00" alt="Image" width="full">
 </div>
 
 ## Introduction
-Create and interact with Crossmint wallets in Solana. This quickstart uses Crossmint Auth and uses your external wallet (e.g Phantom, Coinbase, etc.) as a signer for that wallet.
+ Create your own Fintech app in minutes using **Crossmint Wallets** and **Onramp payments**.
 
-**Learn how to:**
+**Key features**
 - Create a wallet
-- View its balance for SOL and SPL tokens
-- Send a transaction
-- Add delegated signers to allow third parties to sign transactions on behalf of your wallet
+- Check wallet balance
+- Buy USDC with a credit card (via Onramp)
+- Transfer USDC to another wallet or email
+- View wallet activity
 
 ## Deploy
 Easily deploy the template to Vercel with the button below. You will need to set the required environment variables in the Vercel dashboard.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FCrossmint%2Fsolana-wallets-quickstart&env=NEXT_PUBLIC_CROSSMINT_API_KEY)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FCrossmint%2Ffintech-evm-wallets-quickstart&env=NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY)
 
 ## Setup
 1. Clone the repository and navigate to the project folder:
 ```bash
-git clone https://github.com/crossmint/solana-wallets-quickstart.git && cd solana-wallets-quickstart
+git clone https://github.com/crossmint/fintech-evm-wallets-quickstart.git && cd fintech-evm-wallets-quickstart
 ```
 
 2. Install all dependencies:
@@ -51,10 +52,13 @@ bun install
 cp .env.template .env
 ```
 
-4. Get a Crossmint client API key from [here](https://docs.crossmint.com/introduction/platform/api-keys/client-side) and add it to the `.env` file. Make sure your API key has the following scopes: `users.create`, `users.read`, `wallets.read`, `wallets.create`, `wallets:transactions.create`, `wallets:transactions.sign`, `wallets:balance.read`, `wallets.fund`.
-```bash
-NEXT_PUBLIC_CROSSMINT_API_KEY=your_api_key
+4. Retrieve your **development client** and **server API keys** from [Crossmint Console](https://staging.crossmint.com/console) and add them to the `.env` file:
+
+```env
+NEXT_PUBLIC_CROSSMINT_API_KEY=your_client_side_API_key
+NEXT_PUBLIC_CROSSMINT_SERVER_API_KEY=your_server_side_API_key
 ```
+
 
 5. Run the development server:
 ```bash
@@ -68,6 +72,7 @@ bun dev
 ```
 
 ## Using in production
-1. Create a [production API key](https://docs.crossmint.com/introduction/platform/api-keys/client-side).
-2. Update the `NEXT_PUBLIC_RPC_URL` to a mainnet RPC URL, you can use the public RPC URL `https://api.mainnet-beta.solana.com`.
-3. Update the `NEXT_PUBLIC_USDC_TOKEN_MINT` to the mainnet USDC token mint address `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`.
+
+This starter app is designed for rapid prototyping and testing in a staging environment.
+
+👉 [**Contact our sales team**](https://www.crossmint.com/contact/sales) to discuss your use case and get access to production-ready APIs and support.
