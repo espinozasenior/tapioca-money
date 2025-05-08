@@ -45,7 +45,7 @@ export function WalletBalance() {
 
 	return (
 		<div className="flex flex-col items-start w-full md:w-auto mb-6 md:mb-0">
-			<div className="flex items-center gap-2 mb-2">
+			{/* <div className="flex items-center gap-2 mb-2">
 				<span className="text-gray-400 text-base font-medium">
 					{address ? `(${shortAddress})` : ""}
 				</span>
@@ -63,7 +63,7 @@ export function WalletBalance() {
 						)}
 					</button>
 				)}
-			</div>
+			</div> */}
 			<span className="text-gray-500 text-base mb-1">Your balance</span>
 			<span className="text-4xl font-semibold">
 				${formatBalance(usdcBalance, 6)}

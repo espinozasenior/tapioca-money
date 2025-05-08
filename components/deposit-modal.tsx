@@ -1,5 +1,5 @@
 import Image from "next/image";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
 	CrossmintCheckoutProvider,
 	CrossmintEmbeddedCheckout,
@@ -30,28 +30,43 @@ const CHECKOUT_APPEARANCE = {
 			},
 		},
 		Input: {
-			borderRadius: "8px",
-			font: {
-				family: "Inter",
-				size: "14px",
-				weight: "400",
-			},
+            borderRadius: "8px",
+            font: {
+                family: "Inter",
+                size: "16px",
+                weight: "400",
+            },
+            colors: {
+                text: "#000000",
+                background: "#FFFFFF",
+                border: "#E0E0E0",
+                boxShadow: "none",
+                placeholder: "#999999",
+            },
+            hover: {
+                colors: {
+                    border: "#0074D9",
+                },
+            },
+            focus: {
+                colors: {
+                    border: "#0074D9",
+                    boxShadow: "none",
+                },
+            },
+        },
+		PrimaryButton: {
 			colors: {
-				text: "#000000",
-				background: "#FFFFFF",
-				border: "#E2E8F0",
-				boxShadow: "none",
-				placeholder: "#64748B",
+				background: "#0D42E4",
 			},
 			hover: {
 				colors: {
-					border: "#4ADE80",
+					background: "#0A2FA2",
 				},
 			},
-			focus: {
+			disabled: {
 				colors: {
-					border: "#4ADE80",
-					boxShadow: "0 0 0 2px rgba(0,116,217,0.2)",
+					background: "#F1F5F9",
 				},
 			},
 		},
@@ -65,7 +80,7 @@ const CHECKOUT_APPEARANCE = {
 } as const;
 
 interface AmountBreakdownProps {
-	quote: {
+	 quote: {
 		status: "valid" | "item-unavailable" | "expired" | "requires-recipient";
 		charges?: {
 			unit: {
@@ -88,18 +103,18 @@ function AmountBreakdown({ quote, total }: AmountBreakdownProps) {
 	const fees = total - amount;
 
 	return (
-		<div className="mt-6 text-[15px] pt-3 pb-5">
-			<div className="flex justify-between text-console-text-secondary py-2">
-				<span className="text-gray-500">Amount</span>
-				<span className="text-gray-500">${total.toFixed(2)}</span>
+		<div className="mt-6 text-base p-4 w-full gap-[18px] flex flex-col font-semibold bg-[#F8FAFC] rounded-2xl">
+			<div className="flex justify-between  text-[#64748B]">
+				<span className="text-[#64748B]">Amount</span>
+				<span className="text-[#334155]">${total.toFixed(2)}</span>
 			</div>
-			<div className="flex justify-between border-t text-console-text-secondary border-[#E5E7EB] py-2">
-				<span className="text-gray-500">Transaction fees</span>
-				<span className="text-gray-500">${fees.toFixed(2)}</span>
+			<div className="flex justify-between text-console-text-secondary">
+				<span className="text-[#64748B]">Transaction fees</span>
+				<span className="text-[#334155]">${fees.toFixed(2)}</span>
 			</div>
-			<div className="flex justify-between border-t border-[#E5E7EB] text-console-label py-2">
-				<span className="text-gray-500">Total added to wallet</span>
-				<span className="text-gray-500">{amount.toFixed(2)} USDC</span>
+			<div className="flex justify-between  text-console-label">
+				<span className="text-[#64748B]">Total added to wallet</span>
+				<span className="text-[#334155]">{amount.toFixed(2)} USDC</span>
 			</div>
 		</div>
 	);
@@ -108,16 +123,22 @@ function AmountBreakdown({ quote, total }: AmountBreakdownProps) {
 function CheckoutContent({
 	amount,
 	walletAddress,
-	receiptEmail,
-}: { amount: string; walletAddress: string; receiptEmail?: string }) {
+	onPaymentCompleted,
+}: { amount: string; walletAddress: string; onPaymentCompleted: () => void }) {
 	const { order } = useCrossmintCheckout();
 	const isUserInputPhase =
 		order?.phase == null ||
 		order.phase === "quote" ||
 		order.phase === "payment";
 
+	useEffect(() => {
+		if (order?.phase === "completed") {
+			onPaymentCompleted()
+		}
+	}, [order]);
+
 	return (
-		<>
+		<div className="space-y-4 w-full">
 			{isUserInputPhase &&
 				order?.phase === "payment" &&
 				order.lineItems[0].quote.status === "valid" && (
@@ -148,11 +169,11 @@ function CheckoutContent({
 							googlePay: false,
 						},
 					},
-					receiptEmail: receiptEmail,
+					receiptEmail: "angel@paella.dev",
 				}}
 				appearance={CHECKOUT_APPEARANCE}
 			/>
-		</>
+			</div>
 	);
 }
 
@@ -161,7 +182,7 @@ export function DepositModal({
 	onClose,
 	walletAddress,
 }: DepositModalProps) {
-	const [step, setStep] = useState<"options" | "card">("options");
+	const [step, setStep] = useState<"options" | "card" | "completed">("options");
 	const { user } = useAuth();
 	const receiptEmail = user?.email;
 	const [amount, setAmount] = useState("");
@@ -179,16 +200,16 @@ export function DepositModal({
 								? onClose()
 								: setStep("options")
 					}
-					className="absolute top-4 left-4 w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200"
+					className="absolute top-4 left-4 w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100"
 					aria-label="Back"
 					type="button"
 				>
 					<span className="text-2xl">←</span>
 				</button>
-				{step === "options" && !showCheckout ? (
+				{!showCheckout && (
 					<>
-						<div className="text-lg font-semibold mb-6 mt-2">Deposit</div>
-						<div className="flex flex-col items-center w-full mb-6">
+						<div className="text-lg font-semibold mt-2">Deposit</div>
+						{step === "options" && <div className="flex flex-col items-center w-full mb-6">
 							<input
 								type="number"
 								min="0"
@@ -200,12 +221,12 @@ export function DepositModal({
 								style={{ maxWidth: 200 }}
 							/>
 							<div className="text-gray-400">USDC</div>
-						</div>
-						<div className="w-full mb-8">
+						</div>}
+						{amount && step === "options" && <div className="w-full mb-8">
 							<div className="text-gray-500 mb-2">From</div>
 							<div className="bg-white border rounded-xl flex items-center p-4 gap-4 shadow-sm">
 								<div className="bg-gray-100 rounded-lg p-2">
-									<Image src="/card.svg" alt="Card" width={32} height={20} />
+									<Image src="/credit-card.svg" alt="Card" width={32} height={20} />
 								</div>
 								<div className="flex-1">
 									<div className="font-medium">Deposit from card</div>
@@ -214,37 +235,36 @@ export function DepositModal({
 									</div>
 								</div>
 								<button
-									className="ml-2 bg-gray-100 hover:bg-gray-200 rounded-full w-8 h-8 flex items-center justify-center"
+									className=" hover:bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center"
 									type="button"
 									onClick={() => setStep("card")}
 								>
-									<span className="text-2xl font-bold">+</span>
+									<Image className="text-black" src="/plus-icon-black.svg" alt="Add" width={24} height={24} />
 								</button>
 							</div>
-						</div>
-						<button
-							className="w-full bg-green-500 text-white font-semibold rounded-full py-3 text-lg mt-2 hover:bg-green-600 transition"
-							type="button"
-							disabled={
-								!amount || Number.isNaN(Number(amount)) || Number(amount) <= 0
-							}
-							onClick={() => setShowCheckout(true)}
-						>
-							Continue
-						</button>
+						</div>}
 					</>
-				) : (
+				)}
+				{(step === "card" || step === "completed") &&
 					<div className="flex flex-col items-center justify-center w-full min-h-[300px]">
 						<CrossmintProvider apiKey={CLIENT_API_KEY_CONSOLE_FUND as string}>
 							<CrossmintCheckoutProvider>
 								<CheckoutContent
 									amount={amount}
 									walletAddress={walletAddress}
-									receiptEmail={receiptEmail}
+									onPaymentCompleted={() => setStep("completed")}
 								/>
 							</CrossmintCheckoutProvider>
 						</CrossmintProvider>
 					</div>
+				}
+				{step === "completed" && (
+					<button
+						className="w-full h-12 bg-[#0D42E4] text-white font-semibold rounded-full px-4 py-3 text-sm flex items-center justify-center gap-2 border transition"
+						onClick={onClose}
+					>
+						Done
+					</button>
 				)}
 			</div>
 		</div>

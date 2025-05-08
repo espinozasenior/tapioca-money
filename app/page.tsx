@@ -3,8 +3,8 @@ import { HomeContent } from "@/app/home";
 
 export default function Home() {
 	return (
-		<div className="grid grid-rows-[0px_1fr_60px] items-center min-h-screen">
-			<main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
+		<div className="grid grid-rows-[0px_1fr_60px] items-center h-screen">
+			<main className="flex flex-col gap-8 row-start-2 items-center sm:items-start h-full">
 				<HomeContent />
 			</main>
 			<footer className="row-start-3 flex flex-col gap-4 items-center justify-center">

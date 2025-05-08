@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { DepositButton } from "./deposit-button";
 
 interface ActivityFeedProps {
 	onDepositClick: () => void;
@@ -53,32 +54,22 @@ export function ActivityFeed({
 	}, [walletAddress]);
 
 	return (
-		<div className="w-full max-w-4xl bg-white rounded-2xl border shadow-sm flex flex-col px-8 py-16 min-h-[350px]">
-			<div className="text-gray-400 text-base mb-8">Last activity</div>
-			<div className="flex flex-col items-center justify-center flex-1 w-full mt-12">
-				<div className="text-xl font-semibold mb-2 text-center">
+		<div className="w-full max-w-5xl bg-white rounded-2xl border shadow-sm flex flex-col px-10 py-4 min-h-[350px] flex-grow">
+			<div className="text-[#64748B] text-base mb-2">Last activity</div>
+			<div className="flex flex-col items-center justify-center flex-1 w-full">
+			{!loading && transfers.length === 0 && <>
+				<div className="text-base text-[##020617] font-semibold mb-2 text-center">
 					Your activity feed
 				</div>
-				<div className="text-gray-400 text-center mb-6 max-w-xl">
+				<div className="text-[#64748B] text-center mb-7 max-w-xl">
 					When you add, send and receive money it shows up here.
 					<br />
 					Get started with making a deposit to your account
 				</div>
-				<button
-					type="button"
-					className="bg-green-500 hover:bg-green-600 text-white font-semibold rounded-full px-8 py-2 text-lg flex items-center gap-2 transition mb-8"
-					onClick={onDepositClick}
-				>
-					<span className="text-xl">+</span> Deposit
-				</button>
-				<div className="w-full max-w-2xl">
-					{loading && (
-						<div className="text-center text-gray-400">Loading activity...</div>
-					)}
+				<DepositButton onClick={onDepositClick} /></>}
+				<div className="w-full max-w-2xl flex justify-center items-center">
+					{loading && (<div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin border-[#0D42E4]" />)}
 					{error && <div className="text-center text-red-500">{error}</div>}
-					{!loading && !error && transfers.length === 0 && (
-						<div className="text-center text-gray-400">No activity found.</div>
-					)}
 					{!loading && !error && transfers.length > 0 && (
 						<ul className="divide-y divide-gray-100">
 							{transfers.slice(0, 10).map((tx) => {

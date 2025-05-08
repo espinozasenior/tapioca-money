@@ -4,6 +4,7 @@ import { DepositModal } from "@/components/deposit-modal";
 import { WalletBalance } from "@/components/balance";
 import { SendFundsModal } from "@/components/send-funds-modal";
 import { ActivityFeed } from "@/components/activity-feed";
+import { DepositButton } from "./deposit-button";
 
 interface MainScreenProps {
 	walletAddress?: string;
@@ -17,9 +18,9 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
 	const [usdcBalance, setUsdcBalance] = useState("0.00");
 
 	return (
-		<div className="w-full flex flex-col items-center min-h-screen py-8">
+		<div className="w-full h-full py-8">
 			{/* Wallet Header */}
-			<div className="w-full max-w-4xl flex items-center gap-2 mb-6 px-4">
+			<div className="w-full max-w-5xl flex items-center gap-2 mb-6 px-4">
 				<Image src="/crossmint-logo.svg" alt="Wallet" width={28} height={28} />
 				<span className="text-xl font-semibold ml-2">Wallet</span>
 				<span className="text-gray-400 ml-2 text-base font-medium">
@@ -29,22 +30,16 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
 				</span>
 			</div>
 			{/* Balance Card */}
-			<div className="w-full max-w-4xl bg-white rounded-2xl border shadow-sm flex flex-col md:flex-row items-center md:items-stretch justify-between px-8 py-7 mb-8">
+			<div className="w-full max-w-5xl bg-white rounded-3xl border flex flex-col md:flex-row items-center md:items-stretch justify-between px-10 py-4 mb-8 shadow-md">
 				<WalletBalance />
-				<div className="flex gap-4 w-full md:w-auto justify-end">
+				<div className="flex gap-2 w-full md:w-auto justify-end items-center">
+					<DepositButton onClick={() => setShowDepositModal(true)} />
 					<button
 						type="button"
-						className="bg-green-500 hover:bg-green-600 text-white font-semibold rounded-full px-8 py-2 text-lg flex items-center gap-2 transition"
-						onClick={() => setShowDepositModal(true)}
-					>
-						<span className="text-xl">+</span> Deposit
-					</button>
-					<button
-						type="button"
-						className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-full px-8 py-2 text-lg flex items-center gap-2 border transition"
+						className="w-40 h-12 bg-[#EAEEFF] hover:bg-[#CFD9FA] text-[#0D42E4] font-semibold rounded-full px-4 py-3 text-sm flex items-center justify-center gap-2 border transition"
 						onClick={() => setShowSendModal(true)}
 					>
-						<span className="text-xl">↗</span> Send
+						<Image src="/arrow-up-right-icon.svg" alt="Add" width={24} height={24} /> Send
 					</button>
 				</div>
 			</div>
