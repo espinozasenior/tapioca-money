@@ -49,7 +49,10 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
 				</div>
 			</div>
 			{/* Activity Feed Card */}
-			<ActivityFeed onDepositClick={() => setShowDepositModal(true)} />
+			<ActivityFeed
+				onDepositClick={() => setShowDepositModal(true)}
+				walletAddress={walletAddress || ""}
+			/>
 
 			{/* Deposit Modal */}
 			<DepositModal
