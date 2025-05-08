@@ -20,7 +20,7 @@ export function SendFundsModal({
 	balance,
 }: SendFundsModalProps) {
 	const { wallet, type } = useWallet();
-	const [method, setMethod] = useState<"email" | "address">("address");
+	const [method, setMethod] = useState<"email" | "address">("email");
 	const [email, setEmail] = useState("");
 	const [address, setAddress] = useState("");
 	const [amount, setAmount] = useState("");
