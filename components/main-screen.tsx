@@ -21,13 +21,8 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
 		<div className="w-full h-full py-8 flex justify-center items-center flex-col">
 			{/* Wallet Header */}
 			<div className="w-full max-w-5xl flex items-center gap-2 mb-6 px-4">
-				<Image src="/crossmint-logo.svg" alt="Wallet" width={28} height={28} />
-				<span className="text-xl font-semibold ml-2">Wallet</span>
-				<span className="text-gray-400 ml-2 text-base font-medium">
-					{walletAddress
-						? `(${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)})`
-						: ""}
-				</span>
+				<Image src="/crossmint-logo.png" alt="Wallet" width={54} height={54} />
+				<span className="text-xl font-semibold ml-2">Home</span>
 			</div>
 			{/* Balance Card */}
 			<div className="w-full max-w-5xl bg-white rounded-3xl border flex flex-col md:flex-row items-center md:items-stretch justify-between px-10 py-4 mb-8 shadow-md">
