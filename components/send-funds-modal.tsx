@@ -23,6 +23,9 @@ export function SendFundsModal({
 	const [isLoading, setIsLoading] = useState(false);
 	const [txnHash, setTxnHash] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [resolvedEmailAddress, setResolvedEmailAddress] = useState<
+		string | null
+	>(null);
 
 	const isAddressValid = method === "address" ? isAddress(address) : true;
 	const isAmountValid =
@@ -32,6 +35,51 @@ export function SendFundsModal({
 	// Example fee calculation
 	const fee = amount ? (0.004 * Number(amount)).toFixed(2) : "0.00";
 	const total = amount ? Number(amount) + Number(fee) : 0;
+
+	async function getWalletAddressByEmail(email: string): Promise<string> {
+		const apiKey = process.env.NEXT_PUBLIC_CROSSMINT_SERVER_API_KEY;
+		if (!apiKey) throw new Error("Missing Crossmint API key");
+		const locator = `email:${email}:evm-smart-wallet`;
+		const res = await fetch(
+			`https://staging.crossmint.com/api/2022-06-09/wallets/${locator}`,
+			{
+				headers: {
+					"X-API-KEY": apiKey,
+					accept: "application/json",
+				},
+			},
+		);
+		if (!res.ok) throw new Error("Could not resolve email to wallet address");
+		const data = await res.json();
+		return data.address;
+	}
+
+	async function handleContinue() {
+		setError(null);
+		if (method === "email") {
+			if (!email) {
+				setError("Please enter an email address");
+				return;
+			}
+			try {
+				setIsLoading(true);
+				const resolved = await getWalletAddressByEmail(email);
+				if (!resolved || !isAddress(resolved)) {
+					setError("Could not resolve email to a valid wallet address");
+					setIsLoading(false);
+					return;
+				}
+				setResolvedEmailAddress(resolved);
+				setShowPreview(true);
+			} catch (e: unknown) {
+				setError((e as Error).message || String(e));
+			} finally {
+				setIsLoading(false);
+			}
+		} else {
+			setShowPreview(true);
+		}
+	}
 
 	async function handleSend() {
 		setError(null);
@@ -43,13 +91,24 @@ export function SendFundsModal({
 				setIsLoading(false);
 				return;
 			}
-			if (!address || !amount) {
-				setError("Missing address or amount");
-				setIsLoading(false);
-				return;
+			let recipientAddress: string | undefined;
+			if (method === "address") {
+				if (!address || !isAddress(address)) {
+					setError("Invalid recipient address");
+					setIsLoading(false);
+					return;
+				}
+				recipientAddress = address;
+			} else if (method === "email") {
+				if (!resolvedEmailAddress) {
+					setError("No resolved wallet address for email");
+					setIsLoading(false);
+					return;
+				}
+				recipientAddress = resolvedEmailAddress;
 			}
-			if (!isAddress(address)) {
-				setError("Invalid recipient address");
+			if (!amount) {
+				setError("Missing amount");
 				setIsLoading(false);
 				return;
 			}
@@ -62,7 +121,7 @@ export function SendFundsModal({
 			const data = encodeFunctionData({
 				abi: erc20Abi,
 				functionName: "transfer",
-				args: [address as Address, BigInt(Number(amount) * 10 ** 6)], // USDC has 6 decimals
+				args: [recipientAddress as Address, BigInt(Number(amount) * 10 ** 6)],
 			});
 			const txn = await wallet.sendTransaction({
 				to: usdcToken,
@@ -70,8 +129,8 @@ export function SendFundsModal({
 				data,
 			});
 			setTxnHash(`https://sepolia.basescan.org/tx/${txn}`);
-		} catch (err: any) {
-			setError(err?.message || String(err));
+		} catch (err: unknown) {
+			setError((err as Error).message || String(err));
 		} finally {
 			setIsLoading(false);
 		}
@@ -109,7 +168,56 @@ export function SendFundsModal({
 						<div className="w-full mb-8">
 							<div className="text-gray-500 mb-2">Send to</div>
 							<div className="flex flex-col gap-4">
-								{/* Send to wallet address only */}
+								{/* Send to email */}
+								<label
+									className={`border rounded-xl p-4 flex items-center gap-4 cursor-pointer transition ${method === "email" ? "border-green-400 bg-green-50" : "border-gray-200 bg-white"}`}
+								>
+									<input
+										type="radio"
+										name="send-method"
+										checked={method === "email"}
+										onChange={() => setMethod("email")}
+										className="accent-green-500"
+									/>
+									<div className="flex flex-col flex-1">
+										<span className="font-medium flex items-center gap-2">
+											<span className="inline-block w-5 h-5 bg-gray-100 rounded-full flex items-center justify-center mr-2">
+												<svg
+													width="16"
+													height="16"
+													fill="none"
+													viewBox="0 0 16 16"
+													aria-label="Email icon"
+												>
+													<title>Email icon</title>
+													<path
+														d="M2.667 4.667A2 2 0 0 1 4.667 2.667h6.666a2 2 0 0 1 2 2v6.666a2 2 0 0 1-2 2H4.667a2 2 0 0 1-2-2V4.667Z"
+														stroke="#222"
+														strokeWidth="1.2"
+													/>
+													<path
+														d="m3.333 4.667 4.667 3.333 4.667-3.333"
+														stroke="#222"
+														strokeWidth="1.2"
+													/>
+												</svg>
+											</span>
+											Send to email
+										</span>
+										<span className="text-gray-500 text-sm">
+											Send money to wallet linked to email
+										</span>
+										<input
+											type="email"
+											placeholder="Enter email address"
+											className="mt-2 px-3 py-2 border rounded-md text-sm w-full"
+											disabled={method !== "email"}
+											value={email}
+											onChange={(e) => setEmail(e.target.value)}
+										/>
+									</div>
+								</label>
+								{/* Send to wallet address */}
 								<label
 									className={`border rounded-xl p-4 flex items-center gap-4 cursor-pointer transition ${method === "address" ? "border-green-400 bg-green-50" : "border-gray-200 bg-white"}`}
 								>
@@ -168,7 +276,7 @@ export function SendFundsModal({
 							className={`w-full font-semibold rounded-full py-3 text-lg mt-2 transition ${canContinue ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}
 							disabled={!canContinue}
 							type="button"
-							onClick={() => canContinue && setShowPreview(true)}
+							onClick={handleContinue}
 						>
 							Continue
 						</button>
