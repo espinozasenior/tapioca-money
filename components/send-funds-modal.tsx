@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import Image from "next/image";
-import { useWallet } from "@crossmint/client-sdk-react-ui";
+import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
 import { type Address, encodeFunctionData, erc20Abi, isAddress } from "viem";
 
 interface SendFundsModalProps {
@@ -14,12 +14,26 @@ const isEmail = (email: string) => {
 	return emailRegex.test(email);
 };
 
+const Details = ({ values }: { values: { label: string, value: string }[] }) => {
+	return (
+		<div className="mt-2.5 text-base p-4 w-full gap-[18px] flex flex-col font-semibold bg-[#F8FAFC] rounded-2xl">
+			{values.map((value) => (
+				<div key={value.label} className="flex justify-between  text-[#64748B]">
+					<div className="text-[#64748B]">{value.label}</div>
+					<div className="text-[#334155]">{value.value}</div>
+				</div>
+			))}
+		</div>
+	)
+}
+
 export function SendFundsModal({
 	open,
 	onClose,
 	balance,
 }: SendFundsModalProps) {
 	const { wallet, type } = useWallet();
+	const { user } = useAuth();
 	const [method, setMethod] = useState<"email" | "address">("email");
 	const [email, setEmail] = useState("");
 	const [address, setAddress] = useState("");
@@ -144,8 +158,8 @@ export function SendFundsModal({
 	if (!open) return null;
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-			<div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 relative flex flex-col items-center">
+		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 ">
+			<div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 relative flex flex-col items-center min-h-[630px]">
 				<button
 					onClick={showPreview ? () => setShowPreview(false) : onClose}
 					className="absolute top-4 left-4 w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200"
@@ -157,7 +171,7 @@ export function SendFundsModal({
 				{!showPreview ? (
 					<>
 						<div className="text-lg font-semibold mb-6 mt-2">Send</div>
-						<div className="flex flex-col items-center w-full mb-6">
+						<div className="flex flex-col items-center justify-between w-full mb-6">
 							<input
 								type="number"
 								min="0"
@@ -175,7 +189,7 @@ export function SendFundsModal({
 							<div className="flex flex-col gap-4">
 								{/* Send to email */}
 								<label
-									className={`border rounded-xl p-4 flex items-center gap-4 cursor-pointer transition ${method === "email" ?  "border-[#0D42E4]" : "border-gray-200 bg-white"}`}
+									className={`border rounded-xl p-4 flex items-center gap-4 cursor-pointer transition ${method === "email" ? "border-[#0D42E4]" : "border-gray-200 bg-white"}`}
 								>
 									<input
 										type="radio"
@@ -266,38 +280,24 @@ export function SendFundsModal({
 						</button>
 					</>
 				) : (
+
+
 					// Order preview modal
-					<div className="w-full">
+					<div className="w-full flex justify-between flex-grow flex-col">
+						<div>
 						<div className="text-lg font-semibold mb-6 mt-2 text-center">
-							Order preview
-						</div>
-						<div className="mb-6">
-							<div className="font-semibold mb-2">Sent token</div>
-							<div className="flex items-center justify-between">
-								<div className="flex items-center gap-3">
-									<Image src="/usdc.svg" alt="USDC" width={36} height={36} />
-									<span>USDC</span>
-								</div>
-								<span className="text-lg font-semibold">{amount}</span>
-							</div>
-						</div>
-						<div className="mb-6">
-							<div className="font-semibold mb-2">Order details</div>
-							<div className="flex justify-between text-gray-500 mb-1">
-								<span>Fees</span>
-								<span>${fee}</span>
-							</div>
-							<div className="flex justify-between font-semibold">
-								<span>Total</span>
-								<span>${total.toFixed(2)}</span>
-							</div>
-						</div>
-						<div className="mb-8">
-							<div className="font-semibold mb-2">Destination</div>
-							<div className="flex flex-col gap-1 text-gray-700">
-								<span className="text-sm">Wallet: {address}</span>
-							</div>
-						</div>
+							Order Confirmation
+						</div>						
+						<div className="uppercase text-sm font-semibold text-[#020617]">Details</div>
+						<Details values={[
+							{ label: "From", value: user?.email || "" },
+							{ label: "To", value: address || email },
+						]} />
+						<Details values={[
+							{ label: "Amount", value: `$ ${amount}` },
+							{ label: "Fees", value: fee ? `$ ${fee}` : "No fees" },
+							{ label: "Total amount sent", value: `$ ${total}` },
+						]} />
 						{error && (
 							<div className="text-red-500 text-center mb-2">{error}</div>
 						)}
@@ -306,19 +306,22 @@ export function SendFundsModal({
 								href={txnHash}
 								target="_blank"
 								rel="noopener noreferrer"
-								className="block text-center text-blue-600 underline mb-2"
+								className="block text-center text-blue-600 underline mt-2 mb-2"
 							>
 								View on Explorer
 							</a>
 						)}
+						</div>
+						<div>
 						<button
 							className={`w-full font-semibold rounded-full py-3 text-lg mt-2 transition ${isLoading ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-700"}`}
 							type="button"
-							onClick={handleSend}
+							onClick={txnHash ? () => onClose() : handleSend}
 							disabled={isLoading}
 						>
-							{isLoading ? "Sending..." : "Confirm"}
+							{isLoading ? "Sending..." : txnHash ? "Done" : "Confirm"}
 						</button>
+						</div>
 					</div>
 				)}
 			</div>
