@@ -5,6 +5,7 @@ import {
 	CrossmintEmbeddedCheckout,
 	CrossmintProvider,
 	useAuth,
+	useCrossmintCheckout,
 } from "@crossmint/client-sdk-react-ui";
 
 interface DepositModalProps {
@@ -63,6 +64,98 @@ const CHECKOUT_APPEARANCE = {
 	},
 } as const;
 
+interface AmountBreakdownProps {
+	quote: {
+		status: "valid" | "item-unavailable" | "expired" | "requires-recipient";
+		charges?: {
+			unit: {
+				currency: string;
+				amount: string;
+			};
+			totalPrice?: {
+				currency: string;
+				amount: string;
+			};
+		};
+	};
+	total: number;
+}
+
+function AmountBreakdown({ quote, total }: AmountBreakdownProps) {
+	const amount = quote.charges?.unit.amount
+		? Number.parseFloat(quote.charges.unit.amount)
+		: 0;
+	const fees = total - amount;
+
+	return (
+		<div className="mt-6 text-[15px] pt-3 pb-5">
+			<div className="flex justify-between text-console-text-secondary py-2">
+				<span className="text-gray-500">Amount</span>
+				<span className="text-gray-500">${total.toFixed(2)}</span>
+			</div>
+			<div className="flex justify-between border-t text-console-text-secondary border-[#E5E7EB] py-2">
+				<span className="text-gray-500">Transaction fees</span>
+				<span className="text-gray-500">${fees.toFixed(2)}</span>
+			</div>
+			<div className="flex justify-between border-t border-[#E5E7EB] text-console-label py-2">
+				<span className="text-gray-500">Total added to wallet</span>
+				<span className="text-gray-500">{amount.toFixed(2)} USDC</span>
+			</div>
+		</div>
+	);
+}
+
+function CheckoutContent({
+	amount,
+	walletAddress,
+	receiptEmail,
+}: { amount: string; walletAddress: string; receiptEmail?: string }) {
+	const { order } = useCrossmintCheckout();
+	const isUserInputPhase =
+		order?.phase == null ||
+		order.phase === "quote" ||
+		order.phase === "payment";
+
+	return (
+		<>
+			{isUserInputPhase &&
+				order?.phase === "payment" &&
+				order.lineItems[0].quote.status === "valid" && (
+					<AmountBreakdown
+						quote={order.lineItems[0].quote}
+						total={Number.parseFloat(amount)}
+					/>
+				)}
+			<CrossmintEmbeddedCheckout
+				recipient={{
+					walletAddress,
+				}}
+				lineItems={{
+					tokenLocator: USDC_LOCATOR,
+					executionParameters: {
+						mode: "exact-in",
+						amount: amount || "0.00",
+						maxSlippageBps: "500",
+					},
+				}}
+				payment={{
+					crypto: { enabled: false },
+					fiat: {
+						enabled: true,
+						allowedMethods: {
+							card: true,
+							applePay: false,
+							googlePay: false,
+						},
+					},
+					receiptEmail: receiptEmail,
+				}}
+				appearance={CHECKOUT_APPEARANCE}
+			/>
+		</>
+	);
+}
+
 export function DepositModal({
 	open,
 	onClose,
@@ -73,6 +166,7 @@ export function DepositModal({
 	const receiptEmail = user?.email;
 	const [amount, setAmount] = useState("");
 	const [showCheckout, setShowCheckout] = useState(false);
+
 	if (!open) return null;
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
@@ -131,46 +225,27 @@ export function DepositModal({
 						<button
 							className="w-full bg-green-500 text-white font-semibold rounded-full py-3 text-lg mt-2 hover:bg-green-600 transition"
 							type="button"
-							disabled={!amount || isNaN(Number(amount)) || Number(amount) <= 0}
+							disabled={
+								!amount || Number.isNaN(Number(amount)) || Number(amount) <= 0
+							}
 							onClick={() => setShowCheckout(true)}
 						>
 							Continue
 						</button>
 					</>
-				) : step === "card" || showCheckout ? (
+				) : (
 					<div className="flex flex-col items-center justify-center w-full min-h-[300px]">
-						<CrossmintProvider apiKey={CLIENT_API_KEY_CONSOLE_FUND!}>
+						<CrossmintProvider apiKey={CLIENT_API_KEY_CONSOLE_FUND as string}>
 							<CrossmintCheckoutProvider>
-								<CrossmintEmbeddedCheckout
-									recipient={{
-										walletAddress,
-									}}
-									lineItems={{
-										tokenLocator: USDC_LOCATOR,
-										executionParameters: {
-											mode: "exact-in",
-											amount: amount || "0.00",
-											maxSlippageBps: "500",
-										},
-									}}
-									payment={{
-										crypto: { enabled: false },
-										fiat: {
-											enabled: true,
-											allowedMethods: {
-												card: true,
-												applePay: false,
-												googlePay: false,
-											},
-										},
-										receiptEmail: "angel@paella.dev",
-									}}
-									appearance={CHECKOUT_APPEARANCE}
+								<CheckoutContent
+									amount={amount}
+									walletAddress={walletAddress}
+									receiptEmail={receiptEmail}
 								/>
 							</CrossmintCheckoutProvider>
 						</CrossmintProvider>
 					</div>
-				) : null}
+				)}
 			</div>
 		</div>
 	);
