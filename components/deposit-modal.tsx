@@ -71,23 +71,42 @@ export function DepositModal({
 	const [step, setStep] = useState<"options" | "card">("options");
 	const { user } = useAuth();
 	const receiptEmail = user?.email;
+	const [amount, setAmount] = useState("");
+	const [showCheckout, setShowCheckout] = useState(false);
 	if (!open) return null;
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
 			<div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 relative flex flex-col items-center">
 				<button
-					onClick={() => (step === "options" ? onClose() : setStep("options"))}
+					onClick={() =>
+						showCheckout
+							? setShowCheckout(false)
+							: step === "options"
+								? onClose()
+								: setStep("options")
+					}
 					className="absolute top-4 left-4 w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200"
 					aria-label="Back"
 					type="button"
 				>
 					<span className="text-2xl">←</span>
 				</button>
-				{step === "options" ? (
+				{step === "options" && !showCheckout ? (
 					<>
 						<div className="text-lg font-semibold mb-6 mt-2">Deposit</div>
-						<div className="text-4xl font-bold mb-1">$0.00</div>
-						<div className="text-gray-400 mb-6">0.00 USDC</div>
+						<div className="flex flex-col items-center w-full mb-6">
+							<input
+								type="number"
+								min="0"
+								step="0.01"
+								placeholder="$0.00"
+								className="text-4xl font-bold text-center border-none outline-none focus:ring-0 w-full mb-1"
+								value={amount}
+								onChange={(e) => setAmount(e.target.value)}
+								style={{ maxWidth: 200 }}
+							/>
+							<div className="text-gray-400">USDC</div>
+						</div>
 						<div className="w-full mb-8">
 							<div className="text-gray-500 mb-2">From</div>
 							<div className="bg-white border rounded-xl flex items-center p-4 gap-4 shadow-sm">
@@ -110,14 +129,15 @@ export function DepositModal({
 							</div>
 						</div>
 						<button
-							className="w-full bg-gray-100 text-gray-400 font-semibold rounded-full py-3 text-lg mt-2 cursor-not-allowed"
-							disabled
+							className="w-full bg-green-500 text-white font-semibold rounded-full py-3 text-lg mt-2 hover:bg-green-600 transition"
 							type="button"
+							disabled={!amount || isNaN(Number(amount)) || Number(amount) <= 0}
+							onClick={() => setShowCheckout(true)}
 						>
 							Continue
 						</button>
 					</>
-				) : (
+				) : step === "card" || showCheckout ? (
 					<div className="flex flex-col items-center justify-center w-full min-h-[300px]">
 						<CrossmintProvider apiKey={CLIENT_API_KEY_CONSOLE_FUND!}>
 							<CrossmintCheckoutProvider>
@@ -129,7 +149,7 @@ export function DepositModal({
 										tokenLocator: USDC_LOCATOR,
 										executionParameters: {
 											mode: "exact-in",
-											amount: "5.00",
+											amount: amount || "0.00",
 											maxSlippageBps: "500",
 										},
 									}}
@@ -150,7 +170,7 @@ export function DepositModal({
 							</CrossmintCheckoutProvider>
 						</CrossmintProvider>
 					</div>
-				)}
+				) : null}
 			</div>
 		</div>
 	);
