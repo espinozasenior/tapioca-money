@@ -5,6 +5,7 @@ import { WalletBalance } from "@/components/balance";
 import { SendFundsModal } from "@/components/send-funds-modal";
 import { ActivityFeed } from "@/components/activity-feed";
 import { DepositButton } from "./deposit-button";
+import { useAuth } from "@crossmint/client-sdk-react-ui";
 
 interface MainScreenProps {
 	walletAddress?: string;
@@ -13,6 +14,7 @@ interface MainScreenProps {
 export function MainScreen({ walletAddress }: MainScreenProps) {
 	const [showDepositModal, setShowDepositModal] = useState(false);
 	const [showSendModal, setShowSendModal] = useState(false);
+	const { logout } = useAuth();
 
 	// Placeholder for balance, ideally get from WalletBalance or context
 	const [usdcBalance, setUsdcBalance] = useState("0.00");
@@ -20,9 +22,15 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
 	return (
 		<div className="w-full h-full py-8 flex justify-center items-center flex-col">
 			{/* Wallet Header */}
-			<div className="w-full max-w-5xl flex items-center gap-2 mb-6 px-4">
-				<Image src="/crossmint-logo.png" alt="Wallet" width={54} height={54} />
-				<span className="text-xl font-semibold ml-2">Home</span>
+			<div className="w-full max-w-5xl flex justify-between items-center px-2">
+				<div className="w-full max-w-5xl flex items-center gap-2 mb-6 px-4">
+					<Image src="/crossmint-logo.png" alt="Wallet" width={54} height={54} />
+					<span className="text-xl font-semibold ml-2">Home</span>
+				</div>
+				<button onClick={logout}className="flex items-center gap-1 text-base text-[#0D42E4]">
+					Logout
+					<Image src="/logout-icon.svg" alt="Logout" width={24} height={24} />
+				</button>
 			</div>
 			{/* Balance Card */}
 			<div className="w-full max-w-5xl bg-white rounded-3xl border flex flex-col md:flex-row items-center md:items-stretch justify-between px-10 py-4 mb-8 shadow-md">
