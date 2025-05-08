@@ -14,7 +14,9 @@ const isEmail = (email: string) => {
 	return emailRegex.test(email);
 };
 
-const Details = ({ values }: { values: { label: string, value: string }[] }) => {
+const Details = ({
+	values,
+}: { values: { label: string; value: string }[] }) => {
 	return (
 		<div className="mt-2.5 text-base p-4 w-full gap-[18px] flex flex-col font-semibold bg-[#F8FAFC] rounded-2xl">
 			{values.map((value) => (
@@ -24,8 +26,8 @@ const Details = ({ values }: { values: { label: string, value: string }[] }) => 
 				</div>
 			))}
 		</div>
-	)
-}
+	);
+};
 
 export function SendFundsModal({
 	open,
@@ -46,14 +48,11 @@ export function SendFundsModal({
 		string | null
 	>(null);
 
-	const isAddressValid = method === "address" ? isAddress(address) : isEmail(email);
+	const isAddressValid =
+		method === "address" ? isAddress(address) : isEmail(email);
 	const isAmountValid =
 		!!amount && !Number.isNaN(Number(amount)) && Number(amount) > 0;
 	const canContinue = isAmountValid && isAddressValid;
-
-	// Example fee calculation
-	const fee = amount ? (0.004 * Number(amount)).toFixed(2) : "0.00";
-	const total = amount ? Number(amount) + Number(fee) : 0;
 
 	async function getWalletAddressByEmail(email: string): Promise<string> {
 		const apiKey = process.env.NEXT_PUBLIC_CROSSMINT_SERVER_API_KEY;
@@ -280,47 +279,45 @@ export function SendFundsModal({
 						</button>
 					</>
 				) : (
-
-
 					// Order preview modal
 					<div className="w-full flex justify-between flex-grow flex-col">
 						<div>
-						<div className="text-lg font-semibold mb-6 mt-2 text-center">
-							Order Confirmation
-						</div>						
-						<div className="uppercase text-sm font-semibold text-[#020617]">Details</div>
-						<Details values={[
-							{ label: "From", value: user?.email || "" },
-							{ label: "To", value: address || email },
-						]} />
-						<Details values={[
-							{ label: "Amount", value: `$ ${amount}` },
-							{ label: "Fees", value: fee ? `$ ${fee}` : "No fees" },
-							{ label: "Total amount sent", value: `$ ${total}` },
-						]} />
-						{error && (
-							<div className="text-red-500 text-center mb-2">{error}</div>
-						)}
-						{txnHash && (
-							<a
-								href={txnHash}
-								target="_blank"
-								rel="noopener noreferrer"
-								className="block text-center text-blue-600 underline mt-2 mb-2"
-							>
-								View on Explorer
-							</a>
-						)}
+							<div className="text-lg font-semibold mb-6 mt-2 text-center">
+								Order Confirmation
+							</div>
+							<div className="uppercase text-sm font-semibold text-[#020617]">
+								Details
+							</div>
+							<Details
+								values={[
+									{ label: "From", value: user?.email || "" },
+									{ label: "To", value: address || email },
+								]}
+							/>
+							<Details values={[{ label: "Amount", value: `$ ${amount}` }]} />
+							{error && (
+								<div className="text-red-500 text-center mb-2">{error}</div>
+							)}
+							{txnHash && (
+								<a
+									href={txnHash}
+									target="_blank"
+									rel="noopener noreferrer"
+									className="block text-center text-blue-600 underline mt-2 mb-2"
+								>
+									View on Explorer
+								</a>
+							)}
 						</div>
 						<div>
-						<button
-							className={`w-full font-semibold rounded-full py-3 text-lg mt-2 transition ${isLoading ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-700"}`}
-							type="button"
-							onClick={txnHash ? () => onClose() : handleSend}
-							disabled={isLoading}
-						>
-							{isLoading ? "Sending..." : txnHash ? "Done" : "Confirm"}
-						</button>
+							<button
+								className={`w-full font-semibold rounded-full py-3 text-lg mt-2 transition ${isLoading ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-700"}`}
+								type="button"
+								onClick={txnHash ? () => onClose() : handleSend}
+								disabled={isLoading}
+							>
+								{isLoading ? "Sending..." : txnHash ? "Done" : "Confirm"}
+							</button>
 						</div>
 					</div>
 				)}
