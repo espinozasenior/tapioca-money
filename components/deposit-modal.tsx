@@ -14,7 +14,8 @@ interface DepositModalProps {
 	walletAddress: string;
 }
 
-const CLIENT_API_KEY_CONSOLE_FUND = process.env.NEXT_PUBLIC_CROSSMINT_API_KEY;
+const CLIENT_API_KEY_CONSOLE_FUND =
+	process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY;
 const USDC_LOCATOR = `base-sepolia:${process.env.NEXT_PUBLIC_USDC_TOKEN_MINT}:${process.env.NEXT_PUBLIC_USDC_TOKEN_MINT}`;
 
 const CHECKOUT_APPEARANCE = {
@@ -30,31 +31,31 @@ const CHECKOUT_APPEARANCE = {
 			},
 		},
 		Input: {
-            borderRadius: "8px",
-            font: {
-                family: "Inter",
-                size: "16px",
-                weight: "400",
-            },
-            colors: {
-                text: "#000000",
-                background: "#FFFFFF",
-                border: "#E0E0E0",
-                boxShadow: "none",
-                placeholder: "#999999",
-            },
-            hover: {
-                colors: {
-                    border: "#0074D9",
-                },
-            },
-            focus: {
-                colors: {
-                    border: "#0074D9",
-                    boxShadow: "none",
-                },
-            },
-        },
+			borderRadius: "8px",
+			font: {
+				family: "Inter",
+				size: "16px",
+				weight: "400",
+			},
+			colors: {
+				text: "#000000",
+				background: "#FFFFFF",
+				border: "#E0E0E0",
+				boxShadow: "none",
+				placeholder: "#999999",
+			},
+			hover: {
+				colors: {
+					border: "#0074D9",
+				},
+			},
+			focus: {
+				colors: {
+					border: "#0074D9",
+					boxShadow: "none",
+				},
+			},
+		},
 		PrimaryButton: {
 			colors: {
 				background: "#0D42E4",
@@ -80,7 +81,7 @@ const CHECKOUT_APPEARANCE = {
 } as const;
 
 interface AmountBreakdownProps {
-	 quote: {
+	quote: {
 		status: "valid" | "item-unavailable" | "expired" | "requires-recipient";
 		charges?: {
 			unit: {
@@ -133,7 +134,7 @@ function CheckoutContent({
 
 	useEffect(() => {
 		if (order?.phase === "completed") {
-			onPaymentCompleted()
+			onPaymentCompleted();
 		}
 	}, [order]);
 
@@ -173,7 +174,7 @@ function CheckoutContent({
 				}}
 				appearance={CHECKOUT_APPEARANCE}
 			/>
-			</div>
+		</div>
 	);
 }
 
@@ -209,43 +210,58 @@ export function DepositModal({
 				{!showCheckout && (
 					<>
 						<div className="text-lg font-semibold mt-2">Deposit</div>
-						{step === "options" && <div className="flex flex-col items-center w-full mb-6">
-							<input
-								type="number"
-								min="0"
-								step="0.01"
-								placeholder="$0.00"
-								className="text-4xl font-bold text-center border-none outline-none focus:ring-0 w-full mb-1"
-								value={amount}
-								onChange={(e) => setAmount(e.target.value)}
-								style={{ maxWidth: 200 }}
-							/>
-							<div className="text-gray-400">USDC</div>
-						</div>}
-						{amount && step === "options" && <div className="w-full mb-8">
-							<div className="text-gray-500 mb-2">From</div>
-							<div className="bg-white border rounded-xl flex items-center p-4 gap-4 shadow-sm">
-								<div className="bg-gray-100 rounded-lg p-2">
-									<Image src="/credit-card.svg" alt="Card" width={32} height={20} />
-								</div>
-								<div className="flex-1">
-									<div className="font-medium">Deposit from card</div>
-									<div className="text-gray-400 text-sm">
-										Add debit/credit card
-									</div>
-								</div>
-								<button
-									className=" hover:bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center"
-									type="button"
-									onClick={() => setStep("card")}
-								>
-									<Image className="text-black" src="/plus-icon-black.svg" alt="Add" width={24} height={24} />
-								</button>
+						{step === "options" && (
+							<div className="flex flex-col items-center w-full mb-6">
+								<input
+									type="number"
+									min="0"
+									step="0.01"
+									placeholder="$0.00"
+									className="text-4xl font-bold text-center border-none outline-none focus:ring-0 w-full mb-1"
+									value={amount}
+									onChange={(e) => setAmount(e.target.value)}
+									style={{ maxWidth: 200 }}
+								/>
+								<div className="text-gray-400">USDC</div>
 							</div>
-						</div>}
+						)}
+						{amount && step === "options" && (
+							<div className="w-full mb-8">
+								<div className="text-gray-500 mb-2">From</div>
+								<div className="bg-white border rounded-xl flex items-center p-4 gap-4 shadow-sm">
+									<div className="bg-gray-100 rounded-lg p-2">
+										<Image
+											src="/credit-card.svg"
+											alt="Card"
+											width={32}
+											height={20}
+										/>
+									</div>
+									<div className="flex-1">
+										<div className="font-medium">Deposit from card</div>
+										<div className="text-gray-400 text-sm">
+											Add debit/credit card
+										</div>
+									</div>
+									<button
+										className=" hover:bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center"
+										type="button"
+										onClick={() => setStep("card")}
+									>
+										<Image
+											className="text-black"
+											src="/plus-icon-black.svg"
+											alt="Add"
+											width={24}
+											height={24}
+										/>
+									</button>
+								</div>
+							</div>
+						)}
 					</>
 				)}
-				{(step === "card" || step === "completed") &&
+				{(step === "card" || step === "completed") && (
 					<div className="flex flex-col items-center justify-center w-full min-h-[300px]">
 						<CrossmintProvider apiKey={CLIENT_API_KEY_CONSOLE_FUND as string}>
 							<CrossmintCheckoutProvider>
@@ -257,7 +273,7 @@ export function DepositModal({
 							</CrossmintCheckoutProvider>
 						</CrossmintProvider>
 					</div>
-				}
+				)}
 				{step === "completed" && (
 					<button
 						className="w-full h-12 bg-[#0D42E4] text-white font-semibold rounded-full px-4 py-3 text-sm flex items-center justify-center gap-2 border transition"
