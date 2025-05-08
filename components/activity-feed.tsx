@@ -52,9 +52,9 @@ export function ActivityFeed({
 	}, [walletAddress]);
 
 	return (
-		<div className="w-full max-w-5xl bg-white rounded-2xl border shadow-sm flex flex-col px-10 py-4 min-h-[350px] flex-grow">
+		<div className={`w-full max-w-5xl bg-white rounded-2xl border shadow-sm flex flex-col px-10 py-4 min-h-[350px] flex-grow`}>
 			<div className="text-[#64748B] text-base mb-2">Last activity</div>
-			<div className="flex flex-col items-center flex-1 w-full">
+			<div className={`flex flex-col items-center flex-1 w-full ${loading ? "justify-center" : "justify-start"}`}>
 				{!loading && events.length === 0 && (
 					<>
 						<div className="text-base text-[##020617] font-semibold mb-2 text-center">
@@ -68,7 +68,7 @@ export function ActivityFeed({
 						<DepositButton onClick={onDepositClick} />
 					</>
 				)}
-				<div className="w-full flex items-center">
+				<div className={`w-full flex items-center ${loading ? "justify-center" : "justify-start"}`}>
 					{loading && (
 						<div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin border-[#0D42E4]" />
 					)}
