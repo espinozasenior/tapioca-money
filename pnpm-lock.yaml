@@ -17,6 +17,9 @@ importers:
       '@solana/web3.js':
         specifier: ~1.98.0
         version: 1.98.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      '@tanstack/react-query':
+        specifier: ^5.77.2
+        version: 5.77.2(react@19.1.0)
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -1904,6 +1907,14 @@ packages:
   '@tailwindcss/postcss@4.1.3':
     resolution: {integrity: sha512-6s5nJODm98F++QT49qn8xJKHQRamhYHfMi3X7/ltxiSQ9dyRsaFSfFkfaMsanWzf+TMYQtbk8mt5f6cCVXJwfg==}
 
+  '@tanstack/query-core@5.77.2':
+    resolution: {integrity: sha512-1lqJwPsR6GX6nZFw06erRt518O19tWU6Q+x0fJUygl4lxHCYF2nhzBPwLKk2NPjYOrpR0K567hxPc5K++xDe9Q==}
+
+  '@tanstack/react-query@5.77.2':
+    resolution: {integrity: sha512-BRHxWdy1mHmgAcYA/qy2IPLylT81oebLgkm9K85viN2Qol/Vq48t1dzDFeDIVQjTWDV96AmqsLNPlH5HjyKCxA==}
+    peerDependencies:
+      react: ^18 || ^19
+
   '@thumbmarkjs/thumbmarkjs@0.16.0':
     resolution: {integrity: sha512-NKyqCvP6DZKlRf6aGfnKS6Kntn2gnuBxa/ztstjy+oo1t23EHzQ54shtli0yV5WAtygmK1tti/uL2C2p/kW3HQ==}
 
@@ -3547,7 +3558,6 @@ packages:
 
   lodash.isequal@4.5.0:
     resolution: {integrity: sha512-pDo3lu8Jhfjqls6GkMgpahsF9kCyayhgykjyLMNFTKWrpVdAQtYyB4muAMWozBB4ig/dtWAmsMxLEI8wuz+DYQ==}
-    deprecated: This package is deprecated. Use require('node:util').isDeepStrictEqual instead.
 
   lodash.throttle@4.1.1:
     resolution: {integrity: sha512-wIkUCfVKpVsWo3JSZlc+8MB5it+2AN5W8J7YVMST30UrvcQNZ1Okbj+rbVniijTWE6FGYy4XJq/rHkas8qJMLQ==}
@@ -6023,7 +6033,7 @@ snapshots:
 
   '@coinbase/wallet-sdk@4.3.0':
     dependencies:
-      '@noble/hashes': 1.7.1
+      '@noble/hashes': 1.7.2
       clsx: 1.2.1
       eventemitter3: 5.0.1
       preact: 10.26.5
@@ -6754,14 +6764,14 @@ snapshots:
   '@hpke/dhkem-x25519@1.6.2':
     dependencies:
       '@hpke/common': 1.7.2
-      '@noble/curves': 1.8.1
-      '@noble/hashes': 1.7.1
+      '@noble/curves': 1.8.2
+      '@noble/hashes': 1.7.2
 
   '@hpke/dhkem-x448@1.6.2':
     dependencies:
       '@hpke/common': 1.7.2
-      '@noble/curves': 1.8.1
-      '@noble/hashes': 1.7.1
+      '@noble/curves': 1.8.2
+      '@noble/hashes': 1.7.2
 
   '@img/sharp-darwin-arm64@0.33.5':
     optionalDependencies:
@@ -7022,7 +7032,7 @@ snapshots:
     dependencies:
       '@ethereumjs/tx': 4.2.0
       '@metamask/superstruct': 3.2.1
-      '@noble/hashes': 1.7.1
+      '@noble/hashes': 1.7.2
       '@scure/base': 1.2.4
       '@types/debug': 4.1.12
       debug: 4.4.0
@@ -7036,7 +7046,7 @@ snapshots:
     dependencies:
       '@ethereumjs/tx': 4.2.0
       '@metamask/superstruct': 3.2.1
-      '@noble/hashes': 1.7.1
+      '@noble/hashes': 1.7.2
       '@scure/base': 1.2.4
       '@types/debug': 4.1.12
       debug: 4.4.0
@@ -7099,8 +7109,8 @@ snapshots:
     dependencies:
       '@graphql-typed-document-node/core': 3.2.0(graphql@16.10.0)
       '@mysten/bcs': 1.5.0
-      '@noble/curves': 1.8.1
-      '@noble/hashes': 1.7.1
+      '@noble/curves': 1.8.2
+      '@noble/hashes': 1.7.2
       '@scure/base': 1.2.4
       '@scure/bip32': 1.6.2
       '@scure/bip39': 1.5.4
@@ -7856,7 +7866,7 @@ snapshots:
 
   '@spruceid/siwe-parser@2.1.2':
     dependencies:
-      '@noble/hashes': 1.7.1
+      '@noble/hashes': 1.7.2
       apg-js: 4.4.0
       uri-js: 4.4.1
       valid-url: 1.0.9
@@ -7946,11 +7956,18 @@ snapshots:
       postcss: 8.5.3
       tailwindcss: 4.1.3
 
+  '@tanstack/query-core@5.77.2': {}
+
+  '@tanstack/react-query@5.77.2(react@19.1.0)':
+    dependencies:
+      '@tanstack/query-core': 5.77.2
+      react: 19.1.0
+
   '@thumbmarkjs/thumbmarkjs@0.16.0': {}
 
   '@turnkey/api-key-stamper@0.4.3':
     dependencies:
-      '@noble/curves': 1.8.1
+      '@noble/curves': 1.8.2
       '@turnkey/encoding': 0.4.0
       sha256-uint8array: 0.10.7
 
@@ -8775,7 +8792,7 @@ snapshots:
 
   bs58check@3.0.1:
     dependencies:
-      '@noble/hashes': 1.7.1
+      '@noble/hashes': 1.7.2
       bs58: 5.0.0
 
   bser@2.1.1:
@@ -9113,8 +9130,8 @@ snapshots:
     dependencies:
       '@ecies/ciphers': 0.2.3(@noble/ciphers@1.2.1)
       '@noble/ciphers': 1.2.1
-      '@noble/curves': 1.8.1
-      '@noble/hashes': 1.7.1
+      '@noble/curves': 1.8.2
+      '@noble/hashes': 1.7.2
 
   ee-first@1.1.1: {}
 
@@ -9518,7 +9535,7 @@ snapshots:
       '@hpke/core': 1.7.2
       '@hpke/dhkem-x25519': 1.6.2
       '@hpke/dhkem-x448': 1.6.2
-      '@noble/hashes': 1.7.1
+      '@noble/hashes': 1.7.2
 
   html-parse-stringify@3.0.1:
     dependencies:
@@ -10434,8 +10451,8 @@ snapshots:
   ox@0.1.2(typescript@5.8.3)(zod@3.22.4):
     dependencies:
       '@adraffy/ens-normalize': 1.11.0
-      '@noble/curves': 1.8.1
-      '@noble/hashes': 1.7.1
+      '@noble/curves': 1.8.2
+      '@noble/hashes': 1.7.2
       '@scure/bip32': 1.6.2
       '@scure/bip39': 1.5.4
       abitype: 1.0.8(typescript@5.8.3)(zod@3.22.4)
@@ -10448,8 +10465,8 @@ snapshots:
   ox@0.6.7(typescript@5.8.3)(zod@3.22.4):
     dependencies:
       '@adraffy/ens-normalize': 1.11.0
-      '@noble/curves': 1.8.1
-      '@noble/hashes': 1.7.1
+      '@noble/curves': 1.8.2
+      '@noble/hashes': 1.7.2
       '@scure/bip32': 1.6.2
       '@scure/bip39': 1.5.4
       abitype: 1.0.8(typescript@5.8.3)(zod@3.22.4)
@@ -11567,8 +11584,8 @@ snapshots:
 
   webauthn-p256@0.0.10:
     dependencies:
-      '@noble/curves': 1.8.1
-      '@noble/hashes': 1.7.1
+      '@noble/curves': 1.8.2
+      '@noble/hashes': 1.7.2
 
   webextension-polyfill@0.10.0: {}
 

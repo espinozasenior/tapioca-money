@@ -4,6 +4,7 @@ import {
 	CrossmintProvider,
 	CrossmintAuthProvider,
 } from "@crossmint/client-sdk-react-ui";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 if (
 	!process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY ||
@@ -13,6 +14,8 @@ if (
 		"NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY or NEXT_PUBLIC_CROSSMINT_SERVER_API_KEY is not set",
 	);
 }
+
+const queryClient = new QueryClient();
 
 export function Providers({ children }: { children: React.ReactNode }) {
 	return (
@@ -29,7 +32,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
 				}}
 				loginMethods={["email", "google"]}
 			>
-				{children}
+				<QueryClientProvider client={queryClient}>
+					{children}
+				</QueryClientProvider>
 			</CrossmintAuthProvider>
 		</CrossmintProvider>
 	);

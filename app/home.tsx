@@ -4,7 +4,6 @@ import { LoginButton } from "@/components/login";
 import { MainScreen } from "@/components/main-screen";
 import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
 
-
 export function HomeContent() {
 	const { wallet, status: walletStatus } = useWallet();
 	const { status, status: authStatus, login } = useAuth();
@@ -29,5 +28,7 @@ export function HomeContent() {
 		);
 	}
 
-	return <MainScreen walletAddress={walletAddress} />;
+	return (
+			<MainScreen walletAddress={walletAddress} />
+	);
 }

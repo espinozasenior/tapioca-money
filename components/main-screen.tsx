@@ -2,7 +2,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { DepositModal } from "@/components/deposit-modal";
 import { WalletBalance } from "@/components/balance";
-import { SendFundsModal } from "@/components/send-funds-modal";
+import { SendFundsModal } from "@/components/send-funds";
 import { ActivityFeed } from "@/components/activity-feed";
 import { DepositButton } from "./deposit-button";
 import { useAuth } from "@crossmint/client-sdk-react-ui";
