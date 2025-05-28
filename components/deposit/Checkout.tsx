@@ -86,12 +86,6 @@ export function Checkout({
   step,
 }: CheckoutProps) {
   const { order } = useCrossmintCheckout();
-  const isUserInputPhase =
-    order?.phase == null ||
-    order.phase === "quote" ||
-    order.phase === "payment";
-
-  console.log("Order Phase: ", order?.phase);
 
   useEffect(() => {
     if (order?.phase === "completed") {
