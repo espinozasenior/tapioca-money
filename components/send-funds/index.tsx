@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
 import { type Address, encodeFunctionData, erc20Abi, isAddress } from "viem";
-import { AmountInput } from "./AmountInput";
+import { AmountInput } from "../common/AmountInput";
 import { OrderPreview } from "./OrderPreview";
 import { RecipientInput } from "./RecipientInput";
 import { useBalance } from "@/hooks/useBalance";
+import { Modal } from "../common/Modal";
 
 interface SendFundsModalProps {
 	open: boolean;
@@ -137,51 +138,72 @@ export function SendFundsModal({
 		}
 	}
 
-	if (!open) return null;
+	const resetFlow = () => {
+		setShowPreview(false);
+		setAmount("");
+		setRecipient("");
+		setResolvedEmailAddress(null);
+		setError(null);
+		setTxnHash(null);
+	}
+
+	const handleDone = () => {
+		resetFlow();
+		onClose();
+	}
+
+	const handleBack = () => {
+		if (!showPreview) {
+			handleDone();
+		} else if (txnHash) {
+			resetFlow();
+		} else {
+			setShowPreview(false);
+		}
+	}
+
+	const displayableAmount = Number(amount).toFixed(2);
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-			<div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 relative flex flex-col items-center">
-				<button
-					onClick={showPreview ? () => setShowPreview(false) : onClose}
-					className="absolute top-4 left-4 w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200"
-					aria-label="Back"
-					type="button"
-				>
-					<span className="text-2xl">←</span>
-				</button>
-				{!showPreview ? (
-					<>
-						<div className="text-lg font-semibold mb-6 mt-2">Send</div>
+		<Modal
+			open={open}
+			onClose={onClose}
+			showBackButton={!isLoading}
+			onBack={handleBack}
+		>
+			{!showPreview ? (
+				<>
+					<div className="text-lg font-semibold mb-6 mt-2">Send</div>
+					<div className="flex flex-col items-center justify-between w-full mb-6">
 						<AmountInput amount={amount} onChange={setAmount} />
-						<RecipientInput recipient={recipient} onChange={setRecipient} />
-						<button
-							className={`w-full font-semibold rounded-full py-3 text-lg mt-8 transition ${
-								canContinue
-									? "bg-blue-600 text-white hover:bg-blue-700"
-									: "bg-gray-100 text-gray-400 cursor-not-allowed"
+						<div className={Number(amount) > Number(formatBalance(usdcBalance)) ? "text-red-600" : "text-gray-400"}>$ {formatBalance(usdcBalance)} balance</div>
+					</div>
+					<RecipientInput recipient={recipient} onChange={setRecipient} />
+					<button
+						className={`w-full font-semibold rounded-full py-3 text-lg mt-8 transition ${canContinue
+							? "bg-blue-600 text-white hover:bg-blue-700"
+							: "bg-gray-100 text-gray-400 cursor-not-allowed"
 							}`}
-							disabled={!canContinue}
-							type="button"
-							onClick={handleContinue}
-						>
-							Continue
-						</button>
-					</>
-				) : (
-					<OrderPreview
-						userEmail={user?.email || ""}
-						recipient={recipient}
-						amount={amount}
-						error={error}
-						txnHash={txnHash}
-						isLoading={isLoading}
-						onBack={() => setShowPreview(false)}
-						onConfirm={handleSend}
-						onClose={onClose}
-					/>
-				)}
-			</div>
-		</div>
+						disabled={!canContinue}
+						type="button"
+						onClick={handleContinue}
+					>
+						Continue
+					</button>
+				</>
+			) : (
+				<OrderPreview
+					userEmail={user?.email || ""}
+					recipient={recipient}
+					amount={displayableAmount}
+					error={error}
+					txnHash={txnHash}
+					isLoading={isLoading}
+					onBack={() => setShowPreview(false)}
+					onConfirm={handleSend}
+					onClose={handleDone}
+				/>
+			)}
+		</Modal>
 	);
 }

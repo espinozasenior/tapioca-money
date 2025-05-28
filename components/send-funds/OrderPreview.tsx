@@ -56,16 +56,15 @@ export function OrderPreview({
       </div>
       <div>
         <button
-          className={`w-full font-semibold rounded-full py-3 text-lg mt-2 transition ${
-            isLoading
-              ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-              : "bg-blue-600 text-white hover:bg-blue-700"
-          }`}
+          className={`w-full font-semibold rounded-full py-3 text-lg mt-6 transition ${isLoading
+            ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+            : "bg-blue-600 text-white hover:bg-blue-700"
+            }`}
           type="button"
           onClick={txnHash ? onClose : onConfirm}
           disabled={isLoading}
         >
-          {isLoading ? "Sending..." : txnHash ? "Done" : "Confirm"}
+          {isLoading ? "Sending..." : txnHash ? "Done" : `Send $ ${amount}`}
         </button>
       </div>
     </div>

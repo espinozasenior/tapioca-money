@@ -11,9 +11,7 @@ type TokenBalance = {
 
 async function fetchBalances(wallet: any) {
     if (!wallet) return [];
-    console.log("start getBalances");
     const response = await wallet.getBalances(["usdc" as any]);
-    console.log("getBalances response", response);
     return Array.isArray(response) ? response : [];
 }
 
@@ -29,7 +27,6 @@ export function useBalance() {
     };
 
     const usdcBalance = balances?.find((t) => t.token === "usdc")?.balances.total || "0";
-    console.log("getBalances error", error);
     return {
         balances,
         usdcBalance,

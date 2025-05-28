@@ -100,12 +100,12 @@ export function ActivityFeed({
 											</div>
 										</div>
 										<div>
-										<div className={`text-base font-semibold ${isOutgoing ? "text-[#0F172A]" : "text-[#0BAF5C]"}`}>
-											{isOutgoing ? "-" : "+"} {Number(event.amount).toFixed(2)}
-										</div>
-										<div className="text-sm text-[#64748B] text-right">
-											{event.token_symbol}
-										</div>
+											<div className={`text-base font-semibold ${isOutgoing ? "text-[#0F172A]" : "text-[#0BAF5C]"}`}>
+												{isOutgoing ? "-" : "+"} {Number(event.amount).toFixed(2)}
+											</div>
+											<div className="text-sm text-[#64748B] text-right">
+												{event.token_symbol}
+											</div>
 										</div>
 									</li>
 								);

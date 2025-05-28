@@ -29,6 +29,6 @@ export function HomeContent() {
 	}
 
 	return (
-			<MainScreen walletAddress={walletAddress} />
+		<MainScreen walletAddress={walletAddress} />
 	);
 }

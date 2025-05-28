@@ -49,11 +49,11 @@ export function TransferFunds() {
         return token === "sol"
           ? createSolTransferTransaction(wallet?.address!, recipient!, amount!)
           : createTokenTransferTransaction(
-              wallet?.address!,
-              recipient!,
-              process.env.NEXT_PUBLIC_USDC_TOKEN_MINT || "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU", // USDC token mint
-              amount!
-            );
+            wallet?.address!,
+            recipient!,
+            process.env.NEXT_PUBLIC_USDC_TOKEN_MINT || "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU", // USDC token mint
+            amount!
+          );
       }
 
       const txn = await buildTransaction();
@@ -124,11 +124,10 @@ export function TransferFunds() {
       </div>
       <div className="flex flex-col gap-2 w-full">
         <button
-          className={`w-full py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-            isLoading
+          className={`w-full py-2 px-4 rounded-md text-sm font-medium transition-colors ${isLoading
               ? "bg-gray-200 text-gray-500 cursor-not-allowed"
               : "bg-accent text-white hover:bg-accent/80"
-          }`}
+            }`}
           onClick={handleOnTransfer}
           disabled={isLoading}
         >

@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { useState } from "react";
-import { DepositModal } from "@/components/deposit-modal";
+import { DepositModal } from "@/components/deposit";
 import { WalletBalance } from "@/components/balance";
 import { SendFundsModal } from "@/components/send-funds";
 import { ActivityFeed } from "@/components/activity-feed";

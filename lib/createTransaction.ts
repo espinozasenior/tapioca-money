@@ -68,8 +68,6 @@ export async function createTokenTransferTransaction(
     toPublicKey,
     allowOffCurve
   );
-  console.log("Sender token account:", senderTokenAccount);
-  console.log("Recipient token account:", recipientTokenAccount);
 
   // Amount needs to be converted to base units (multiply by 10^6 for USDC)
   const amountInBaseUnits = amount * 1_000_000;
@@ -79,7 +77,6 @@ export async function createTokenTransferTransaction(
   const recipientAccountInfo = await connection.getAccountInfo(
     recipientTokenAccount
   );
-  console.log("Recipient account info:", recipientAccountInfo);
   if (!recipientAccountInfo) {
     instructions.push(
       createAssociatedTokenAccountInstruction(
