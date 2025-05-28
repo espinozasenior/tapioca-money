@@ -67,6 +67,7 @@ export function DepositModal({
 							onPaymentCompleted={() => setStep("completed")}
 							receiptEmail={receiptEmail || ""}
 							onProcessingPayment={() => setStep("processing")}
+							step={step}
 						/>
 					</CrossmintCheckoutProvider>
 				</CrossmintProvider>

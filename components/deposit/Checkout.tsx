@@ -73,6 +73,7 @@ type CheckoutProps = {
   receiptEmail: string;
   onProcessingPayment: () => void;
   isAmountValid: boolean;
+  step: "options" | "processing" | "completed";
 }
 
 export function Checkout({
@@ -82,6 +83,7 @@ export function Checkout({
   receiptEmail,
   onProcessingPayment,
   isAmountValid,
+  step,
 }: CheckoutProps) {
   const { order } = useCrossmintCheckout();
   const isUserInputPhase =
@@ -89,18 +91,20 @@ export function Checkout({
     order.phase === "quote" ||
     order.phase === "payment";
 
+  console.log("Order Phase: ", order?.phase);
+
   useEffect(() => {
     if (order?.phase === "completed") {
       onPaymentCompleted();
     }
-    if (order?.phase === "payment") {
+    if (order?.phase === "delivery") {
       onProcessingPayment();
     }
   }, [order]);
 
   return (
     <div className="space-y-4 w-full">
-      {order?.phase !== "completed" &&
+      {step !== "completed" &&
         <AmountBreakdown
           quote={order?.lineItems[0].quote}
           inputAmount={amount ? Number.parseFloat(amount) : 0}
