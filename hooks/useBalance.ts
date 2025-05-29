@@ -16,7 +16,7 @@ async function fetchBalances(wallet: any) {
 }
 
 export function useBalance() {
-  const { wallet, type } = useWallet();
+  const { wallet } = useWallet();
   const {
     data: balances = [],
     isLoading,

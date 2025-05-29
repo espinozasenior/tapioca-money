@@ -186,7 +186,7 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
           <PrimaryButton disabled={!canContinue} onClick={handleContinue}>
             Continue
           </PrimaryButton>
-          {error && <div className="text-red-600">{error}</div>}
+          {error && <div className="mt-2 text-red-600">{error}</div>}
         </>
       ) : (
         <OrderPreview
