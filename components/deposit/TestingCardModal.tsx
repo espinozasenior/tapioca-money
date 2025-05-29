@@ -53,7 +53,7 @@ export function TestingCardModal() {
               data-testid="copy-wrapper"
             >
               {icon}
-              Copy
+              {justCopied ? "Copied" : "Copy"}
             </button>
           </div>
         </div>
