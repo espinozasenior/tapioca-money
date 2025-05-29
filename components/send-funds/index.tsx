@@ -6,6 +6,7 @@ import { OrderPreview } from "./OrderPreview";
 import { RecipientInput } from "./RecipientInput";
 import { useBalance } from "@/hooks/useBalance";
 import { Modal } from "../common/Modal";
+import { useActivityFeed } from "@/hooks/useActivityFeed";
 
 interface SendFundsModalProps {
   open: boolean;
@@ -27,7 +28,8 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
   const [txnHash, setTxnHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [resolvedEmailAddress, setResolvedEmailAddress] = useState<string | null>(null);
-  const { usdcBalance, formatBalance } = useBalance();
+  const { usdcBalance, formatBalance, refetch: refetchBalance } = useBalance();
+  const { refetch: refetchActivityFeed } = useActivityFeed(wallet?.address || "");
 
   const isRecipientValid = isAddress(recipient) || isEmail(recipient);
   const isAmountValid =
@@ -130,6 +132,8 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
     } catch (err: unknown) {
       setError((err as Error).message || String(err));
     } finally {
+      refetchBalance();
+      refetchActivityFeed();
       setIsLoading(false);
     }
   }
