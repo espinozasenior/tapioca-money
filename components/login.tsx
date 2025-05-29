@@ -7,6 +7,6 @@ export function LoginButton() {
   const { login } = useAuth();
   useEffect(() => {
     login();
-  }, []);
+  }, [login]);
   return null;
 }

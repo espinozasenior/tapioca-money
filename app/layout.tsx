@@ -4,32 +4,30 @@ import "./globals.css";
 import { Providers } from "@/app/providers";
 
 const geistSans = Geist({
-	variable: "--font-geist-sans",
-	subsets: ["latin"],
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
 });
 
 const geistMono = Geist_Mono({
-	variable: "--font-geist-mono",
-	subsets: ["latin"],
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-	title: "Fintech EVM Wallets Quickstart",
-	description: "A quickstart for the Fintech EVM Wallets",
+  title: "Fintech EVM Wallets Quickstart",
+  description: "A quickstart for the Fintech EVM Wallets",
 };
 
 export default function RootLayout({
-	children,
+  children,
 }: Readonly<{
-	children: React.ReactNode;
+  children: React.ReactNode;
 }>) {
-	return (
-		<html lang="en" suppressHydrationWarning>
-			<body
-				className={`${geistSans.variable} ${geistMono.variable} antialiased box-content`}
-			>
-				<Providers>{children}</Providers>
-			</body>
-		</html>
-	);
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${geistSans.variable} ${geistMono.variable} box-content antialiased`}>
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  );
 }

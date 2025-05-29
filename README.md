@@ -1,5 +1,3 @@
-
-
 <div align="center">
 <img width="200" alt="Image" src="https://github.com/user-attachments/assets/8b617791-cd37-4a5a-8695-a7c9018b7c70" />
 <br>
@@ -16,9 +14,11 @@
 </div>
 
 ## Introduction
- Create your own Fintech app in minutes using **Crossmint Wallets** and **Onramp payments**.
+
+Create your own Fintech app in minutes using **Crossmint Wallets** and **Onramp payments**.
 
 **Key features**
+
 - Create a wallet
 - Check wallet balance
 - Buy USDC with a credit card (via Onramp)
@@ -26,17 +26,21 @@
 - View wallet activity
 
 ## Deploy
+
 Easily deploy the template to Vercel with the button below. You will need to set the required environment variables in the Vercel dashboard.
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FCrossmint%2Ffintech-evm-wallets-quickstart&env=NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY)
 
 ## Setup
+
 1. Clone the repository and navigate to the project folder:
+
 ```bash
 git clone https://github.com/crossmint/fintech-evm-wallets-quickstart.git && cd fintech-evm-wallets-quickstart
 ```
 
 2. Install all dependencies:
+
 ```bash
 npm install
 # or
@@ -48,6 +52,7 @@ bun install
 ```
 
 3. Set up the environment variables:
+
 ```bash
 cp .env.template .env
 ```
@@ -59,8 +64,8 @@ NEXT_PUBLIC_CROSSMINT_API_KEY=your_client_side_API_key
 NEXT_PUBLIC_CROSSMINT_SERVER_API_KEY=your_server_side_API_key
 ```
 
-
 5. Run the development server:
+
 ```bash
 npm run dev
 # or

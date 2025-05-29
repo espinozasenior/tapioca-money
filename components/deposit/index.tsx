@@ -1,88 +1,101 @@
-import Image from "next/image";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
-	CrossmintCheckoutProvider,
-	CrossmintProvider,
-	useAuth,
+  CrossmintCheckoutProvider,
+  CrossmintProvider,
+  useAuth,
 } from "@crossmint/client-sdk-react-ui";
 import { Checkout } from "./Checkout";
 import { AmountInput } from "../common/AmountInput";
 import { Modal } from "../common/Modal";
-import clsx from "clsx";
+import { TestingCardModal } from "./TestingCardModal";
+import { useActivityFeed } from "../../hooks/useActivityFeed";
+import { cn } from "@/lib/utils";
+import { useBalance } from "@/hooks/useBalance";
 
 interface DepositModalProps {
-	open: boolean;
-	onClose: () => void;
-	walletAddress: string;
+  open: boolean;
+  onClose: () => void;
+  walletAddress: string;
 }
 
-const CLIENT_API_KEY_CONSOLE_FUND =
-	process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY;
+const CLIENT_API_KEY_CONSOLE_FUND = process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY;
 
 const MAX_AMOUNT = 50; // Max amount in USD allowed in staging
 
-export function DepositModal({
-	open,
-	onClose,
-	walletAddress,
-}: DepositModalProps) {
-	const [step, setStep] = useState<"options" | "processing" | "completed">("options");
-	const { user } = useAuth();
-	const receiptEmail = user?.email;
-	const [amount, setAmount] = useState("");
+export function DepositModal({ open, onClose, walletAddress }: DepositModalProps) {
+  const [step, setStep] = useState<"options" | "processing" | "completed">("options");
+  const { user } = useAuth();
+  const receiptEmail = user?.email;
+  const [amount, setAmount] = useState("");
+  const { refetch: refetchActivityFeed } = useActivityFeed(walletAddress);
+  const { refetch: refetchBalance } = useBalance();
 
-	const restartFlow = () => {
-		setStep("options");
-		setAmount("");
-	}
+  const restartFlow = () => {
+    setStep("options");
+    setAmount("");
+  };
 
-	const handleDone = () => {
-		restartFlow();
-		onClose();
-	}
+  const handleDone = () => {
+    restartFlow();
+    onClose();
+  };
 
+  const handlePaymentCompleted = useCallback(() => {
+    refetchActivityFeed();
+    refetchBalance();
+    handleDone();
+  }, [refetchActivityFeed]);
 
-	return (
-		<Modal
-			open={open}
-			onClose={onClose}
-			showBackButton={step !== "processing"}
-			onBack={step === "options" ? handleDone : restartFlow}
-			className={clsx(amount && "min-h-[718px]")}
-		>
-			<div className="text-lg font-semibold mt-2">Deposit</div>
-			{step !== "completed" &&
-				< div className="flex flex-col items-center w-full mb-6">
-					<AmountInput amount={amount} onChange={setAmount} />
-					{Number(amount) > MAX_AMOUNT && <div className="text-red-600 text-center mt-1">Transaction amount exceeds the maximum allowed deposit limit of ${MAX_AMOUNT}</div>}
-				</div>
-			}
-			<div className="flex flex-col items-center justify-center w-full">
-				<CrossmintProvider apiKey={CLIENT_API_KEY_CONSOLE_FUND as string}>
-					<CrossmintCheckoutProvider>
-						<Checkout
-							amount={amount}
-							isAmountValid={Number(amount) <= MAX_AMOUNT && Number(amount) > 0}
-							walletAddress={walletAddress}
-							onPaymentCompleted={() => setStep("completed")}
-							receiptEmail={receiptEmail || ""}
-							onProcessingPayment={() => setStep("processing")}
-							step={step}
-						/>
-					</CrossmintCheckoutProvider>
-				</CrossmintProvider>
-			</div>
+  const handleProcessingPayment = useCallback(() => {
+    setStep("processing");
+  }, []);
 
-			{
-				step === "completed" && (
-					<button
-						className="w-full h-12 bg-[#0D42E4] text-white font-semibold rounded-full px-4 py-3 text-sm flex items-center justify-center gap-2 border transition"
-						onClick={handleDone}
-					>
-						Done
-					</button>
-				)
-			}
-		</Modal >
-	);
+  return (
+    <>
+      {open && <TestingCardModal />}
+      <Modal
+        open={open}
+        onClose={onClose}
+        showBackButton={step !== "processing"}
+        onBack={step === "options" ? handleDone : restartFlow}
+        className={cn(amount && "min-h-[718px]")}
+        title="Deposit"
+      >
+        {step === "options" && (
+          <div className="mb-6 flex w-full flex-col items-center">
+            <AmountInput amount={amount} onChange={setAmount} />
+            {Number(amount) > MAX_AMOUNT && (
+              <div className="mt-1 text-center text-red-600">
+                Transaction amount exceeds the maximum allowed deposit limit of ${MAX_AMOUNT}
+              </div>
+            )}
+          </div>
+        )}
+        <div className="flex w-full flex-col items-center justify-center">
+          <CrossmintProvider apiKey={CLIENT_API_KEY_CONSOLE_FUND as string}>
+            <CrossmintCheckoutProvider>
+              <Checkout
+                amount={amount}
+                isAmountValid={Number(amount) <= MAX_AMOUNT && Number(amount) > 0}
+                walletAddress={walletAddress}
+                onPaymentCompleted={handlePaymentCompleted}
+                receiptEmail={receiptEmail || ""}
+                onProcessingPayment={handleProcessingPayment}
+                step={step}
+              />
+            </CrossmintCheckoutProvider>
+          </CrossmintProvider>
+        </div>
+
+        {step === "completed" && (
+          <button
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-full border bg-[#0D42E4] px-4 py-3 text-sm font-semibold text-white transition"
+            onClick={handleDone}
+          >
+            Done
+          </button>
+        )}
+      </Modal>
+    </>
+  );
 }

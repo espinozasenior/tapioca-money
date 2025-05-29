@@ -8,7 +8,7 @@ const CHECKOUT_APPEARANCE = {
   rules: {
     Label: {
       font: {
-        family: "Inter",
+        family: "Inter, sans-serif",
         size: "14px",
         weight: "500",
       },
@@ -19,7 +19,7 @@ const CHECKOUT_APPEARANCE = {
     Input: {
       borderRadius: "8px",
       font: {
-        family: "Inter",
+        family: "Inter, sans-serif",
         size: "16px",
         weight: "400",
       },
@@ -43,6 +43,9 @@ const CHECKOUT_APPEARANCE = {
       },
     },
     PrimaryButton: {
+      font: {
+        family: "Inter, sans-serif",
+      },
       colors: {
         background: "#0D42E4",
       },
@@ -64,6 +67,11 @@ const CHECKOUT_APPEARANCE = {
       display: "hidden",
     },
   },
+  variables: {
+    colors: {
+      accent: "#0D42E4",
+    },
+  },
 } as const;
 
 type CheckoutProps = {
@@ -74,7 +82,7 @@ type CheckoutProps = {
   onProcessingPayment: () => void;
   isAmountValid: boolean;
   step: "options" | "processing" | "completed";
-}
+};
 
 export function Checkout({
   amount,
@@ -94,18 +102,18 @@ export function Checkout({
     if (order?.phase === "delivery") {
       onProcessingPayment();
     }
-  }, [order]);
+  }, [order, onPaymentCompleted, onProcessingPayment]);
 
   return (
-    <div className="space-y-4 w-full">
-      {step !== "completed" &&
+    <div className="w-full space-y-4">
+      {step === "options" && (
         <AmountBreakdown
           quote={order?.lineItems[0].quote}
           inputAmount={amount ? Number.parseFloat(amount) : 0}
           isAmountValid={isAmountValid}
         />
-      }
-      {amount && isAmountValid &&
+      )}
+      {amount && isAmountValid && (
         <CrossmintEmbeddedCheckout
           recipient={{
             walletAddress,
@@ -132,7 +140,7 @@ export function Checkout({
           }}
           appearance={CHECKOUT_APPEARANCE}
         />
-      }
+      )}
     </div>
   );
 }

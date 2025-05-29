@@ -19,11 +19,7 @@ const connection = new Connection(
   "confirmed"
 );
 
-export async function createSolTransferTransaction(
-  from: string,
-  to: string,
-  amount: number
-) {
+export async function createSolTransferTransaction(from: string, to: string, amount: number) {
   const fromPublicKey = new PublicKey(from);
   const toPublicKey = new PublicKey(to);
   const amountInBaseUnits = amount * LAMPORTS_PER_SOL;
@@ -74,9 +70,7 @@ export async function createTokenTransferTransaction(
 
   // Create new transaction
   const instructions = [];
-  const recipientAccountInfo = await connection.getAccountInfo(
-    recipientTokenAccount
-  );
+  const recipientAccountInfo = await connection.getAccountInfo(recipientTokenAccount);
   if (!recipientAccountInfo) {
     instructions.push(
       createAssociatedTokenAccountInstruction(

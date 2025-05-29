@@ -1,13 +1,11 @@
 import { useBalance } from "../hooks/useBalance";
 
 export function WalletBalance() {
-    const { usdcBalance, formatBalance } = useBalance();
-    return (
-        <div className="flex flex-col items-start w-full md:w-auto mb-6 md:mb-0">
-            <span className="text-gray-500 text-base mb-1">Your balance</span>
-            <span className="text-4xl font-semibold">
-                ${formatBalance(usdcBalance)}
-            </span>
-        </div>
-    );
-} 
+  const { usdcBalance, formatBalance } = useBalance();
+  return (
+    <div className="mb-6 flex w-full flex-col items-start md:mb-0 md:w-auto">
+      <span className="mb-1 text-base text-gray-500">Your balance</span>
+      <span className="text-4xl font-semibold">${formatBalance(usdcBalance)}</span>
+    </div>
+  );
+}

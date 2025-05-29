@@ -5,30 +5,24 @@ import { MainScreen } from "@/components/main-screen";
 import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
 
 export function HomeContent() {
-	const { wallet, status: walletStatus } = useWallet();
-	const { status, status: authStatus, login } = useAuth();
+  const { wallet, status: walletStatus } = useWallet();
+  const { status, status: authStatus } = useAuth();
 
-	const walletAddress = wallet?.address;
-	const isLoggedIn = wallet != null && status === "logged-in";
-	const isLoading =
-		walletStatus === "in-progress" || authStatus === "initializing";
+  const walletAddress = wallet?.address;
+  const isLoggedIn = wallet != null && status === "logged-in";
+  const isLoading = walletStatus === "in-progress" || authStatus === "initializing";
 
+  if (isLoading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#0D42E4] border-t-transparent" />
+      </div>
+    );
+  }
 
-	if (isLoading) {
-		return (
-			<div className="flex justify-center items-center w-full h-full">
-				<div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin border-[#0D42E4]" />
-			</div>
-		);
-	}
+  if (!isLoggedIn) {
+    return <LoginButton />;
+  }
 
-	if (!isLoggedIn) {
-		return (
-			<LoginButton />
-		);
-	}
-
-	return (
-		<MainScreen walletAddress={walletAddress} />
-	);
+  return <MainScreen walletAddress={walletAddress} />;
 }

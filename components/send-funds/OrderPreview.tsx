@@ -8,7 +8,6 @@ interface OrderPreviewProps {
   error: string | null;
   txnHash: string | null;
   isLoading: boolean;
-  onBack: () => void;
   onConfirm: () => void;
   onClose: () => void;
 }
@@ -20,19 +19,13 @@ export function OrderPreview({
   error,
   txnHash,
   isLoading,
-  onBack,
   onConfirm,
   onClose,
 }: OrderPreviewProps) {
   return (
-    <div className="w-full flex justify-between flex-grow flex-col">
+    <div className="flex w-full flex-grow flex-col justify-between">
       <div>
-        <div className="text-lg font-semibold mb-6 mt-2 text-center">
-          Order Confirmation
-        </div>
-        <div className="uppercase text-sm font-semibold text-[#020617]">
-          Details
-        </div>
+        <div className="mt-6 text-sm font-semibold uppercase text-[#020617]">Details</div>
         <Details
           values={[
             { label: "From", value: userEmail },
@@ -40,15 +33,13 @@ export function OrderPreview({
           ]}
         />
         <Details values={[{ label: "Amount", value: `$ ${amount}` }]} />
-        {error && (
-          <div className="text-red-500 text-center mb-2">{error}</div>
-        )}
+        {error && <div className="mb-2 text-center text-red-500">{error}</div>}
         {txnHash && (
           <a
             href={txnHash}
             target="_blank"
             rel="noopener noreferrer"
-            className="block text-center text-blue-600 underline mt-2 mb-2"
+            className="mb-2 mt-2 block text-center text-blue-600 underline"
           >
             View on Explorer
           </a>
@@ -56,10 +47,11 @@ export function OrderPreview({
       </div>
       <div>
         <button
-          className={`w-full font-semibold rounded-full py-3 text-lg mt-6 transition ${isLoading
-            ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-            : "bg-blue-600 text-white hover:bg-blue-700"
-            }`}
+          className={`mt-6 w-full rounded-full py-3 text-lg font-semibold transition ${
+            isLoading
+              ? "cursor-not-allowed bg-gray-200 text-gray-500"
+              : "bg-blue-600 text-white hover:bg-blue-700"
+          }`}
           type="button"
           onClick={txnHash ? onClose : onConfirm}
           disabled={isLoading}
@@ -69,4 +61,4 @@ export function OrderPreview({
       </div>
     </div>
   );
-} 
+}

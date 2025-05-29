@@ -1,11 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  type DelegatedSigner,
-  useAuth,
-  useWallet,
-} from "@crossmint/client-sdk-react-ui";
+import { type DelegatedSigner, useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
 import { cn } from "@/lib/utils";
 
 export function DelegatedSigner() {
@@ -13,9 +9,7 @@ export function DelegatedSigner() {
   const { jwt } = useAuth();
 
   const [isLoading, setIsLoading] = useState(false);
-  const [delegatedSigners, setDelegatedSigners] = useState<DelegatedSigner[]>(
-    []
-  );
+  const [delegatedSigners, setDelegatedSigners] = useState<DelegatedSigner[]>([]);
   const [newSigner, setNewSigner] = useState<string>("");
 
   useEffect(() => {
@@ -26,7 +20,7 @@ export function DelegatedSigner() {
       }
     };
     fetchDelegatedSigners();
-  }, [wallet, jwt]);
+  }, [wallet, jwt, type]);
 
   const addNewSigner = async () => {
     if (wallet == null || type !== "solana-smart-wallet") {
@@ -50,7 +44,7 @@ export function DelegatedSigner() {
   };
 
   return (
-    <div className="bg-white flex flex-col gap-3 rounded-xl border shadow-sm p-5">
+    <div className="flex flex-col gap-3 rounded-xl border bg-white p-5 shadow-sm">
       <div>
         <h2 className="text-lg font-medium">Add Delegated Signer</h2>
         <p className="text-sm text-gray-500">
@@ -68,16 +62,16 @@ export function DelegatedSigner() {
       </div>
       <input
         type="text"
-        className="w-full px-3 py-2 border rounded-md text-sm"
+        className="w-full rounded-md border px-3 py-2 text-sm"
         placeholder="Ex: 5YNmS1R9nNSCDzb5a7mMJ1dwK9uHeAAF4CmPEwKgVWr8"
         onChange={(e) => setNewSigner(e.target.value)}
       />
       <button
         className={cn(
-          "w-full py-2 px-4 rounded-md text-sm font-medium transition-colors",
+          "w-full rounded-md px-4 py-2 text-sm font-medium transition-colors",
           isLoading
-            ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-            : "bg-accent text-white hover:bg-accent/80"
+            ? "cursor-not-allowed bg-gray-200 text-gray-500"
+            : "bg-accent hover:bg-accent/80 text-white"
         )}
         onClick={addNewSigner}
         disabled={isLoading}
@@ -86,15 +80,15 @@ export function DelegatedSigner() {
       </button>
       {/* List of delegated signers */}
       {delegatedSigners.length > 0 && (
-        <div className="bg-gray-50 py-2 px-3 rounded-md">
-          <p className="text-xs text-gray-500 mb-1.5">Registered signers</p>
+        <div className="rounded-md bg-gray-50 px-3 py-2">
+          <p className="mb-1.5 text-xs text-gray-500">Registered signers</p>
           {delegatedSigners.length > 0 && (
-            <div className="overflow-x-auto bg-white p-1 rounded border border-gray-100">
+            <div className="overflow-x-auto rounded border border-gray-100 bg-white p-1">
               <ul className="flex flex-col gap-1">
                 {delegatedSigners.map((signer, index) => (
                   <li
                     key={index}
-                    className="whitespace-nowrap px-2 py-1 rounded text-xs text-gray-600"
+                    className="whitespace-nowrap rounded px-2 py-1 text-xs text-gray-600"
                   >
                     {signer.locator}
                   </li>

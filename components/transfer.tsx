@@ -12,7 +12,7 @@ const isSolanaAddressValid = (address: string) => {
   try {
     new PublicKey(address);
     return true;
-  } catch (error) {
+  } catch {
     return false;
   }
 };
@@ -49,11 +49,12 @@ export function TransferFunds() {
         return token === "sol"
           ? createSolTransferTransaction(wallet?.address!, recipient!, amount!)
           : createTokenTransferTransaction(
-            wallet?.address!,
-            recipient!,
-            process.env.NEXT_PUBLIC_USDC_TOKEN_MINT || "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU", // USDC token mint
-            amount!
-          );
+              wallet?.address!,
+              recipient!,
+              process.env.NEXT_PUBLIC_USDC_TOKEN_MINT ||
+                "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU", // USDC token mint
+              amount!
+            );
       }
 
       const txn = await buildTransaction();
@@ -70,17 +71,17 @@ export function TransferFunds() {
   }
 
   return (
-    <div className="bg-white flex flex-col gap-3 rounded-xl border shadow-sm p-5">
+    <div className="flex flex-col gap-3 rounded-xl border bg-white p-5 shadow-sm">
       <div>
         <h2 className="text-lg font-medium">Transfer funds</h2>
         <p className="text-sm text-gray-500">Send funds to another wallet</p>
       </div>
-      <div className="flex flex-col gap-3 w-full">
+      <div className="flex w-full flex-col gap-3">
         <div className="flex gap-4">
-          <div className="flex flex-col gap-2 flex-1">
+          <div className="flex flex-1 flex-col gap-2">
             <label className="text-sm font-medium">Token</label>
             <div className="flex gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex cursor-pointer items-center gap-2">
                 <input
                   type="radio"
                   name="token"
@@ -90,7 +91,7 @@ export function TransferFunds() {
                 />
                 <span>USDC</span>
               </label>
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex cursor-pointer items-center gap-2">
                 <input
                   type="radio"
                   name="token"
@@ -102,11 +103,11 @@ export function TransferFunds() {
               </label>
             </div>
           </div>
-          <div className="flex flex-col gap-2 flex-1">
+          <div className="flex flex-1 flex-col gap-2">
             <label className="text-sm font-medium">Amount</label>
             <input
               type="number"
-              className="w-full px-3 py-2 border rounded-md text-sm"
+              className="w-full rounded-md border px-3 py-2 text-sm"
               placeholder="0.00"
               onChange={(e) => setAmount(Number(e.target.value))}
             />
@@ -116,18 +117,19 @@ export function TransferFunds() {
           <label className="text-sm font-medium">Recipient wallet</label>
           <input
             type="text"
-            className="w-full px-3 py-2 border rounded-md text-sm"
+            className="w-full rounded-md border px-3 py-2 text-sm"
             placeholder="Enter wallet address"
             onChange={(e) => setRecipient(e.target.value)}
           />
         </div>
       </div>
-      <div className="flex flex-col gap-2 w-full">
+      <div className="flex w-full flex-col gap-2">
         <button
-          className={`w-full py-2 px-4 rounded-md text-sm font-medium transition-colors ${isLoading
-              ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-              : "bg-accent text-white hover:bg-accent/80"
-            }`}
+          className={`w-full rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+            isLoading
+              ? "cursor-not-allowed bg-gray-200 text-gray-500"
+              : "bg-accent hover:bg-accent/80 text-white"
+          }`}
           onClick={handleOnTransfer}
           disabled={isLoading}
         >
@@ -136,7 +138,7 @@ export function TransferFunds() {
         {txnHash && !isLoading && (
           <a
             href={txnHash}
-            className="text-sm text-gray-500 text-center"
+            className="text-center text-sm text-gray-500"
             target="_blank"
             rel="noopener noreferrer"
           >

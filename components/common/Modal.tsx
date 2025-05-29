@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import clsx from "clsx";
 import React, { ReactNode } from "react";
 
@@ -8,26 +9,47 @@ interface ModalProps {
   showBackButton?: boolean;
   onBack?: () => void;
   className?: string;
+  title?: string;
 }
 
-export function Modal({ open, onClose, children, showBackButton, onBack, className }: ModalProps) {
+export function Modal({
+  open,
+  onClose,
+  children,
+  showBackButton,
+  onBack,
+  className,
+  title,
+}: ModalProps) {
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-      <div className={clsx("bg-white rounded-2xl shadow-xl w-full max-w-md p-8 relative flex flex-col items-center", className)}>
-        {showBackButton && (
-          <button
-            onClick={onBack || onClose}
-            className="absolute top-4 left-4 w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200"
-            aria-label="Back"
-            type="button"
-          >
-            <span className="text-2xl">←</span>
-          </button>
+      <div
+        className={cn(
+          "relative flex w-full max-w-md flex-col items-center rounded-2xl bg-white p-8 shadow-xl",
+          className
         )}
+      >
+        <div className="relative flex h-9 w-full items-center justify-between">
+          {showBackButton && (
+            <button
+              onClick={onBack || onClose}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200"
+              aria-label="Back"
+              type="button"
+            >
+              <span className="text-2xl">←</span>
+            </button>
+          )}
+          {title && (
+            <div className="transform-[translateX(-50%)] absolute left-1/2 text-lg font-semibold">
+              {title}
+            </div>
+          )}
+        </div>
         {children}
       </div>
     </div>
   );
-} 
+}
