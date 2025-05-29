@@ -204,7 +204,6 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
           error={error}
           txnHash={txnHash}
           isLoading={isLoading}
-          onBack={() => setShowPreview(false)}
           onConfirm={handleSend}
           onClose={handleDone}
         />
