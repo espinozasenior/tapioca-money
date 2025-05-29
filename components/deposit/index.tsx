@@ -86,15 +86,6 @@ export function DepositModal({ open, onClose, walletAddress }: DepositModalProps
             </CrossmintCheckoutProvider>
           </CrossmintProvider>
         </div>
-
-        {step === "completed" && (
-          <button
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full border bg-[#0D42E4] px-4 py-3 text-sm font-semibold text-white transition"
-            onClick={handleDone}
-          >
-            Done
-          </button>
-        )}
       </Modal>
     </>
   );

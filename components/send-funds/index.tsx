@@ -25,7 +25,6 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
   const [amount, setAmount] = useState("");
   const [showPreview, setShowPreview] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [txnHash, setTxnHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [resolvedEmailAddress, setResolvedEmailAddress] = useState<string | null>(null);
   const { usdcBalance, formatBalance, refetch: refetchBalance } = useBalance();
@@ -84,7 +83,6 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
   async function handleSend() {
     setError(null);
     setIsLoading(true);
-    setTxnHash(null);
     try {
       if (!wallet || type !== "evm-smart-wallet") {
         setError("No EVM wallet connected");
@@ -128,12 +126,12 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
         value: BigInt(0),
         data,
       });
-      setTxnHash(`https://sepolia.basescan.org/tx/${txn}`);
+      refetchBalance();
+      refetchActivityFeed();
+      handleDone();
     } catch (err: unknown) {
       setError((err as Error).message || String(err));
     } finally {
-      refetchBalance();
-      refetchActivityFeed();
       setIsLoading(false);
     }
   }
@@ -144,7 +142,6 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
     setRecipient("");
     setResolvedEmailAddress(null);
     setError(null);
-    setTxnHash(null);
   };
 
   const handleDone = () => {
@@ -155,10 +152,8 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
   const handleBack = () => {
     if (!showPreview) {
       handleDone();
-    } else if (txnHash) {
-      resetFlow();
     } else {
-      setShowPreview(false);
+      resetFlow();
     }
   };
 
@@ -206,10 +201,8 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
           recipient={recipient}
           amount={displayableAmount}
           error={error}
-          txnHash={txnHash}
           isLoading={isLoading}
           onConfirm={handleSend}
-          onClose={handleDone}
         />
       )}
     </Modal>

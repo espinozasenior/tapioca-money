@@ -6,10 +6,8 @@ interface OrderPreviewProps {
   recipient: string;
   amount: string;
   error: string | null;
-  txnHash: string | null;
   isLoading: boolean;
   onConfirm: () => void;
-  onClose: () => void;
 }
 
 export function OrderPreview({
@@ -17,10 +15,8 @@ export function OrderPreview({
   recipient,
   amount,
   error,
-  txnHash,
   isLoading,
   onConfirm,
-  onClose,
 }: OrderPreviewProps) {
   return (
     <div className="flex w-full flex-grow flex-col justify-between">
@@ -30,20 +26,10 @@ export function OrderPreview({
           values={[
             { label: "From", value: userEmail },
             { label: "To", value: recipient },
+            { label: "Amount", value: `$ ${amount}` },
           ]}
         />
-        <Details values={[{ label: "Amount", value: `$ ${amount}` }]} />
         {error && <div className="mb-2 text-center text-red-500">{error}</div>}
-        {txnHash && (
-          <a
-            href={txnHash}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mb-2 mt-2 block text-center text-blue-600 underline"
-          >
-            View on Explorer
-          </a>
-        )}
       </div>
       <div>
         <button
@@ -53,10 +39,10 @@ export function OrderPreview({
               : "bg-blue-600 text-white hover:bg-blue-700"
           }`}
           type="button"
-          onClick={txnHash ? onClose : onConfirm}
+          onClick={onConfirm}
           disabled={isLoading}
         >
-          {isLoading ? "Sending..." : txnHash ? "Done" : `Send $ ${amount}`}
+          {isLoading ? "Sending..." : `Send $ ${amount}`}
         </button>
       </div>
     </div>
