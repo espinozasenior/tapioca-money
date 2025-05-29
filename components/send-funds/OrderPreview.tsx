@@ -1,5 +1,6 @@
 import React from "react";
 import { Details } from "./Details";
+import { PrimaryButton } from "../common/PrimaryButton";
 
 interface OrderPreviewProps {
   userEmail: string;
@@ -32,18 +33,9 @@ export function OrderPreview({
         {error && <div className="mb-2 text-center text-red-500">{error}</div>}
       </div>
       <div>
-        <button
-          className={`mt-6 w-full rounded-full py-3 text-lg font-semibold transition ${
-            isLoading
-              ? "cursor-not-allowed bg-gray-200 text-gray-500"
-              : "bg-blue-600 text-white hover:bg-blue-700"
-          }`}
-          type="button"
-          onClick={onConfirm}
-          disabled={isLoading}
-        >
+        <PrimaryButton onClick={onConfirm} disabled={isLoading}>
           {isLoading ? "Sending..." : `Send $ ${amount}`}
-        </button>
+        </PrimaryButton>
       </div>
     </div>
   );

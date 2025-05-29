@@ -52,7 +52,7 @@ export function DepositModal({ open, onClose, walletAddress }: DepositModalProps
 
   return (
     <>
-      {open && <TestingCardModal />}
+      {open && step === "options" && <TestingCardModal />}
       <Modal
         open={open}
         onClose={onClose}
@@ -71,7 +71,7 @@ export function DepositModal({ open, onClose, walletAddress }: DepositModalProps
             )}
           </div>
         )}
-        <div className="flex w-full flex-col items-center justify-center">
+        <div className="flex w-full flex-grow flex-col">
           <CrossmintProvider apiKey={CLIENT_API_KEY_CONSOLE_FUND as string}>
             <CrossmintCheckoutProvider>
               <Checkout

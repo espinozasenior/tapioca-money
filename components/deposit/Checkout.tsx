@@ -1,6 +1,7 @@
 import { CrossmintEmbeddedCheckout, useCrossmintCheckout } from "@crossmint/client-sdk-react-ui";
 import { useEffect } from "react";
 import { AmountBreakdown } from "./AmountBreakdown";
+import { cn } from "@/lib/utils";
 
 const USDC_LOCATOR = `base-sepolia:${process.env.NEXT_PUBLIC_USDC_TOKEN_MINT}:${process.env.NEXT_PUBLIC_USDC_TOKEN_MINT}`;
 
@@ -103,9 +104,9 @@ export function Checkout({
       onProcessingPayment();
     }
   }, [order, onPaymentCompleted, onProcessingPayment]);
-
+  console.log("step", step);
   return (
-    <div className="w-full space-y-4">
+    <div className={cn("w-full flex-grow space-y-4", step !== "options" && "flex items-center")}>
       {step === "options" && (
         <AmountBreakdown
           quote={order?.lineItems[0].quote}

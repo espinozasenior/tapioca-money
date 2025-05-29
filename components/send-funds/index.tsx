@@ -7,6 +7,7 @@ import { RecipientInput } from "./RecipientInput";
 import { useBalance } from "@/hooks/useBalance";
 import { Modal } from "../common/Modal";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
+import { PrimaryButton } from "../common/PrimaryButton";
 
 interface SendFundsModalProps {
   open: boolean;
@@ -182,18 +183,10 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
             </div>
           </div>
           <RecipientInput recipient={recipient} onChange={setRecipient} />
-          <button
-            className={`mt-8 w-full rounded-full py-3 text-lg font-semibold transition ${
-              canContinue
-                ? "bg-blue-600 text-white hover:bg-blue-700"
-                : "cursor-not-allowed bg-gray-100 text-gray-400"
-            }`}
-            disabled={!canContinue}
-            type="button"
-            onClick={handleContinue}
-          >
+          <PrimaryButton disabled={!canContinue} onClick={handleContinue}>
             Continue
-          </button>
+          </PrimaryButton>
+          {error && <div className="text-red-600">{error}</div>}
         </>
       ) : (
         <OrderPreview
