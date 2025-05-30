@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 interface RecipientInputProps {
   recipient: string;
   onChange: (recipient: string) => void;
-  error?: string;
+  error?: string | null;
 }
 
 export function RecipientInput({ recipient, onChange, error }: RecipientInputProps) {
