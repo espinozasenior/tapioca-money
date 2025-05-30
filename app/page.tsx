@@ -8,7 +8,7 @@ export default function Home() {
         <HomeContent />
       </main>
       <footer className="row-start-3 mb-4 flex flex-col items-center justify-center gap-4">
-        <div className="flex flex-wrap items-center justify-center gap-6">
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
           <a
             className="flex items-center gap-2 hover:underline hover:underline-offset-4"
             href="https://github.com/crossmint/fintech-evm-wallets-quickstart"
