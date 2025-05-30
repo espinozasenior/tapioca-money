@@ -1,7 +1,7 @@
 "use client";
 
-import { LoginButton } from "@/components/login";
-import { MainScreen } from "@/components/main-screen";
+import { LoginButton } from "@/components/Login";
+import { MainScreen } from "@/components/MainScreen";
 import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
 import { useEffect } from "react";
 
@@ -13,14 +13,6 @@ export function HomeContent() {
   const isLoggedIn = wallet != null && status === "logged-in";
   const isLoading = walletStatus === "in-progress" || authStatus === "initializing";
 
-  if (isLoading) {
-    return (
-      <div className="flex h-full w-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#0D42E4] border-t-transparent" />
-      </div>
-    );
-  }
-
   useEffect(() => {
     if (walletStatus === "loading-error") {
       getOrCreateWallet({
@@ -31,6 +23,14 @@ export function HomeContent() {
       });
     }
   }, [walletStatus]);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#0D42E4] border-t-transparent" />
+      </div>
+    );
+  }
 
   if (!isLoggedIn) {
     return <LoginButton />;

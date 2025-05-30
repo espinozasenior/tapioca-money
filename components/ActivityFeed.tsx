@@ -1,7 +1,8 @@
 import React from "react";
-import { DepositButton } from "./deposit-button";
+import { DepositButton } from "./common/DepositButton";
 import Image from "next/image";
 import { useActivityFeed, ActivityEvent } from "../hooks/useActivityFeed";
+import { Container } from "./common/Container";
 
 interface ActivityFeedProps {
   onDepositClick: () => void;
@@ -12,9 +13,7 @@ export function ActivityFeed({ onDepositClick, walletAddress }: ActivityFeedProp
   const { data: events = [], isLoading, error } = useActivityFeed(walletAddress);
 
   return (
-    <div
-      className={`flex min-h-[350px] w-full max-w-5xl flex-grow flex-col rounded-2xl border bg-white px-10 py-4 shadow-sm`}
-    >
+    <Container className="flex min-h-[350px] w-full max-w-5xl flex-grow flex-col">
       <div className="mb-2 text-base text-[#64748B]">Last activity</div>
       <div
         className={`flex w-full flex-1 flex-col items-center ${isLoading ? "justify-center" : "justify-start"}`}
@@ -76,6 +75,6 @@ export function ActivityFeed({ onDepositClick, walletAddress }: ActivityFeedProp
           )}
         </div>
       </div>
-    </div>
+    </Container>
   );
 }
