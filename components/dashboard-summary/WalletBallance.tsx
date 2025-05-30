@@ -1,4 +1,4 @@
-import { useBalance } from "../hooks/useBalance";
+import { useBalance } from "../../hooks/useBalance";
 
 export function WalletBalance() {
   const { usdcBalance, formatBalance } = useBalance();

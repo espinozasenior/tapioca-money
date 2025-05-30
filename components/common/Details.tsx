@@ -1,7 +1,7 @@
 import React from "react";
 
 interface DetailsProps {
-  values: { label: string; value: string }[];
+  values: { label: string; value: React.ReactNode }[];
 }
 
 export function Details({ values }: DetailsProps) {

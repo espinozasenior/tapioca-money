@@ -1,13 +1,11 @@
 import Image from "next/image";
 import { useState } from "react";
 import { DepositModal } from "@/components/deposit";
-import { WalletBalance } from "@/components/Balance";
 import { SendFundsModal } from "@/components/send-funds";
 import { ActivityFeed } from "@/components/ActivityFeed";
-import { DepositButton } from "./common/DepositButton";
 import { useAuth } from "@crossmint/client-sdk-react-ui";
-import { Container } from "./common/Container";
 import { NewProducts } from "./NewProducts";
+import { DashboardSummary } from "./dashboard-summary";
 
 interface MainScreenProps {
   walletAddress?: string;
@@ -29,19 +27,10 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
             <Image src="/logout-icon.svg" alt="Logout" width={24} height={24} />
           </button>
         </div>
-        <Container className="flex w-full max-w-5xl flex-col items-center justify-between md:flex-row md:items-stretch">
-          <WalletBalance />
-          <div className="flex w-full items-center gap-2 md:w-auto md:justify-end">
-            <DepositButton onClick={() => setShowDepositModal(true)} />
-            <button
-              type="button"
-              className="w-31 flex h-12 items-center justify-center gap-2 rounded-full border bg-[#EAEEFF] px-4 py-3 text-sm font-semibold text-[#0D42E4] transition hover:bg-[#CFD9FA] md:w-40"
-              onClick={() => setShowSendModal(true)}
-            >
-              <Image src="/arrow-up-right-icon-blue.svg" alt="Add" width={24} height={24} /> Send
-            </button>
-          </div>
-        </Container>
+        <DashboardSummary
+          onDepositClick={() => setShowDepositModal(true)}
+          onSendClick={() => setShowSendModal(true)}
+        />
         <NewProducts />
         <ActivityFeed
           onDepositClick={() => setShowDepositModal(true)}

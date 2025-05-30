@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import React, { ReactNode } from "react";
 
@@ -10,6 +11,7 @@ interface ModalProps {
   onBack?: () => void;
   className?: string;
   title?: string;
+  showCloseButton?: boolean;
 }
 
 export function Modal({
@@ -20,6 +22,7 @@ export function Modal({
   onBack,
   className,
   title,
+  showCloseButton,
 }: ModalProps) {
   if (!open) return null;
 
@@ -27,7 +30,7 @@ export function Modal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
       <div
         className={cn(
-          "relative flex w-full max-w-md flex-col items-center rounded-2xl bg-white p-8 shadow-xl",
+          "relative flex w-full max-w-md flex-col items-center rounded-2xl bg-white p-6 shadow-xl",
           className
         )}
       >
@@ -46,6 +49,11 @@ export function Modal({
             <div className="transform-[translateX(-50%)] absolute left-1/2 text-lg font-semibold">
               {title}
             </div>
+          )}
+          {showCloseButton && (
+            <button onClick={onClose} className="absolute right-0">
+              <XMarkIcon className="h-5 w-5" />
+            </button>
           )}
         </div>
         {children}
