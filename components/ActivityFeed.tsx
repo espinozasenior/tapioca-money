@@ -16,7 +16,7 @@ export function ActivityFeed({ onDepositClick, walletAddress }: ActivityFeedProp
     <Container className="flex min-h-[350px] w-full max-w-5xl flex-grow flex-col">
       <div className="mb-2 text-base text-slate-500">Last activity</div>
       <div
-        className={`flex w-full flex-1 flex-col items-center ${isLoading ? "justify-center" : "justify-start"}`}
+        className={`flex w-full flex-1 flex-col items-center ${isLoading || events.length === 0 ? "justify-center" : "justify-start"}`}
       >
         {!isLoading && events.length === 0 && (
           <>
@@ -34,7 +34,7 @@ export function ActivityFeed({ onDepositClick, walletAddress }: ActivityFeedProp
           </>
         )}
         <div
-          className={`flex w-full items-center ${isLoading ? "justify-center" : "justify-start"}`}
+          className={`flex w-full items-center ${isLoading || events.length === 0 ? "justify-center" : "justify-start"}`}
         >
           {isLoading && (
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
