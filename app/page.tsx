@@ -7,7 +7,7 @@ export default function Home() {
       <main className="row-start-2 flex h-full flex-col items-center gap-8 sm:items-start">
         <HomeContent />
       </main>
-      <footer className="row-start-3 flex flex-col items-center justify-center gap-4">
+      <footer className="row-start-3 mb-4 flex flex-col items-center justify-center gap-4">
         <div className="flex flex-wrap items-center justify-center gap-6">
           <a
             className="flex items-center gap-2 hover:underline hover:underline-offset-4"
