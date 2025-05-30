@@ -81,3 +81,16 @@ bun dev
 This starter app is designed for rapid prototyping and testing in a staging environment.
 
 👉 [**Contact our sales team**](https://www.crossmint.com/contact/sales) to discuss your use case and get access to production-ready APIs and support.
+
+## Email customization
+
+Email OTP is a login method that allows users to sign in to your app using their email address. They receive a one-time code via email that they can use to log in.
+
+You can customize the email template to align with your brand's identity. We **strongly recommend** doing so, as it increases user trust and security.
+
+To modify the email template:
+
+1. In the Crossmint Console, click on Settings, and navigate to the **Branding** tab.
+2. Here, you can customize:
+   - The **logo** displayed in the email with your logo.
+   - The **display name** textbox to include your brand's name.

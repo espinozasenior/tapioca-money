@@ -3,9 +3,10 @@
 import { LoginButton } from "@/components/login";
 import { MainScreen } from "@/components/main-screen";
 import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
+import { useEffect } from "react";
 
 export function HomeContent() {
-  const { wallet, status: walletStatus } = useWallet();
+  const { wallet, status: walletStatus, getOrCreateWallet } = useWallet();
   const { status, status: authStatus } = useAuth();
 
   const walletAddress = wallet?.address;
@@ -19,6 +20,17 @@ export function HomeContent() {
       </div>
     );
   }
+
+  useEffect(() => {
+    if (walletStatus === "loading-error") {
+      getOrCreateWallet({
+        type: "evm-smart-wallet",
+        args: {
+          chain: "base-sepolia",
+        },
+      });
+    }
+  }, [walletStatus]);
 
   if (!isLoggedIn) {
     return <LoginButton />;
