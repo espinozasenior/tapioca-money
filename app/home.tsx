@@ -1,6 +1,6 @@
 "use client";
 
-import { LoginButton } from "@/components/Login";
+import { Login } from "@/components/Login";
 import { MainScreen } from "@/components/MainScreen";
 import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
 import { useEffect } from "react";
@@ -33,7 +33,7 @@ export function HomeContent() {
   }
 
   if (!isLoggedIn) {
-    return <LoginButton />;
+    return <Login />;
   }
 
   return <MainScreen walletAddress={walletAddress} />;

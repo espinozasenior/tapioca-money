@@ -3,7 +3,7 @@ import { HomeContent } from "@/app/home";
 
 export default function Home() {
   return (
-    <div className="grid h-screen grid-rows-[0px_1fr_60px] items-center">
+    <div className="grid h-screen grid-rows-[0px_1fr_60px] items-center gap-10">
       <main className="row-start-2 flex h-full flex-col items-center gap-8 sm:items-start">
         <HomeContent />
       </main>

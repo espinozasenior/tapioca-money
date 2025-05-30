@@ -28,7 +28,9 @@ export function ActivityFeed({ onDepositClick, walletAddress }: ActivityFeedProp
               <br />
               Get started with making a deposit to your account
             </div>
-            <DepositButton onClick={onDepositClick} />
+            <div>
+              <DepositButton onClick={onDepositClick} />
+            </div>
           </>
         )}
         <div

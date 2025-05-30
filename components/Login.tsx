@@ -3,7 +3,7 @@
 import { useAuth } from "@crossmint/client-sdk-react-ui";
 import { useEffect } from "react";
 
-export function LoginButton() {
+export function Login() {
   const { login, status } = useAuth();
   useEffect(() => {
     if (status === "logged-out") {

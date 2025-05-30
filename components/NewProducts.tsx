@@ -29,7 +29,7 @@ const NewProduct = ({ title, description, image }: NewProductProps) => {
         </div>
         <div>
           <div className="text-base font-semibold">{title}</div>
-          <div className="text-sm text-[#64748B]">{description}</div>
+          <div className="text-sm text-slate-500">{description}</div>
         </div>
       </div>
       <div className="flex flex-col items-end justify-start md:justify-center">
