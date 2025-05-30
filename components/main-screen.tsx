@@ -60,7 +60,7 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
               className="flex h-12 w-40 items-center justify-center gap-2 rounded-full border bg-[#EAEEFF] px-4 py-3 text-sm font-semibold text-[#0D42E4] transition hover:bg-[#CFD9FA]"
               onClick={() => setShowSendModal(true)}
             >
-              <Image src="/arrow-up-right-icon.svg" alt="Add" width={24} height={24} /> Send
+              <Image src="/arrow-up-right-icon-blue.svg" alt="Add" width={24} height={24} /> Send
             </button>
           </div>
         </div>
