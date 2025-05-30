@@ -6,11 +6,11 @@ interface BreakdownElementProps {
 
 function BreakdownElement({ label, value, isLoading }: BreakdownElementProps) {
   return (
-    <div className="flex justify-between text-[#64748B]">
-      <span className="text-[#64748B]">{label}</span>
-      <span className="flex items-center text-[#334155]">
+    <div className="flex justify-between text-slate-500">
+      <span className="text-slate-500">{label}</span>
+      <span className="flex items-center text-slate-700">
         {isLoading ? (
-          <div className="h-3 w-3 animate-spin rounded-full border-2 border-[#0D42E4] border-t-transparent" />
+          <div className="h-3 w-3 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
         ) : (
           `$ ${typeof value === "number" ? value.toFixed(2) : value}`
         )}
@@ -47,7 +47,7 @@ export function AmountBreakdown({ quote, inputAmount, isAmountValid }: AmountBre
   const isLoading = inputAmount !== amount && isAmountValid;
 
   return (
-    <div className="flex w-full flex-col gap-[18px] rounded-2xl bg-[#F8FAFC] p-4 text-base font-semibold">
+    <div className="flex w-full flex-col gap-[18px] rounded-2xl bg-slate-50 p-4 text-base font-semibold">
       <BreakdownElement label="Amount" value={amount} isLoading={isLoading} />
       <BreakdownElement label="Transaction fees" value={fees} isLoading={isLoading} />
       <BreakdownElement label="Total added to wallet" value={total} isLoading={isLoading} />

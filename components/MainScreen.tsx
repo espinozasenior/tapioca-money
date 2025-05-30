@@ -22,7 +22,7 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
         <div className="mb-2 flex h-14 w-full max-w-5xl items-center justify-between px-2">
           <Image src="/logo.png" alt="Logo" width={54} height={54} />
           <div className="ml-2 text-xl font-semibold">Dashboard</div>
-          <button onClick={logout} className="flex items-center gap-1 text-base text-[#0D42E4]">
+          <button onClick={logout} className="flex items-center gap-1 text-base text-blue-600">
             Logout
             <Image src="/logout-icon.svg" alt="Logout" width={24} height={24} />
           </button>

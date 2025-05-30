@@ -22,7 +22,7 @@ export function OrderPreview({
   return (
     <div className="flex w-full flex-grow flex-col justify-between">
       <div>
-        <div className="mt-6 text-sm font-semibold uppercase text-[#020617]">Details</div>
+        <div className="mt-6 text-sm font-semibold uppercase text-slate-900">Details</div>
         <Details
           values={[
             { label: "From", value: userEmail },

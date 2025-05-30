@@ -27,7 +27,7 @@ export function CopyWrapper({
 
   const iconClasses = "w-4 h-4";
   const icon = justCopied ? (
-    <CheckIcon className={cn(iconClasses, "text-[#36B37E]")} />
+    <CheckIcon className={cn(iconClasses, "text-emerald-500")} />
   ) : (
     <Square2StackIcon className={iconClasses} />
   );
@@ -37,7 +37,7 @@ export function CopyWrapper({
       className={cn(
         "flex cursor-pointer items-center gap-2",
         iconPosition === "right" && "flex-row-reverse",
-        justCopied && "text-[#36B37E]",
+        justCopied && "text-emerald-500",
         className
       )}
       // onPointerDown necessary for when CopyWrapper is used inside a Radix Dropdown
