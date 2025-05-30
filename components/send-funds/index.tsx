@@ -49,7 +49,7 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
         accept: "application/json",
       },
     });
-    if (!res.ok) throw new Error("Could not resolve email to wallet address");
+    if (!res.ok) throw new Error("This email doesn't have an account here yet");
     const data = await res.json();
     return data.address;
   }
@@ -182,11 +182,10 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
               $ {formatBalance(usdcBalance)} balance
             </div>
           </div>
-          <RecipientInput recipient={recipient} onChange={setRecipient} />
+          <RecipientInput recipient={recipient} onChange={setRecipient} error={error} />
           <PrimaryButton disabled={!canContinue} onClick={handleContinue}>
             Continue
           </PrimaryButton>
-          {error && <div className="mt-2 text-red-600">{error}</div>}
         </>
       ) : (
         <OrderPreview
