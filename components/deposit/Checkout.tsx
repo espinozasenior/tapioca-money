@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { AmountBreakdown } from "./AmountBreakdown";
 import { cn } from "@/lib/utils";
 
-const USDC_LOCATOR = `base-sepolia:${process.env.NEXT_PUBLIC_USDC_TOKEN_MINT}:${process.env.NEXT_PUBLIC_USDC_TOKEN_MINT}`;
+const USDC_LOCATOR = `${process.env.NEXT_PUBLIC_CHAIN_ID}:${process.env.NEXT_PUBLIC_USDC_TOKEN_MINT}:${process.env.NEXT_PUBLIC_USDC_TOKEN_MINT}`;
 
 const CHECKOUT_APPEARANCE = {
   rules: {
@@ -104,7 +104,7 @@ export function Checkout({
       onProcessingPayment();
     }
   }, [order, onPaymentCompleted, onProcessingPayment]);
-  console.log("step", step);
+
   return (
     <div className={cn("w-full flex-grow space-y-4", step !== "options" && "flex items-center")}>
       {step === "options" && (

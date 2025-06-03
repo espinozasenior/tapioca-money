@@ -43,12 +43,15 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
     const apiKey = process.env.NEXT_PUBLIC_CROSSMINT_SERVER_API_KEY;
     if (!apiKey) throw new Error("Missing Crossmint API key");
     const locator = `email:${email}:evm-smart-wallet`;
-    const res = await fetch(`https://staging.crossmint.com/api/2022-06-09/wallets/${locator}`, {
-      headers: {
-        "X-API-KEY": apiKey,
-        accept: "application/json",
-      },
-    });
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_CROSSMINT_URL}/api/2022-06-09/wallets/${locator}`,
+      {
+        headers: {
+          "X-API-KEY": apiKey,
+          accept: "application/json",
+        },
+      }
+    );
     if (!res.ok) throw new Error("This email doesn't have an account here yet");
     const data = await res.json();
     return data.address;

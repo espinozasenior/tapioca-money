@@ -22,7 +22,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         embeddedWallets={{
           createOnLogin: "all-users",
           type: "evm-smart-wallet",
-          defaultChain: "base-sepolia",
+          defaultChain: process.env.NEXT_PUBLIC_CHAIN_ID as any,
           showPasskeyHelpers: true,
         }}
         loginMethods={["email", "google"]}

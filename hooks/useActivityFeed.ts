@@ -12,7 +12,7 @@ export interface ActivityEvent {
 
 async function fetchWalletActivity(walletLocator: string): Promise<ActivityEvent[]> {
   const res = await fetch(
-    `https://staging.crossmint.com/api/2022-06-09/wallets/${walletLocator}/activity?chain=base-sepolia`,
+    `${process.env.NEXT_PUBLIC_CROSSMINT_URL}/api/2022-06-09/wallets/${walletLocator}/activity?chain=${process.env.NEXT_PUBLIC_CHAIN_ID}`,
     {
       headers: {
         "X-API-Key": process.env.NEXT_PUBLIC_CROSSMINT_SERVER_API_KEY!,

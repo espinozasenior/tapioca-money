@@ -46,7 +46,7 @@ export function Modal({
             </button>
           )}
           {title && (
-            <div className="transform-[translateX(-50%)] absolute left-1/2 text-lg font-semibold">
+            <div className="transform-[translateX(-50%)] absolute left-1/2 w-max text-lg font-semibold">
               {title}
             </div>
           )}

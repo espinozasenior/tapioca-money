@@ -2,12 +2,15 @@
 
 import { Login } from "@/components/Login";
 import { MainScreen } from "@/components/MainScreen";
-import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
+import { EVMSmartWallet, useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
 import { useEffect } from "react";
+import { useProcessWithdrawal } from "@/hooks/useProcessWithdrawal";
 
 export function HomeContent() {
   const { wallet, status: walletStatus, getOrCreateWallet } = useWallet();
-  const { status, status: authStatus } = useAuth();
+  const { status, status: authStatus, user } = useAuth();
+
+  useProcessWithdrawal(user?.id, wallet as EVMSmartWallet);
 
   const walletAddress = wallet?.address;
   const isLoggedIn = wallet != null && status === "logged-in";
@@ -18,7 +21,7 @@ export function HomeContent() {
       getOrCreateWallet({
         type: "evm-smart-wallet",
         args: {
-          chain: "base-sepolia",
+          chain: process.env.NEXT_PUBLIC_CHAIN_ID as any,
         },
       });
     }
