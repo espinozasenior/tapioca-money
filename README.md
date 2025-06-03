@@ -97,7 +97,7 @@ To modify the email template:
 
 ## Enabling Withdrawal
 
-For enabling withdrawal first you need to move for production. For doing so, please contact our [sales team](https://www.crossmint.com/contact/sales). After that you'll need to:
+For enabling withdrawal first you need to move to production, as the offramp doesn't allow testnets. For doing so, please contact our [sales team](https://www.crossmint.com/contact/sales). After that you'll need to:
 
 1. [Create a Coinbase developer account](https://www.coinbase.com/en-es/developer-platform)
 2. Create a Server API Key
