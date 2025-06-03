@@ -3,8 +3,8 @@ import _sodium from "libsodium-wrappers";
 import crypto from "crypto";
 
 export const getCoinbaseJWT = async (url: string, method: string, request_path: string) => {
-  const key_name = process.env.NEXT_PUBLIC_COINBASE_API_KEY_ID!;
-  const key_secret = process.env.NEXT_PUBLIC_COINBASE_API_KEY_SECRET!;
+  const key_name = process.env.COINBASE_API_KEY_ID!;
+  const key_secret = process.env.COINBASE_API_KEY_SECRET!;
   const uri = method + " " + url + request_path;
 
   await _sodium.ready;

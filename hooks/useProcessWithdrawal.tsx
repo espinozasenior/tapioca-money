@@ -32,7 +32,7 @@ export function useProcessWithdrawal(userId?: string, wallet?: EVMSmartWallet) {
         const transaction = transactions[0];
         if (
           transaction?.status === "TRANSACTION_STATUS_STARTED" &&
-          !getProccesedTransactions(transaction?.id)
+          !getProccesedTransactions(transaction?.transaction_id)
         ) {
           const usdcToken = process.env.NEXT_PUBLIC_USDC_TOKEN_MINT as Address;
           const data = encodeFunctionData({
@@ -43,7 +43,7 @@ export function useProcessWithdrawal(userId?: string, wallet?: EVMSmartWallet) {
               BigInt(Math.round(Number(transaction.sell_amount.value as string) * 10 ** 6)),
             ],
           });
-          await setProccesedTransactions(transaction.id);
+          setProccesedTransactions(transaction.transaction_id);
           const txn = await (wallet as EVMSmartWallet).sendTransaction({
             to: usdcToken,
             value: BigInt(0),
