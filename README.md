@@ -94,3 +94,12 @@ To modify the email template:
 2. Here, you can customize:
    - The **logo** displayed in the email with your logo.
    - The **display name** textbox to include your brand's name.
+
+## Enabling Withdrawal
+
+For enabling withdrawal first you need to move for production. For doing so, please contact our [sales team](https://www.crossmint.com/contact/sales). After that you'll need to:
+
+1. [Create a Coinbase developer account](https://www.coinbase.com/en-es/developer-platform)
+2. Create a Server API Key
+3. Add the `NEXT_PUBLIC_COINBASE_APP_ID`, `COINBASE_API_KEY_ID`, and `API_KEY_SECRET` to the `.env` file.
+4. In the [Onramp configuration](https://portal.cdp.coinbase.com/products/onramp) add your domain to the domain allowlist
