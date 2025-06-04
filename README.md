@@ -5,7 +5,7 @@
 <h1>Fintech Starter App</h1>
 
 <div align="center">
-<a href="https://fintech-wallets-quickstart.vercel.app/">Live Demo</a>
+<a href="https://fintech-starter-app.demos-crossmint.com/">Live Demo</a>  | <a href="https://docs.crossmint.com/">Docs</a> | <a href="https://crossmint.com/quickstarts">See all quickstarts</a>
 </div>
 
 <br>
@@ -49,7 +49,7 @@ Join our [Telegram community](https://t.me/fintechstarterkit) to stay updated on
 
 Easily deploy the template to Vercel with the button below. You will need to set the required environment variables in the Vercel dashboard.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FCrossmint%2Ffintech-starter-kit&env=NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FCrossmint%2Ffintech-starter-app&env=NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY)
 
 
 ## Setup
@@ -57,7 +57,7 @@ Easily deploy the template to Vercel with the button below. You will need to set
 1. Clone the repository and navigate to the project folder:
 
 ```bash
-git clone https://github.com/crossmint/fintech-starter-kit.git && cd fintech-starter-kit
+git clone https://github.com/crossmint/fintech-starter-app.git && cd fintech-starter-app
 ```
 
 2. Install all dependencies:
@@ -78,7 +78,7 @@ bun install
 cp .env.template .env
 ```
 
-4. Get a Crossmint [client API key](https://docs.crossmint.com/introduction/platform/api-keys/client-side) and add it to the `.env` file. Make sure your API key has the following scopes: `users.create`, `users.read`, `wallets.read`, `wallets.create`, `wallets:transactions.create`, `wallets:transactions.sign`, `wallets:balance.read`, `wallets.fund`.
+4. Login to the [Crossmint staging console](https://staging.crossmint.com/console) and get the client API key from the [overview page](https://staging.crossmint.com/console/overview):
 
 ```env
 NEXT_PUBLIC_CROSSMINT_API_KEY=your_client_side_API_key
@@ -100,10 +100,10 @@ bun dev
 
 This starter app is designed for rapid prototyping and testing in a staging environment. To move to production you'll need to:
 
-1. Create a and update your API key with a [production API key](https://docs.crossmint.com/introduction/platform/api-keys/client-side).
+1. Login to the [Crossmint production console](https://www.crossmint.com/console) and [create a client side API key](https://www.crossmint.com/console/projects/apiKeys) with the following scopes: `users.create`, `users.read`, `wallets.read`, `wallets.create`, `wallets:transactions.create`, `wallets:transactions.sign`, `wallets:balance.read`, `wallets.fund`.
 2. Update the chain environment variable to a mainnet chain.
    - **Note ⚠️**: Non custodial signers for solana are not available in production yet since they are undergoing a security audit. Reach out to us on [Telegram](https://t.me/fintechstarterkit) to be the first to know when they are available.
-3. Customize your email template for login and signup in the [Crossmint console](https://www.crossmint.com/console).
+3. Customize your email template for login and signup in the [Crossmint console](https://www.crossmint.com/console) under the Settings tab in the Branding section.
 4. For using onramp in production reach out to us on [Telegram](https://t.me/fintechstarterkit).
 
 
