@@ -58,7 +58,7 @@ export function DepositModal({ open, onClose, walletAddress }: DepositModalProps
         onClose={onClose}
         showBackButton={step !== "processing"}
         onBack={step === "options" ? handleDone : restartFlow}
-        className={cn(amount && "lg:min-h-[718px]")}
+        className={cn("top-[154px] h-[calc(100vh-174px)] lg:top-0", amount && "lg:min-h-[718px]")}
         title="Deposit"
       >
         {step === "options" && (
