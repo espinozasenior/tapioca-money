@@ -5,6 +5,16 @@ import { cn } from "@/lib/utils";
 
 const USDC_LOCATOR = `${process.env.NEXT_PUBLIC_CHAIN_ID}:${process.env.NEXT_PUBLIC_USDC_TOKEN_MINT}:${process.env.NEXT_PUBLIC_USDC_TOKEN_MINT}`;
 
+// Get CSS variables
+const primaryColor =
+  typeof window !== "undefined"
+    ? window.getComputedStyle(document.documentElement).getPropertyValue("--primary").trim()
+    : "#000000"; // fallback color
+const primaryHoverColor =
+  typeof window !== "undefined"
+    ? window.getComputedStyle(document.documentElement).getPropertyValue("--primary-hover").trim()
+    : "#333333"; // fallback color
+
 const CHECKOUT_APPEARANCE = {
   rules: {
     Label: {
@@ -48,11 +58,11 @@ const CHECKOUT_APPEARANCE = {
         family: "Inter, sans-serif",
       },
       colors: {
-        background: "oklch(0.792 0.209 151.711);",
+        background: primaryColor,
       },
       hover: {
         colors: {
-          background: "oklch(0.627 0.194 149.214)",
+          background: primaryHoverColor,
         },
       },
       disabled: {
@@ -70,7 +80,7 @@ const CHECKOUT_APPEARANCE = {
   },
   variables: {
     colors: {
-      accent: "#30D55D",
+      accent: primaryColor,
     },
   },
 } as const;

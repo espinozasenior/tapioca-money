@@ -5,11 +5,7 @@ export function WarningModal({ open, onClose }: { open: boolean; onClose: () => 
     <Modal open={open} onClose={onClose} showCloseButton title="Withdraw is not enabled">
       <div className="mt-4 text-center text-sm text-gray-500">
         Withdraw is a production-only feature. For moving to production, please contact{" "}
-        <a
-          className="text-green-500"
-          href="https://www.crossmint.com/contact/sales"
-          target="_blank"
-        >
+        <a className="text-primary" href="https://www.crossmint.com/contact/sales" target="_blank">
           sales team
         </a>
         .

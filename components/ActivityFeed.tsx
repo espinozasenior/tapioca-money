@@ -37,7 +37,7 @@ export function ActivityFeed({ onDepositClick, walletAddress }: ActivityFeedProp
           className={`flex w-full items-center ${isLoading || events.length === 0 ? "justify-center" : "justify-start"}`}
         >
           {isLoading && (
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-green-400 border-t-transparent" />
+            <div className="border-primary h-8 w-8 animate-spin rounded-full border-4 border-t-transparent" />
           )}
           {error && <div className="text-center text-red-500">{error.message}</div>}
           {!isLoading && !error && events.length > 0 && (

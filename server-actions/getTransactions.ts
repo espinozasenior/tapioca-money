@@ -3,6 +3,9 @@
 import { getCoinbaseJWT } from "@/utils/coinbase";
 
 export async function getTransactions(userId: string) {
+  if (!process.env.COINBASE_API_KEY_ID || !process.env.COINBASE_API_KEY_SECRET) {
+    return [];
+  }
   const url = "api.developer.coinbase.com";
   const method = "GET";
   const request_path = `/onramp/v1/sell/user/${userId}/transactions`;

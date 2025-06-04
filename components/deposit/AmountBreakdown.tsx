@@ -10,7 +10,7 @@ function BreakdownElement({ label, value, isLoading }: BreakdownElementProps) {
       <span className="text-slate-500">{label}</span>
       <span className="flex items-center text-slate-700">
         {isLoading ? (
-          <div className="h-3 w-3 animate-spin rounded-full border-2 border-green-400 border-t-transparent" />
+          <div className="border-primary h-3 w-3 animate-spin rounded-full border-2 border-t-transparent" />
         ) : (
           `$ ${typeof value === "number" ? value.toFixed(2) : value}`
         )}
