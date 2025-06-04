@@ -147,7 +147,7 @@ export function Checkout({
                 googlePay: false,
               },
             },
-            receiptEmail: "angel@paella.dev",
+            receiptEmail,
           }}
           appearance={CHECKOUT_APPEARANCE}
         />
