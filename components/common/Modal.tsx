@@ -30,7 +30,7 @@ export function Modal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
       <div
         className={cn(
-          "relative flex w-full max-w-md flex-col items-center rounded-2xl bg-white p-6 shadow-xl",
+          "max-h-220 relative flex w-full max-w-md flex-col items-center overflow-y-auto rounded-2xl bg-white p-6 shadow-xl",
           className
         )}
       >
