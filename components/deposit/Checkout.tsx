@@ -135,40 +135,42 @@ export function Checkout({
         <div
           className={cn(
             requiresKYC &&
-              "fixed left-0 top-0 z-30 !mt-0 flex h-screen w-full items-center justify-center bg-white lg:relative lg:block lg:h-auto"
+              "fixed left-0 top-0 z-30 !mt-0  h-screen w-full items-center justify-center overflow-x-auto bg-white lg:relative lg:block lg:h-auto"
           )}
         >
-          {requiresKYC && (
-            <button onClick={goBack} className="absolute left-2 top-5 lg:hidden">
-              <ArrowLeftIcon className="h-5 w-5" />
-            </button>
-          )}
-          <CrossmintEmbeddedCheckout
-            recipient={{
-              walletAddress,
-            }}
-            lineItems={{
-              tokenLocator: USDC_LOCATOR,
-              executionParameters: {
-                mode: "exact-in",
-                amount: amount || "0.00",
-                maxSlippageBps: "500",
-              },
-            }}
-            payment={{
-              crypto: { enabled: false },
-              fiat: {
-                enabled: true,
-                allowedMethods: {
-                  card: true,
-                  applePay: false,
-                  googlePay: false,
+          <div className={cn(requiresKYC && "w-100 flex h-full items-end")}>
+            {requiresKYC && (
+              <button onClick={goBack} className="absolute left-5 top-5 lg:hidden">
+                <ArrowLeftIcon className="h-5 w-5" />
+              </button>
+            )}
+            <CrossmintEmbeddedCheckout
+              recipient={{
+                walletAddress,
+              }}
+              lineItems={{
+                tokenLocator: USDC_LOCATOR,
+                executionParameters: {
+                  mode: "exact-in",
+                  amount: amount || "0.00",
+                  maxSlippageBps: "500",
                 },
-              },
-              receiptEmail,
-            }}
-            appearance={CHECKOUT_APPEARANCE}
-          />
+              }}
+              payment={{
+                crypto: { enabled: false },
+                fiat: {
+                  enabled: true,
+                  allowedMethods: {
+                    card: true,
+                    applePay: false,
+                    googlePay: false,
+                  },
+                },
+                receiptEmail,
+              }}
+              appearance={CHECKOUT_APPEARANCE}
+            />
+          </div>
         </div>
       )}
     </div>
