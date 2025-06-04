@@ -5,7 +5,7 @@
 <h1>Fintech EVM Wallets Quickstart</h1>
 
 <div align="center">
-<a href="https://fintech-evm-wallets-quickstart-tau.vercel.app/">Live Demo</a> | <a href="https://docs.crossmint.com/introduction/platform/wallets">Docs</a> | <a href="https://github.com/crossmint">See all quickstarts</a>
+<a href="https://fintech-wallets-quickstart.vercel.app/">Live Demo</a> | <a href="https://docs.crossmint.com/introduction/platform/wallets">Docs</a> | <a href="https://github.com/crossmint">See all quickstarts</a>
 </div>
 
 <br>
