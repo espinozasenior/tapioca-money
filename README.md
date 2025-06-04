@@ -2,41 +2,62 @@
 <img width="200" alt="Image" src="https://github.com/user-attachments/assets/8b617791-cd37-4a5a-8695-a7c9018b7c70" />
 <br>
 <br>
-<h1>Fintech EVM Wallets Quickstart</h1>
+<h1>Fintech Starter App</h1>
 
 <div align="center">
-<a href="https://fintech-wallets-quickstart.vercel.app/">Live Demo</a> | <a href="https://docs.crossmint.com/introduction/platform/wallets">Docs</a> | <a href="https://github.com/crossmint">See all quickstarts</a>
+<a href="https://fintech-wallets-quickstart.vercel.app/">Live Demo</a>
 </div>
 
 <br>
 <br>
-<img src="https://github.com/user-attachments/assets/73db7690-0af1-4dbd-9522-d8338c91db00" alt="Image" width="full">
+<img src="https://github.com/user-attachments/assets/9bd7085c-5a92-4590-ae22-f892e353efce" alt="Image" width="full">
 </div>
+
+## Table of contents
+
+- [Introduction](#introduction)
+- [Deploy](#deploy)
+- [Setup](#setup)
+- [Using in production](#using-in-production)
+   - [Enabling Withdrawals](#enabling-withdrawals)
 
 ## Introduction
 
-Create your own Fintech app in minutes using **Crossmint Wallets** and **Onramp payments**.
+Create your own Fintech app in minutes using **[Crossmint](https://crossmint.com)** wallets and onramp.
 
 **Key features**
 
-- Create a wallet
-- Check wallet balance
-- Buy USDC with a credit card (via Onramp)
-- Transfer USDC to another wallet or email
-- View wallet activity
+- Login with email or social media
+- Automatically create non-custodial wallets for your users
+- Top up with USDC using a credit or debit card
+- Transfer USDC to another wallet or email address
+- View your wallet activity
+- Withdraw USDC to your bank account
+- Support for +40 chains (Solana, EVM, etc)
+- Leverage more than +200 onchain tools integrating [GOAT](https://github.com/goat-sdk/goat)
+
+**Coming soon**
+- Currency conversion
+- Earn interest on your USDC
+- Issue a debit card linked to your wallet
+
+Get in touch with us to get early access to these features!
+
+Join our [Telegram community](https://t.me/fintechstarterkit) to stay updated on the latest features and announcements.
 
 ## Deploy
 
 Easily deploy the template to Vercel with the button below. You will need to set the required environment variables in the Vercel dashboard.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FCrossmint%2Ffintech-evm-wallets-quickstart&env=NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FCrossmint%2Ffintech-starter-kit&env=NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY)
+
 
 ## Setup
 
 1. Clone the repository and navigate to the project folder:
 
 ```bash
-git clone https://github.com/crossmint/fintech-evm-wallets-quickstart.git && cd fintech-evm-wallets-quickstart
+git clone https://github.com/crossmint/fintech-starter-kit.git && cd fintech-starter-kit
 ```
 
 2. Install all dependencies:
@@ -57,11 +78,10 @@ bun install
 cp .env.template .env
 ```
 
-4. Retrieve your **development client** and **server API keys** from [Crossmint Console](https://staging.crossmint.com/console) and add them to the `.env` file:
+4. Get a Crossmint [client API key](https://docs.crossmint.com/introduction/platform/api-keys/client-side) and add it to the `.env` file. Make sure your API key has the following scopes: `users.create`, `users.read`, `wallets.read`, `wallets.create`, `wallets:transactions.create`, `wallets:transactions.sign`, `wallets:balance.read`, `wallets.fund`.
 
 ```env
 NEXT_PUBLIC_CROSSMINT_API_KEY=your_client_side_API_key
-NEXT_PUBLIC_CROSSMINT_SERVER_API_KEY=your_server_side_API_key
 ```
 
 5. Run the development server:
@@ -78,26 +98,17 @@ bun dev
 
 ## Using in production
 
-This starter app is designed for rapid prototyping and testing in a staging environment.
+This starter app is designed for rapid prototyping and testing in a staging environment. To move to production you'll need to:
 
-👉 [**Contact our sales team**](https://www.crossmint.com/contact/sales) to discuss your use case and get access to production-ready APIs and support.
+1. Create a and update your API key with a [production API key](https://docs.crossmint.com/introduction/platform/api-keys/client-side).
+2. Update the chain environment variable to a mainnet chain.
+   - **Note ⚠️**: Non custodial signers for solana are not available in production yet since they are undergoing a security audit. Reach out to us on [Telegram](https://t.me/fintechstarterkit) to be the first to know when they are available.
+3. Customize your email template for login and signup in the [Crossmint console](https://www.crossmint.com/console).
+4. For using onramp in production reach out to us on [Telegram](https://t.me/fintechstarterkit).
 
-## Email customization
 
-Email OTP is a login method that allows users to sign in to your app using their email address. They receive a one-time code via email that they can use to log in.
-
-You can customize the email template to align with your brand's identity. We **strongly recommend** doing so, as it increases user trust and security.
-
-To modify the email template:
-
-1. In the Crossmint Console, click on Settings, and navigate to the **Branding** tab.
-2. Here, you can customize:
-   - The **logo** displayed in the email with your logo.
-   - The **display name** textbox to include your brand's name.
-
-## Enabling Withdrawal
-
-For enabling withdrawal first you need to move to production, as the offramp doesn't allow testnets. For doing so, please contact our [sales team](https://www.crossmint.com/contact/sales). After that you'll need to:
+### Enabling Withdrawals
+Withdrawals are powered by [Coinbase](https://www.coinbase.com/en-es/developer-platform) and only work in production. For enabling withdrawals you'll need to:
 
 1. [Create a Coinbase developer account](https://www.coinbase.com/en-es/developer-platform)
 2. Create a Server API Key
