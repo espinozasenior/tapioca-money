@@ -6,7 +6,7 @@ export function WarningModal({ open, onClose }: { open: boolean; onClose: () => 
       <div className="mt-4 text-center text-sm text-gray-500">
         Withdraw is a production-only feature. For moving to production, please contact{" "}
         <a
-          className="text-indigo-600"
+          className="text-green-500"
           href="https://www.crossmint.com/contact/sales"
           target="_blank"
         >

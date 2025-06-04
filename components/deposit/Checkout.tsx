@@ -48,11 +48,11 @@ const CHECKOUT_APPEARANCE = {
         family: "Inter, sans-serif",
       },
       colors: {
-        background: "#0D42E4",
+        background: "oklch(0.792 0.209 151.711);",
       },
       hover: {
         colors: {
-          background: "#0A2FA2",
+          background: "oklch(0.627 0.194 149.214)",
         },
       },
       disabled: {
@@ -70,7 +70,7 @@ const CHECKOUT_APPEARANCE = {
   },
   variables: {
     colors: {
-      accent: "#0D42E4",
+      accent: "#30D55D",
     },
   },
 } as const;
@@ -137,7 +137,7 @@ export function Checkout({
                 googlePay: false,
               },
             },
-            receiptEmail,
+            receiptEmail: "angel@paella.dev",
           }}
           appearance={CHECKOUT_APPEARANCE}
         />

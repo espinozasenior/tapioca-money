@@ -9,7 +9,7 @@ export function PrimaryButton({
 }) {
   return (
     <button
-      className="mt-8 w-full rounded-full bg-blue-600 py-3 text-lg font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+      className="mt-8 w-full rounded-full bg-green-400 py-3 text-lg font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
       onClick={onClick}
       disabled={disabled}
     >

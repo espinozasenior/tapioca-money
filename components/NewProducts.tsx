@@ -33,7 +33,7 @@ const NewProduct = ({ title, description, image }: NewProductProps) => {
         </div>
       </div>
       <div className="flex flex-col items-end justify-start md:justify-center">
-        <div className="min-w-[92px] rounded-3xl bg-indigo-50 px-2 py-1 text-xs font-medium text-blue-600">
+        <div className="min-w-[92px] rounded-3xl bg-teal-50 px-2 py-1 text-xs font-medium text-cyan-900">
           Coming soon
         </div>
       </div>

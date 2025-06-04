@@ -47,7 +47,7 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
   ];
 
   const dropdownTrigger = (
-    <button className="rounded-full bg-indigo-50 p-2.5 hover:bg-indigo-100">
+    <button className="rounded-full bg-black p-2.5 hover:bg-black/80">
       <Image src="/dots-vertical.svg" alt="Settings" width={24} height={24} />
     </button>
   );
@@ -59,10 +59,10 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
         <DepositButton onClick={onDepositClick} />
         <button
           type="button"
-          className="flex h-12 flex-grow items-center justify-center gap-2 rounded-full bg-indigo-50 px-4 py-3 text-sm font-semibold text-blue-600 transition hover:bg-indigo-100 md:w-40"
+          className="flex h-12 flex-grow items-center justify-center gap-2 rounded-full bg-black px-4 py-3 text-sm font-semibold text-white transition hover:bg-black/80 md:w-40"
           onClick={onSendClick}
         >
-          <Image src="/arrow-up-right-icon-blue.svg" alt="Add" width={24} height={24} /> Send
+          <Image src="/arrow-up-right-icon-white.svg" alt="Add" width={24} height={24} /> Send
         </button>
         <Dropdown trigger={dropdownTrigger} options={dropdownOptions} />
       </div>
