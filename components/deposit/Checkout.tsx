@@ -2,6 +2,7 @@ import { CrossmintEmbeddedCheckout, useCrossmintCheckout } from "@crossmint/clie
 import { useEffect } from "react";
 import { AmountBreakdown } from "./AmountBreakdown";
 import { cn } from "@/lib/utils";
+import { ArrowLeftIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
 const USDC_LOCATOR = `${process.env.NEXT_PUBLIC_CHAIN_ID}:${process.env.NEXT_PUBLIC_USDC_TOKEN_MINT}:${process.env.NEXT_PUBLIC_USDC_TOKEN_MINT}`;
 
@@ -93,6 +94,7 @@ type CheckoutProps = {
   onProcessingPayment: () => void;
   isAmountValid: boolean;
   step: "options" | "processing" | "completed";
+  goBack: () => void;
 };
 
 export function Checkout({
@@ -103,6 +105,7 @@ export function Checkout({
   onProcessingPayment,
   isAmountValid,
   step,
+  goBack,
 }: CheckoutProps) {
   const { order } = useCrossmintCheckout();
   console.log("order", order);
@@ -135,6 +138,11 @@ export function Checkout({
               "fixed left-0 top-0 z-30 !mt-0 flex h-screen w-full items-center justify-center bg-white lg:relative lg:block lg:h-auto"
           )}
         >
+          {requiresKYC && (
+            <button onClick={goBack} className="absolute left-2 top-5 lg:hidden">
+              <ArrowLeftIcon className="h-5 w-5" />
+            </button>
+          )}
           <CrossmintEmbeddedCheckout
             recipient={{
               walletAddress,

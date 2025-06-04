@@ -82,6 +82,7 @@ export function DepositModal({ open, onClose, walletAddress }: DepositModalProps
                 receiptEmail={receiptEmail || ""}
                 onProcessingPayment={handleProcessingPayment}
                 step={step}
+                goBack={restartFlow}
               />
             </CrossmintCheckoutProvider>
           </CrossmintProvider>
