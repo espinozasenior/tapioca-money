@@ -34,10 +34,10 @@ export function Modal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-center bg-black/30 py-2 lg:items-center">
+    <div className="fixed inset-0 z-0 flex justify-center bg-black/30 py-2 lg:items-center">
       <div
         className={cn(
-          "lg:max-h-220 relative mx-4 flex h-fit w-full max-w-md flex-col items-center overflow-y-auto rounded-2xl bg-white p-6 shadow-xl",
+          "relative mx-4 flex h-fit w-full max-w-md flex-col items-center overflow-y-auto rounded-2xl bg-white p-6 shadow-xl lg:h-fit lg:max-h-[calc(100vh-32px)]",
           className
         )}
       >

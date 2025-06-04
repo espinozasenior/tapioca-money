@@ -52,7 +52,6 @@ export function DepositModal({ open, onClose, walletAddress }: DepositModalProps
 
   return (
     <>
-      {open && step === "options" && <TestingCardModal />}
       <Modal
         open={open}
         onClose={onClose}
@@ -61,6 +60,7 @@ export function DepositModal({ open, onClose, walletAddress }: DepositModalProps
         className={cn("top-[154px] h-[calc(100vh-174px)] lg:top-0", amount && "lg:min-h-[718px]")}
         title="Deposit"
       >
+        {open && step === "options" && <TestingCardModal />}
         {step === "options" && (
           <div className="mb-6 flex w-full flex-col items-center">
             <AmountInput amount={amount} onChange={setAmount} />
