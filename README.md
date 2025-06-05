@@ -18,6 +18,7 @@
 - [Introduction](#introduction)
 - [Deploy](#deploy)
 - [Setup](#setup)
+- [Using another chain](#using-another-chain)
 - [Using in production](#using-in-production)
    - [Enabling Withdrawals](#enabling-withdrawals)
 
@@ -78,10 +79,11 @@ bun install
 cp .env.template .env
 ```
 
-4. Login to the [Crossmint staging console](https://staging.crossmint.com/console) and get the client API key from the [overview page](https://staging.crossmint.com/console/overview):
+4. Login to the [Crossmint staging console](https://staging.crossmint.com/console) and get the client and server API keys from the [overview page](https://staging.crossmint.com/console/overview):
 
 ```env
 NEXT_PUBLIC_CROSSMINT_API_KEY=your_client_side_API_key
+NEXT_PUBLIC_CROSSMINT_SERVER_API_KEY=your_server_side_API_key
 ```
 
 5. Run the development server:
@@ -96,15 +98,34 @@ pnpm dev
 bun dev
 ```
 
+## Using another chain
+
+To use another chain, you'll need to update the chain environment variable to the chain you want to use.
+
+```env
+NEXT_PUBLIC_CHAIN_ID=solana
+```
+
+You'll also need to update the USDC locator to the USDC of the chain you want to use.
+
+```env
+NEXT_PUBLIC_USDC_MINT=your_USDC_mint
+```
+
 ## Using in production
 
 This starter app is designed for rapid prototyping and testing in a staging environment. To move to production you'll need to:
 
-1. Login to the [Crossmint production console](https://www.crossmint.com/console) and [create a client side API key](https://www.crossmint.com/console/projects/apiKeys) with the following scopes: `users.create`, `users.read`, `wallets.read`, `wallets.create`, `wallets:transactions.create`, `wallets:transactions.sign`, `wallets:balance.read`, `wallets.fund`.
+1. Login to the [Crossmint production console](https://www.crossmint.com/console) and [create client and server side API keys](https://www.crossmint.com/console/projects/apiKeys) with the following scopes: `users.create`, `users.read`, `wallets.read`, `wallets.create`, `wallets:transactions.create`, `wallets:transactions.sign`, `wallets:transactions.read`, `wallets:balance.read`, `wallets.fund`.
 2. Update the chain environment variable to a mainnet chain.
    - **Note ⚠️**: Non custodial signers for solana are not available in production yet since they are undergoing a security audit. Reach out to us on [Telegram](https://t.me/fintechstarterapp) to be the first to know when they are available.
-3. Customize your email template for login and signup in the [Crossmint console](https://www.crossmint.com/console) under the Settings tab in the Branding section.
-4. For using onramp in production reach out to us on [Telegram](https://t.me/fintechstarterapp).
+3. Update the USDC locator to the USDC of the mainnet chain you want to use.
+4. Update the base URL to your production domain
+```
+NEXT_PUBLIC_CROSSMINT_URL=https://www.crossmint.com
+```
+5. Customize your email template for login and signup in the [Crossmint console](https://www.crossmint.com/console) under the Settings tab in the Branding section.
+6. For using onramp in production reach out to us on [Telegram](https://t.me/fintechstarterapp).
 
 
 ### Enabling Withdrawals
