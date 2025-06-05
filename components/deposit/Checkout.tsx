@@ -142,7 +142,7 @@ export function Checkout({
         >
           <div className={cn(requiresKYC && "w-100 flex h-full items-end")}>
             {requiresKYC && (
-              <button onClick={goBack} className="absolute left-5 top-5 lg:hidden">
+              <button onClick={goBack} className="absolute left-5 top-5 z-40 lg:hidden">
                 <ArrowLeftIcon className="h-5 w-5" />
               </button>
             )}
