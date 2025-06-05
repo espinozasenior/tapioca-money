@@ -3,6 +3,7 @@ import { DepositButton } from "./common/DepositButton";
 import Image from "next/image";
 import { useActivityFeed } from "../hooks/useActivityFeed";
 import { Container } from "./common/Container";
+import { shortenAddress } from "@/utils/shortenAddress";
 
 interface ActivityFeedProps {
   onDepositClick: () => void;
@@ -56,7 +57,7 @@ export function ActivityFeed({ onDepositClick, walletAddress }: ActivityFeedProp
                     </div>
                     <div className="flex-1">
                       <div className="text-base font-medium text-slate-900">
-                        {counterparty.slice(0, 6)}...{counterparty.slice(-4)}
+                        {shortenAddress(counterparty)}
                       </div>
                       <div className="text-sm text-slate-500">
                         {new Date(event.timestamp).toLocaleString()}

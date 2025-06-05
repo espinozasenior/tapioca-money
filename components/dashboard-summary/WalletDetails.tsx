@@ -2,6 +2,7 @@ import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
 import { Modal } from "../common/Modal";
 import { Details } from "../common/Details";
 import { CopyWrapper } from "../common/CopyWrapper";
+import { shortenAddress } from "@/utils/shortenAddress";
 
 export function WalletDetails({ onClose, open }: { onClose: () => void; open: boolean }) {
   const { wallet } = useWallet();
@@ -14,7 +15,7 @@ export function WalletDetails({ onClose, open }: { onClose: () => void; open: bo
             label: "Address",
             value: (
               <CopyWrapper toCopy={wallet?.address} iconPosition="right">
-                <span className="w-40 truncate">{wallet?.address}</span>
+                <span>{shortenAddress(wallet?.address || "")}</span>
               </CopyWrapper>
             ),
           },

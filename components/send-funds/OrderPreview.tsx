@@ -2,6 +2,7 @@ import React from "react";
 import { Details } from "../common/Details";
 import { PrimaryButton } from "../common/PrimaryButton";
 import { isEmail } from "@/lib/utils";
+import { shortenAddress } from "@/utils/shortenAddress";
 
 interface OrderPreviewProps {
   userEmail: string;
@@ -10,10 +11,6 @@ interface OrderPreviewProps {
   error: string | null;
   isLoading: boolean;
   onConfirm: () => void;
-}
-
-function shortenAddress(address: string) {
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
 export function OrderPreview({

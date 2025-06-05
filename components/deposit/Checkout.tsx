@@ -125,7 +125,12 @@ export function Checkout({
   const requiresKYC = order?.payment.status === "requires-kyc";
 
   return (
-    <div className={cn("w-full flex-grow space-y-4", step !== "options" && "flex items-center")}>
+    <div
+      className={cn(
+        "w-full flex-grow space-y-4",
+        step !== "options" && "flex items-center justify-center"
+      )}
+    >
       {step === "options" && (
         <AmountBreakdown
           quote={order?.lineItems[0].quote}
@@ -166,7 +171,7 @@ export function Checkout({
                     googlePay: false,
                   },
                 },
-                receiptEmail,
+                receiptEmail: "angel@paella.dev",
               }}
               appearance={CHECKOUT_APPEARANCE}
             />
