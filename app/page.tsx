@@ -11,7 +11,7 @@ export default function Home() {
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
           <a
             className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-            href="https://github.com/crossmint/fintech-evm-wallets-quickstart"
+            href="https://github.com/Crossmint/fintech-starter-app"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -20,7 +20,7 @@ export default function Home() {
           </a>
           <a
             className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-            href="https://github.com/crossmint"
+            href="https://crossmint.com/quickstarts"
             target="_blank"
             rel="noopener noreferrer"
           >

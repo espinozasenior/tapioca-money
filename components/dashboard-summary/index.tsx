@@ -6,7 +6,7 @@ import { ArrowsRightLeftIcon, WalletIcon } from "@heroicons/react/24/outline";
 import { Dropdown } from "../common/Dropdown";
 import { useState } from "react";
 import { WalletDetails } from "./WalletDetails";
-import { useWallet, EVMSmartWallet, useAuth } from "@crossmint/client-sdk-react-ui";
+import { useWallet, useAuth } from "@crossmint/client-sdk-react-ui";
 import { WarningModal } from "./WarningModal";
 
 interface DashboardSummaryProps {
@@ -16,7 +16,7 @@ interface DashboardSummaryProps {
 
 export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSummaryProps) {
   const [showWalletDetails, setShowWalletDetails] = useState(false);
-  const { wallet } = useWallet() as { wallet: EVMSmartWallet };
+  const { wallet } = useWallet();
   const { user } = useAuth();
   const [openWarningModal, setOpenWarningModal] = useState(false);
   const dropdownOptions = [
@@ -29,7 +29,7 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
         } else {
           window.location.href = `https://pay.coinbase.com/v3/sell/input?${new URLSearchParams({
             appId: process.env.NEXT_PUBLIC_COINBASE_APP_ID!,
-            addresses: JSON.stringify({ [wallet.address]: [wallet.chain] }),
+            addresses: JSON.stringify({ [wallet?.address || ""]: [wallet?.chain || ""] }),
             redirectUrl: window.location.origin,
             partnerUserId: user?.id!,
             assets: JSON.stringify(["USDC"]),

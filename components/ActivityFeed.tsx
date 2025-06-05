@@ -1,7 +1,7 @@
 import React from "react";
 import { DepositButton } from "./common/DepositButton";
 import Image from "next/image";
-import { useActivityFeed, ActivityEvent } from "../hooks/useActivityFeed";
+import { useActivityFeed } from "../hooks/useActivityFeed";
 import { Container } from "./common/Container";
 
 interface ActivityFeedProps {

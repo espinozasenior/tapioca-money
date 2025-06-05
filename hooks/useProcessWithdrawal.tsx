@@ -1,7 +1,6 @@
-import { getTransactions } from "@/server-actions/getTransactions";
-import { erc20Abi, encodeFunctionData, Address } from "viem";
-import { EVMSmartWallet } from "@crossmint/client-sdk-react-ui";
 import { useEffect } from "react";
+import { Chain, Wallet } from "@crossmint/client-sdk-react-ui";
+import { getTransactions } from "@/server-actions/getTransactions";
 import { useBalance } from "./useBalance";
 import { useActivityFeed } from "./useActivityFeed";
 
@@ -22,7 +21,7 @@ const setProccesedTransactions = (transactionId: string) => {
   }
 };
 
-export function useProcessWithdrawal(userId?: string, wallet?: EVMSmartWallet) {
+export function useProcessWithdrawal(userId?: string, wallet?: Wallet<Chain>) {
   const { refetch: refetchBalance } = useBalance();
   const { refetch: refetchActivityFeed } = useActivityFeed(wallet?.address!);
   useEffect(() => {
@@ -34,21 +33,8 @@ export function useProcessWithdrawal(userId?: string, wallet?: EVMSmartWallet) {
           transaction?.status === "TRANSACTION_STATUS_STARTED" &&
           !getProccesedTransactions(transaction?.transaction_id)
         ) {
-          const usdcToken = process.env.NEXT_PUBLIC_USDC_TOKEN_MINT as Address;
-          const data = encodeFunctionData({
-            abi: erc20Abi,
-            functionName: "transfer",
-            args: [
-              transaction.to_address as Address,
-              BigInt(Math.round(Number(transaction.sell_amount.value as string) * 10 ** 6)),
-            ],
-          });
           setProccesedTransactions(transaction.transaction_id);
-          const txn = await (wallet as EVMSmartWallet).sendTransaction({
-            to: usdcToken,
-            value: BigInt(0),
-            data,
-          });
+          await wallet.send(transaction.to_address, "usdc", transaction.sell_amount.value);
           refetchBalance();
           refetchActivityFeed();
         }

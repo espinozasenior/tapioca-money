@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { Container } from "./common/Container";
 
 const newProducts: NewProductProps[] = [
