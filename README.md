@@ -82,8 +82,8 @@ cp .env.template .env
 4. Login to the [Crossmint staging console](https://staging.crossmint.com/console) and get the client and server API keys from the [overview page](https://staging.crossmint.com/console/overview):
 
 ```env
-NEXT_PUBLIC_CROSSMINT_API_KEY=your_client_side_API_key
-NEXT_PUBLIC_CROSSMINT_SERVER_API_KEY=your_server_side_API_key
+NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY=your_client_side_API_key
+CROSSMINT_SERVER_API_KEY=your_server_side_API_key
 ```
 
 5. Run the development server:
