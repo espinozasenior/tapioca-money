@@ -1,6 +1,7 @@
 import React from "react";
 import { Details } from "../common/Details";
 import { PrimaryButton } from "../common/PrimaryButton";
+import { isEmail } from "@/lib/utils";
 
 interface OrderPreviewProps {
   userEmail: string;
@@ -9,6 +10,10 @@ interface OrderPreviewProps {
   error: string | null;
   isLoading: boolean;
   onConfirm: () => void;
+}
+
+function shortenAddress(address: string) {
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
 export function OrderPreview({
@@ -26,7 +31,7 @@ export function OrderPreview({
         <Details
           values={[
             { label: "From", value: userEmail },
-            { label: "To", value: recipient },
+            { label: "To", value: isEmail(recipient) ? recipient : shortenAddress(recipient) },
             { label: "Amount", value: `$ ${amount}` },
           ]}
         />
