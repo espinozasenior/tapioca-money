@@ -12,6 +12,7 @@ if (!process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY || !process.env.NEXT_PUBLI
 }
 
 const queryClient = new QueryClient();
+const chain = process.env.NEXT_PUBLIC_CHAIN_ID as any;
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -22,10 +23,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
           loginMethods={["email", "google"]}
         >
           <CrossmintWalletProvider
-            showPasskeyHelpers
+            showPasskeyHelpers={chain !== "solana"}
             createOnLogin={{
               chain: process.env.NEXT_PUBLIC_CHAIN_ID as any,
-              signer: { type: "passkey" },
+              signer: { type: chain === "solana" ? "email" : "passkey" },
             }}
           >
             {children}

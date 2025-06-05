@@ -32,10 +32,7 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
           onSendClick={() => setShowSendModal(true)}
         />
         <NewProducts />
-        <ActivityFeed
-          onDepositClick={() => setShowDepositModal(true)}
-          walletAddress={walletAddress || ""}
-        />
+        <ActivityFeed onDepositClick={() => setShowDepositModal(true)} />
         <DepositModal
           open={showDepositModal}
           onClose={() => setShowDepositModal(false)}

@@ -23,7 +23,7 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { displayableBalance, refetch: refetchBalance } = useBalance();
-  const { refetch: refetchActivityFeed } = useActivityFeed(wallet?.address || "");
+  const { refetch: refetchActivityFeed } = useActivityFeed();
 
   const isRecipientValid = isValidAddress(recipient) || isEmail(recipient);
   const isAmountValid =
