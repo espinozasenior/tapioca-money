@@ -23,7 +23,7 @@ const setProccesedTransactions = (transactionId: string) => {
 
 export function useProcessWithdrawal(userId?: string, wallet?: Wallet<Chain>) {
   const { refetch: refetchBalance } = useBalance();
-  const { refetch: refetchActivityFeed } = useActivityFeed(wallet?.address!);
+  const { refetch: refetchActivityFeed } = useActivityFeed();
   useEffect(() => {
     (async () => {
       if (userId && wallet) {

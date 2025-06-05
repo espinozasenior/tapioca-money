@@ -43,7 +43,8 @@ export function ActivityFeed({ onDepositClick }: ActivityFeedProps) {
           {!isLoading && !error && data?.events?.length && data?.events?.length > 0 ? (
             <ul className="w-full">
               {data?.events.slice(0, 10).map((event) => {
-                const isOutgoing = event.from_address.toLowerCase() === wallet?.address.toLowerCase();
+                const isOutgoing =
+                  event.from_address.toLowerCase() === wallet?.address.toLowerCase();
                 const counterparty = isOutgoing ? event.to_address : event.from_address;
                 return (
                   <li key={event.transaction_hash} className="flex items-center gap-4 py-4">
