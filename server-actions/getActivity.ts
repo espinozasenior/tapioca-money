@@ -15,7 +15,7 @@ export async function getActivity(walletLocator: string): Promise<ActivityEvent[
     `${process.env.NEXT_PUBLIC_CROSSMINT_URL}/api/2022-06-09/wallets/${walletLocator}/activity?chain=${process.env.NEXT_PUBLIC_CHAIN_ID}`,
     {
       headers: {
-        "X-API-Key": process.env.NEXT_PUBLIC_CROSSMINT_SERVER_API_KEY!,
+        "X-API-Key": process.env.CROSSMINT_SERVER_API_KEY!,
         accept: "application/json",
       },
     }
