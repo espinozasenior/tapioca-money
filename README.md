@@ -110,6 +110,7 @@ NEXT_PUBLIC_CHAIN_ID=solana
 2. Update the USDC locator to the USDC of the chain you want to use.
 
 ```env
+# For solana 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
 NEXT_PUBLIC_USDC_MINT=your_USDC_mint
 ```
 

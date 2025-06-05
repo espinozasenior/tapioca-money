@@ -68,7 +68,9 @@ export function ActivityFeed({ onDepositClick }: ActivityFeedProps) {
                       >
                         {isOutgoing ? "-" : "+"} {Number(event.amount).toFixed(2)}
                       </div>
-                      <div className="text-right text-sm text-slate-500">{event.token_symbol}</div>
+                      <div className="text-right text-sm text-slate-500">
+                        {event.token_symbol ? event.token_symbol : "USDC"}
+                      </div>
                     </div>
                   </li>
                 );
