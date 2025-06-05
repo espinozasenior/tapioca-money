@@ -25,7 +25,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             showPasskeyHelpers
             createOnLogin={{
               chain: process.env.NEXT_PUBLIC_CHAIN_ID as any,
-              signer: { type: "api-key" },
+              signer: { type: "passkey" },
             }}
           >
             {children}
