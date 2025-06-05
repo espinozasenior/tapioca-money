@@ -27,7 +27,7 @@ export function DepositModal({ open, onClose, walletAddress }: DepositModalProps
   const { user } = useAuth();
   const receiptEmail = user?.email;
   const [amount, setAmount] = useState("");
-  const { refetch: refetchActivityFeed } = useActivityFeed(walletAddress);
+  const { refetch: refetchActivityFeed } = useActivityFeed();
   const { refetch: refetchBalance } = useBalance();
 
   const restartFlow = () => {
