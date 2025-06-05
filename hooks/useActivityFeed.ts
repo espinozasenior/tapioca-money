@@ -1,10 +1,12 @@
+import { useWallet } from "@crossmint/client-sdk-react-ui";
 import { useQuery } from "@tanstack/react-query";
-import { getActivity } from "@/server-actions/getActivity";
 
-export function useActivityFeed(walletAddress: string) {
+export function useActivityFeed() {
+  const { wallet } = useWallet();
   return useQuery({
-    queryKey: ["walletActivity", walletAddress],
-    queryFn: () => getActivity(walletAddress),
-    enabled: !!walletAddress,
+    queryKey: ["walletActivity", wallet?.address],
+    queryFn: async () => await wallet?.experimental_activity(),
+    initialData: { events: [] },
+    enabled: !!wallet?.address,
   });
 }

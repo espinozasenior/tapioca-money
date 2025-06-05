@@ -3,23 +3,22 @@ import { DepositButton } from "./common/DepositButton";
 import Image from "next/image";
 import { useActivityFeed } from "../hooks/useActivityFeed";
 import { Container } from "./common/Container";
-import { shortenAddress } from "@/utils/shortenAddress";
+import { useWallet } from "@crossmint/client-sdk-react-ui";
 
 interface ActivityFeedProps {
   onDepositClick: () => void;
-  walletAddress: string;
 }
 
-export function ActivityFeed({ onDepositClick, walletAddress }: ActivityFeedProps) {
-  const { data: events = [], isLoading, error } = useActivityFeed(walletAddress);
-
+export function ActivityFeed({ onDepositClick }: ActivityFeedProps) {
+  const { data, isLoading, error } = useActivityFeed();
+  const { wallet } = useWallet();
   return (
     <Container className="flex min-h-[350px] w-full max-w-5xl flex-grow flex-col">
       <div className="mb-2 text-base text-slate-500">Last activity</div>
       <div
-        className={`flex w-full flex-1 flex-col items-center ${isLoading || events.length === 0 ? "justify-center" : "justify-start"}`}
+        className={`flex w-full flex-1 flex-col items-center ${isLoading || data?.events.length === 0 ? "justify-center" : "justify-start"}`}
       >
-        {!isLoading && events.length === 0 && (
+        {!isLoading && data?.events.length === 0 && (
           <>
             <div className="mb-2 text-center text-base font-semibold text-slate-900">
               Your activity feed
@@ -35,16 +34,16 @@ export function ActivityFeed({ onDepositClick, walletAddress }: ActivityFeedProp
           </>
         )}
         <div
-          className={`flex w-full items-center ${isLoading || events.length === 0 ? "justify-center" : "justify-start"}`}
+          className={`flex w-full items-center ${isLoading || data?.events.length === 0 ? "justify-center" : "justify-start"}`}
         >
           {isLoading && (
             <div className="border-primary h-8 w-8 animate-spin rounded-full border-4 border-t-transparent" />
           )}
           {error && <div className="text-center text-red-500">{error.message}</div>}
-          {!isLoading && !error && events.length > 0 && (
+          {!isLoading && !error && data?.events?.length && data?.events?.length > 0 ? (
             <ul className="w-full">
-              {events.slice(0, 10).map((event) => {
-                const isOutgoing = event.from_address.toLowerCase() === walletAddress.toLowerCase();
+              {data?.events.slice(0, 10).map((event) => {
+                const isOutgoing = event.from_address.toLowerCase() === wallet?.address.toLowerCase();
                 const counterparty = isOutgoing ? event.to_address : event.from_address;
                 return (
                   <li key={event.transaction_hash} className="flex items-center gap-4 py-4">
@@ -57,7 +56,7 @@ export function ActivityFeed({ onDepositClick, walletAddress }: ActivityFeedProp
                     </div>
                     <div className="flex-1">
                       <div className="text-base font-medium text-slate-900">
-                        {shortenAddress(counterparty)}
+                        {counterparty.slice(0, 6)}...{counterparty.slice(-4)}
                       </div>
                       <div className="text-sm text-slate-500">
                         {new Date(event.timestamp).toLocaleString()}
@@ -75,7 +74,7 @@ export function ActivityFeed({ onDepositClick, walletAddress }: ActivityFeedProp
                 );
               })}
             </ul>
-          )}
+          ) : null}
         </div>
       </div>
     </Container>
