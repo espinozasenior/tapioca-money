@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { CheckIcon, Square2StackIcon } from "@heroicons/react/24/outline";
 
 interface CopyWrapperProps {
-  toCopy: string;
+  toCopy?: string;
   className?: string;
   children?: ReactNode;
   iconPosition?: "left" | "right";
@@ -48,7 +48,7 @@ export function CopyWrapper({
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        navigator.clipboard?.writeText(toCopy).then(() => {
+        navigator.clipboard?.writeText(toCopy ?? "").then(() => {
           setJustCopied(true);
         });
       }}

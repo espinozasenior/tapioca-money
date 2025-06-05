@@ -2,9 +2,10 @@ import { CrossmintEmbeddedCheckout, useCrossmintCheckout } from "@crossmint/clie
 import { useEffect } from "react";
 import { AmountBreakdown } from "./AmountBreakdown";
 import { cn } from "@/lib/utils";
-import { ArrowLeftIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 
-const USDC_LOCATOR = `${process.env.NEXT_PUBLIC_CHAIN_ID}:${process.env.NEXT_PUBLIC_USDC_TOKEN_MINT}:${process.env.NEXT_PUBLIC_USDC_TOKEN_MINT}`;
+const USDC_MINT = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+const USDC_LOCATOR = `${process.env.NEXT_PUBLIC_CHAIN_ID}:${USDC_MINT}:${USDC_MINT}`;
 
 // Get CSS variables
 const primaryColor =
@@ -145,9 +146,7 @@ export function Checkout({
               </button>
             )}
             <CrossmintEmbeddedCheckout
-              recipient={{
-                walletAddress,
-              }}
+              recipient={{ walletAddress }}
               lineItems={{
                 tokenLocator: USDC_LOCATOR,
                 executionParameters: {
