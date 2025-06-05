@@ -7,7 +7,7 @@ import { useBalance } from "@/hooks/useBalance";
 import { Modal } from "../common/Modal";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
 import { PrimaryButton } from "../common/PrimaryButton";
-import { isEmail, isValidEvmAddress } from "@/lib/utils";
+import { isEmail, isValidAddress } from "@/lib/utils";
 
 interface SendFundsModalProps {
   open: boolean;
@@ -25,7 +25,7 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
   const { displayableBalance, refetch: refetchBalance } = useBalance();
   const { refetch: refetchActivityFeed } = useActivityFeed(wallet?.address || "");
 
-  const isRecipientValid = isValidEvmAddress(recipient) || isEmail(recipient);
+  const isRecipientValid = isValidAddress(recipient) || isEmail(recipient);
   const isAmountValid =
     !!amount &&
     !Number.isNaN(Number(amount)) &&
@@ -64,17 +64,22 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
       }
 
       if (!wallet) {
-        setError("No EVM wallet connected");
+        setError("No wallet connected");
         setIsLoading(false);
         return;
       }
-      await wallet.send(recipient, "usdc", amount);
+
+      if (isEmail(recipient)) {
+        await wallet.send(`email:${recipient}`, "usdc", amount);
+      } else {
+        await wallet.send(recipient, "usdc", amount);
+      }
 
       refetchBalance();
       refetchActivityFeed();
       handleDone();
-    } catch (err: unknown) {
-      setError((err as Error).message || String(err));
+    } catch (err: any) {
+      setError(err.message);
     } finally {
       setIsLoading(false);
     }

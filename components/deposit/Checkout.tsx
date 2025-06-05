@@ -4,8 +4,9 @@ import { AmountBreakdown } from "./AmountBreakdown";
 import { cn } from "@/lib/utils";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 
-const USDC_MINT = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
-const USDC_LOCATOR = `${process.env.NEXT_PUBLIC_CHAIN_ID}:${USDC_MINT}:${USDC_MINT}`;
+const USDC_MINT = process.env.NEXT_PUBLIC_USDC_MINT;
+const CHAIN_ID = process.env.NEXT_PUBLIC_CHAIN_ID;
+const USDC_LOCATOR = `${CHAIN_ID}:${USDC_MINT}${CHAIN_ID === "solana" ? "" : `:${USDC_MINT}`}`;
 
 // Get CSS variables
 const primaryColor =

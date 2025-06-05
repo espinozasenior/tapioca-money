@@ -10,15 +10,15 @@ interface ActivityFeedProps {
 }
 
 export function ActivityFeed({ onDepositClick, walletAddress }: ActivityFeedProps) {
-  const { data, isLoading, error } = useActivityFeed(walletAddress);
+  const { data: events = [], isLoading, error } = useActivityFeed(walletAddress);
 
   return (
     <Container className="flex min-h-[350px] w-full max-w-5xl flex-grow flex-col">
       <div className="mb-2 text-base text-slate-500">Last activity</div>
       <div
-        className={`flex w-full flex-1 flex-col items-center ${isLoading || data?.events.length === 0 ? "justify-center" : "justify-start"}`}
+        className={`flex w-full flex-1 flex-col items-center ${isLoading || events.length === 0 ? "justify-center" : "justify-start"}`}
       >
-        {!isLoading && data?.events.length === 0 && (
+        {!isLoading && events.length === 0 && (
           <>
             <div className="mb-2 text-center text-base font-semibold text-slate-900">
               Your activity feed
@@ -34,15 +34,15 @@ export function ActivityFeed({ onDepositClick, walletAddress }: ActivityFeedProp
           </>
         )}
         <div
-          className={`flex w-full items-center ${isLoading || data?.events.length === 0 ? "justify-center" : "justify-start"}`}
+          className={`flex w-full items-center ${isLoading || events.length === 0 ? "justify-center" : "justify-start"}`}
         >
           {isLoading && (
             <div className="border-primary h-8 w-8 animate-spin rounded-full border-4 border-t-transparent" />
           )}
           {error && <div className="text-center text-red-500">{error.message}</div>}
-          {!isLoading && !error && data?.events?.length && data?.events?.length > 0 ? (
+          {!isLoading && !error && events.length > 0 && (
             <ul className="w-full">
-              {data?.events.slice(0, 10).map((event) => {
+              {events.slice(0, 10).map((event) => {
                 const isOutgoing = event.from_address.toLowerCase() === walletAddress.toLowerCase();
                 const counterparty = isOutgoing ? event.to_address : event.from_address;
                 return (
@@ -74,7 +74,7 @@ export function ActivityFeed({ onDepositClick, walletAddress }: ActivityFeedProp
                 );
               })}
             </ul>
-          ) : null}
+          )}
         </div>
       </div>
     </Container>

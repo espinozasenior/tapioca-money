@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Fintech EVM Wallets Quickstart",
-  description: "A quickstart for the Fintech EVM Wallets",
+  title: "Fintech Starter App",
+  description: "Create your own Fintech app in minutes using Crossmint",
 };
 
 export default function RootLayout({
