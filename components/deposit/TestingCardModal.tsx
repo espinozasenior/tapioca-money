@@ -3,7 +3,7 @@ import { CopyWrapper } from "../common/CopyWrapper";
 
 export function TestingCardModal() {
   return (
-    <div className="fixed top-6 z-20 w-[calc(100%-32px)] space-y-3 rounded-3xl bg-white p-5 shadow-md lg:right-6 lg:w-[419px]">
+    <div className="max-w-112 fixed top-6 z-20 w-[calc(100%-32px)] space-y-3 rounded-3xl bg-white p-5 shadow-md lg:right-6 lg:w-[419px]">
       <div className="flex items-center gap-5 text-lg font-medium">
         <Image src="/credit-card-outline.svg" alt="Credit Card" width={24} height={24} />
         <span>Test payments</span>

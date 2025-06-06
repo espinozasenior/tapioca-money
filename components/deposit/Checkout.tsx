@@ -121,9 +121,6 @@ export function Checkout({
     }
   }, [order, onPaymentCompleted, onProcessingPayment]);
 
-  // @ts-ignore - Library types are incorrect, "requires-kyc" is a valid status
-  const requiresKYC = order?.payment.status === "requires-kyc";
-
   return (
     <div
       className={cn(
@@ -139,18 +136,8 @@ export function Checkout({
         />
       )}
       {amount && isAmountValid && (
-        <div
-          className={cn(
-            requiresKYC &&
-              "fixed left-0 top-0 z-30 !mt-0  h-screen w-full items-center justify-center overflow-x-auto bg-white lg:relative lg:block lg:h-auto"
-          )}
-        >
-          <div className={cn(requiresKYC && "w-100 flex h-full items-end")}>
-            {requiresKYC && (
-              <button onClick={goBack} className="absolute left-5 top-5 z-40 lg:hidden">
-                <ArrowLeftIcon className="h-5 w-5" />
-              </button>
-            )}
+        <div>
+          <div>
             <CrossmintEmbeddedCheckout
               recipient={{ walletAddress }}
               lineItems={{
