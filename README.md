@@ -5,7 +5,7 @@
 <h1>Fintech Starter App</h1>
 
 <div align="center">
-<a href="https://fintech-starter-app.demos-crossmint.com/">Live Demo</a>  | <a href="https://docs.crossmint.com/">Docs</a> | <a href="https://crossmint.com/quickstarts">See all quickstarts</a>
+<a href="https://fintech-starter-app.demos-crossmint.com/">Live Demo</a>  | <a href="https://docs.crossmint.com/">Docs</a> | <a href="https://crossmint.com/quickstarts">See all quickstarts</a>  | <a href="https://t.me/fintechstarterapp">Join our Telegram</a> 
 </div>
 
 <br>
