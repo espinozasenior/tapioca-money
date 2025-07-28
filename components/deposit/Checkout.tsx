@@ -153,8 +153,8 @@ export function Checkout({
                   enabled: true,
                   allowedMethods: {
                     card: true,
-                    applePay: false,
-                    googlePay: false,
+                    applePay: true,
+                    googlePay: true,
                   },
                 },
                 receiptEmail,
