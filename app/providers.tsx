@@ -21,11 +21,20 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <CrossmintAuthProvider
           authModalTitle="Fintech Starter App"
           loginMethods={["email", "google"]}
+          termsOfServiceText={
+            <p>
+              By continuing, you accept the{" "}
+              <a href="https://www.crossmint.com/legal/terms-of-service" target="_blank">
+                Wallet's Terms of Service
+              </a>
+              , and to recieve marketing communications from Crossmint.
+            </p>
+          }
         >
           <CrossmintWalletProvider
             showPasskeyHelpers={chain !== "solana"}
             createOnLogin={{
-              chain: process.env.NEXT_PUBLIC_CHAIN_ID as any,
+              chain,
               signer: { type: "email" },
             }}
           >

@@ -7,7 +7,7 @@ export function WarningModal({ open, onClose }: { open: boolean; onClose: () => 
         Withdraw is a production-only feature. Read about how to move to production{" "}
         <a
           className="text-primary"
-          href="https://github.com/Crossmint/fintech-starter-app"
+          href="https://github.com/Crossmint/fintech-starter-app?tab=readme-ov-file#enabling-withdrawals"
           target="_blank"
         >
           here
