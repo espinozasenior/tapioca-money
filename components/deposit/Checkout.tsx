@@ -1,11 +1,8 @@
 import { CrossmintEmbeddedCheckout, useCrossmintCheckout } from "@crossmint/client-sdk-react-ui";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AmountBreakdown } from "./AmountBreakdown";
 import { cn } from "@/lib/utils";
 
-const USDC_MINT = process.env.NEXT_PUBLIC_USDC_MINT;
-const CHAIN_ID = process.env.NEXT_PUBLIC_CHAIN_ID;
-const USDC_LOCATOR = `${CHAIN_ID}:${USDC_MINT}${CHAIN_ID === "solana" ? "" : `:${USDC_MINT}`}`;
 
 // Get CSS variables
 const primaryColor =
@@ -87,6 +84,13 @@ const CHECKOUT_APPEARANCE = {
   },
 } as const;
 
+type CreateOrderResponse = {
+  order: {
+    orderId: string;
+  };
+  clientSecret: string;
+};
+
 type CheckoutProps = {
   amount: string;
   walletAddress: string;
@@ -109,7 +113,53 @@ export function Checkout({
   goBack,
 }: CheckoutProps) {
   const { order } = useCrossmintCheckout();
+  const [orderId, setOrderId] = useState<string>("");
+  const [clientSecret, setClientSecret] = useState<string>("");
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  const [orderError, setOrderError] = useState<string>("");
+  
   console.log("order", order);
+
+  const createOrder = async () => {
+    if (!amount || !isAmountValid || !receiptEmail || !walletAddress) return;
+    
+    setIsCreatingOrder(true);
+    setOrderError("");
+    
+    try {
+      const response = await fetch("/api/create-order", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          amount,
+          receiptEmail,
+          walletAddress,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create order");
+      }
+
+      const orderData = await response.json() as CreateOrderResponse;
+      setOrderId(orderData.order.orderId);
+      setClientSecret(orderData.clientSecret);
+    } catch (error) {
+      console.error("Error creating order:", error);
+      setOrderError(error instanceof Error ? error.message : "Failed to create order");
+    } finally {
+      setIsCreatingOrder(false);
+    }
+  };
+
+  useEffect(() => {
+    if (amount && isAmountValid && receiptEmail && walletAddress && !orderId && !isCreatingOrder) {
+      createOrder();
+    }
+  }, [amount, isAmountValid, receiptEmail, walletAddress, orderId, isCreatingOrder]);
 
   useEffect(() => {
     if (order?.phase === "completed") {
@@ -136,32 +186,35 @@ export function Checkout({
       )}
       {amount && isAmountValid && (
         <div>
-          <div>
-            <CrossmintEmbeddedCheckout
-              recipient={{ walletAddress }}
-              lineItems={{
-                tokenLocator: USDC_LOCATOR,
-                executionParameters: {
-                  mode: "exact-in",
-                  amount: amount || "0.00",
-                  maxSlippageBps: "500",
-                },
-              }}
-              payment={{
-                crypto: { enabled: false },
-                fiat: {
-                  enabled: true,
-                  allowedMethods: {
-                    card: true,
-                    applePay: true,
-                    googlePay: true,
-                  },
-                },
-                receiptEmail,
-              }}
-              appearance={CHECKOUT_APPEARANCE}
-            />
-          </div>
+          {isCreatingOrder && (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                <p className="text-sm text-gray-600">Creating order...</p>
+              </div>
+            </div>
+          )}
+          {orderError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <p className="text-red-800 text-sm">{orderError}</p>
+            </div>
+          )}
+          {orderId && clientSecret && !isCreatingOrder && (
+            <div>
+              <CrossmintEmbeddedCheckout
+                orderId={orderId}
+                // @ts-ignore
+                clientSecret={clientSecret}
+                payment={{
+                  receiptEmail,
+                  crypto: { enabled: false },
+                  fiat: { enabled: true },
+                  defaultMethod: "fiat",
+                }}
+                appearance={CHECKOUT_APPEARANCE}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>
