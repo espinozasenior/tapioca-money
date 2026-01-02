@@ -2,10 +2,10 @@ import React, { useState } from "react";
 import { EVMWallet, useWallet } from "@crossmint/client-sdk-react-ui";
 import Image from "next/image";
 import { Info } from "lucide-react";
-import { YieldAction, YieldOpportunity, exitYield, getYieldBalance } from "@/hooks/useYields";
+import { YieldOpportunity, YieldPosition } from "@/hooks/useOptimizer";
 
 interface PositionsListProps {
-  positions: YieldAction[];
+  positions: YieldPosition[];
   yields: YieldOpportunity[];
   isLoading: boolean;
   onExitSuccess: () => void;
@@ -46,10 +46,17 @@ const formatUsdAmount = (amountUsd: string | undefined, amount: string | undefin
   return "0.00";
 };
 
-// Format APY for display
-const formatApy = (apy: number) => {
+// Format APY for display (avoids conflict with imported formatApy)
+const formatApyLocal = (apy: number) => {
   return `${(apy * 100).toFixed(2)}%`;
 };
+
+interface UnsignedTransaction {
+  to: string;
+  data: string;
+  value?: string;
+  gasLimit?: string;
+}
 
 export function PositionsList({ positions, yields, isLoading, onExitSuccess }: PositionsListProps) {
   const { wallet } = useWallet();
@@ -61,7 +68,7 @@ export function PositionsList({ positions, yields, isLoading, onExitSuccess }: P
     return yields.find((y) => y.id === yieldId);
   };
 
-  const handleExit = async (position: YieldAction) => {
+  const handleExit = async (position: YieldPosition) => {
     if (!wallet?.address) {
       setError("No wallet connected");
       return;
@@ -71,38 +78,47 @@ export function PositionsList({ positions, yields, isLoading, onExitSuccess }: P
     setExitingId(position.id);
 
     try {
-      // Fetch current balance to pass to exit
-      const balance = await getYieldBalance(position.yieldId, wallet.address);
+      console.log("[Yield] Exiting position:", {
+        protocol: position.protocol,
+        yieldId: position.yieldId,
+        amount: position.amount,
+      });
 
-      // Get unsigned transactions for exit
-      const response = await exitYield(position.yieldId, wallet.address, balance);
+      // Call withdrawal API to build transaction
+      const response = await fetch("/api/withdraw", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          protocol: position.protocol || "morpho",
+          userAddress: wallet.address,
+          // For Morpho, we withdraw all shares
+          // The position.amount is in USDC units, convert to smallest unit (6 decimals)
+          shares: position.shares || (BigInt(Math.floor(parseFloat(position.amount) * 1e6))).toString(),
+        }),
+      });
 
-      // Sort transactions by stepIndex to ensure correct order
-      const sortedTransactions = [...(response.transactions || [])].sort(
-        (a: any, b: any) => (a.stepIndex || 0) - (b.stepIndex || 0)
-      );
-
-      // Execute each transaction through Crossmint wallet
-      const evmWallet = EVMWallet.from(wallet);
-
-      for (let i = 0; i < sortedTransactions.length; i++) {
-        const tx = sortedTransactions[i];
-        const unsignedTx = JSON.parse(tx.unsignedTransaction);
-
-        // Send the transaction with all relevant parameters
-        const txResult = await evmWallet.sendTransaction({
-          to: unsignedTx.to,
-          data: unsignedTx.data,
-          value: unsignedTx.value || "0x0",
-          ...(unsignedTx.gasLimit && { gas: unsignedTx.gasLimit }),
-        });
-
-        // Small delay between transactions
-        if (i < sortedTransactions.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-        }
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to build withdrawal transaction");
       }
 
+      const tx = await response.json();
+      const unsignedTx = JSON.parse(tx.unsignedTransaction) as UnsignedTransaction;
+
+      console.log("[Yield] Executing withdrawal transaction");
+
+      // Execute withdrawal transaction through Crossmint wallet
+      const evmWallet = EVMWallet.from(wallet!);
+      const txResult = await evmWallet.sendTransaction({
+        to: unsignedTx.to as `0x${string}`,
+        data: unsignedTx.data as `0x${string}`,
+        value: BigInt(unsignedTx.value || "0"),
+        ...(unsignedTx.gasLimit && { gas: BigInt(unsignedTx.gasLimit) }),
+      });
+
+      console.log("[Yield] Withdrawal successful:", txResult);
+      
+      // Refresh positions after successful exit
       onExitSuccess();
     } catch (err: any) {
       console.error("[Yield] Exit error:", err);
@@ -206,7 +222,7 @@ export function PositionsList({ positions, yields, isLoading, onExitSuccess }: P
               {/* APY */}
               {apy !== undefined && (
                 <div className="text-right">
-                  <div className="text-primary text-lg font-bold">{formatApy(apy)}</div>
+                  <div className="text-lg font-bold text-blue-600">{formatApyLocal(apy)}</div>
                   <div className="text-xs text-gray-500">APY</div>
                 </div>
               )}
@@ -217,7 +233,7 @@ export function PositionsList({ positions, yields, isLoading, onExitSuccess }: P
               {estimatedYearlyEarnings ? (
                 <p className="text-xs text-green-700">
                   💰 Earning ~${estimatedYearlyEarnings} USDC/year at{" "}
-                  {apy ? formatApy(apy) : "current"} rate
+                  {apy ? formatApyLocal(apy) : "current"} rate
                 </p>
               ) : (
                 <p className="text-xs text-green-700">📈 Position active - earning yield</p>

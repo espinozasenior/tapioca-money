@@ -11,6 +11,10 @@
   },
   "dependencies": {
     "@crossmint/client-sdk-react-ui": "2.6.6",
+    "@morpho-org/blue-sdk": "^2.3.1",
+    "@morpho-org/blue-sdk-viem": "^2.2.2",
+    "@morpho-org/morpho-ts": "^2.0.2",
+    "viem": "^2.41.2",
     "@heroicons/react": "2.0.18",
     "@radix-ui/react-dialog": "1.1.1",
     "@radix-ui/react-dropdown-menu": "2.1.1",

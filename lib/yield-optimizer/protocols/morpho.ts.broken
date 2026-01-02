@@ -1,0 +1,297 @@
+// Morpho Blue Protocol Integration
+import { createPublicClient, http, parseUnits, formatUnits, encodeFunctionData } from "viem";
+import { baseSepolia } from "viem/chains";
+import type { YieldOpportunity, Position } from "../types";
+import { MORPHO_BLUE_BASE, USDC_BASE_SEPOLIA } from "../types";
+
+// Morpho Blue ABI (minimal for deposits/withdrawals)
+export const MORPHO_BLUE_ABI = [
+  {
+    name: "supply",
+    type: "function",
+    inputs: [
+      {
+        name: "marketParams",
+        type: "tuple",
+        components: [
+          { name: "loanToken", type: "address" },
+          { name: "collateralToken", type: "address" },
+          { name: "oracle", type: "address" },
+          { name: "irm", type: "address" },
+          { name: "lltv", type: "uint256" },
+        ],
+      },
+      { name: "assets", type: "uint256" },
+      { name: "shares", type: "uint256" },
+      { name: "onBehalf", type: "address" },
+      { name: "data", type: "bytes" },
+    ],
+    outputs: [
+      { name: "assetsSupplied", type: "uint256" },
+      { name: "sharesSupplied", type: "uint256" },
+    ],
+  },
+  {
+    name: "withdraw",
+    type: "function",
+    inputs: [
+      {
+        name: "marketParams",
+        type: "tuple",
+        components: [
+          { name: "loanToken", type: "address" },
+          { name: "collateralToken", type: "address" },
+          { name: "oracle", type: "address" },
+          { name: "irm", type: "address" },
+          { name: "lltv", type: "uint256" },
+        ],
+      },
+      { name: "assets", type: "uint256" },
+      { name: "shares", type: "uint256" },
+      { name: "onBehalf", type: "address" },
+      { name: "receiver", type: "address" },
+    ],
+    outputs: [
+      { name: "assetsWithdrawn", type: "uint256" },
+      { name: "sharesWithdrawn", type: "uint256" },
+    ],
+  },
+  {
+    name: "position",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "id", type: "bytes32" },
+      { name: "user", type: "address" },
+    ],
+    outputs: [
+      { name: "supplyShares", type: "uint256" },
+      { name: "borrowShares", type: "uint128" },
+      { name: "collateral", type: "uint128" },
+    ],
+  },
+] as const;
+
+// ERC20 ABI for approvals
+const ERC20_ABI = [
+  {
+    name: "approve",
+    type: "function",
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    name: "allowance",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "spender", type: "address" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+] as const;
+
+const client = createPublicClient({
+  chain: baseSepolia,
+  transport: http(),
+});
+
+// Known Morpho USDC markets on Base Sepolia (would fetch dynamically in production)
+const MORPHO_USDC_MARKETS = [
+  {
+    id: "morpho-usdc-eth",
+    name: "Morpho USDC/ETH",
+    marketParams: {
+      loanToken: USDC_BASE_SEPOLIA,
+      collateralToken: "0x4200000000000000000000000000000000000006" as `0x${string}`, // WETH
+      oracle: "0x0000000000000000000000000000000000000000" as `0x${string}`, // placeholder
+      irm: "0x0000000000000000000000000000000000000000" as `0x${string}`, // placeholder
+      lltv: BigInt(860000000000000000), // 86%
+    },
+    estimatedApy: 0.045, // 4.5% - would fetch from API
+  },
+];
+
+export async function getMorphoOpportunities(): Promise<YieldOpportunity[]> {
+/**
+ * Query Morpho registry for active USDC markets on Base Sepolia
+ * Returns null if no markets found
+ */
+export async function findActiveUsdcMarket(): Promise<{
+  marketId: `0x${string}`;
+  marketParams: MarketParams;
+} | null> {
+  try {
+    // For Base Sepolia testnet, there may not be any active markets
+    // In production, would query the registry contract
+    // For now, return null to trigger fallback
+    
+    // TODO: Implement actual market discovery via registry contract
+    // const markets = await client.readContract({
+    //   address: MORPHO_REGISTRY,
+    //   abi: REGISTRY_ABI,
+    //   functionName: "getMarkets"
+    // });
+    
+    console.log("Morpho: No active USDC markets found on Base Sepolia testnet");
+    return null;
+  } catch (error) {
+    console.error("Error finding Morpho market:", error);
+    return null;
+  }
+}
+
+/**
+ * Build encoded supply transaction for Morpho Blue
+ */
+export function buildMorphoSupplyData(
+  marketParams: MarketParams,
+  amount: bigint,
+  userAddress: `0x${string}`
+): `0x${string}` {
+  // Encode using viem's encodeFunctionData
+  const data = encodeFunctionData({
+    abi: MORPHO_BLUE_ABI,
+    functionName: "supply",
+    args: [
+      marketParams,
+      amount,
+      0n, // shares (0 = use assets amount)
+      userAddress,
+      "0x" as `0x${string}`, // empty data bytes
+    ],
+  });
+  return data;
+}
+
+
+  // In production, fetch from Morpho API or on-chain
+  // For now, return known markets with estimated APYs
+  return MORPHO_USDC_MARKETS.map((market) => ({
+    id: market.id,
+    protocol: "morpho" as const,
+    name: market.name,
+    asset: "USDC",
+    apy: market.estimatedApy,
+    tvl: BigInt(1000000) * BigInt(10 ** 6), // 1M USDC placeholder
+    address: MORPHO_BLUE_BASE,
+    riskScore: 0.2, // Low risk for overcollateralized lending
+    liquidityDepth: BigInt(500000) * BigInt(10 ** 6),
+    metadata: { marketParams: market.marketParams },
+  }));
+}
+
+export async function getMorphoPosition(userAddress: `0x${string}`): Promise<Position | null> {
+  // Check positions in known markets
+  for (const market of MORPHO_USDC_MARKETS) {
+    try {
+      // Generate market ID from params
+      const marketId = generateMarketId(market.marketParams);
+
+      const position = (await client.readContract({
+        address: MORPHO_BLUE_BASE,
+        abi: MORPHO_BLUE_ABI,
+        functionName: "position",
+        args: [marketId, userAddress],
+      })) as readonly [bigint, bigint, bigint];
+
+      if (position[0] > 0n) {
+        return {
+          protocol: "morpho",
+          vaultAddress: MORPHO_BLUE_BASE,
+          shares: position[0],
+          assets: position[0], // Simplified - would calculate from exchange rate
+          apy: market.estimatedApy,
+          enteredAt: Date.now(),
+        };
+      }
+    } catch (e) {
+      console.error("Error fetching Morpho position:", e);
+    }
+  }
+  return null;
+}
+
+export function buildMorphoDepositTx(
+  amount: bigint,
+  userAddress: `0x${string}`,
+  marketIndex: number = 0
+) {
+  const market = MORPHO_USDC_MARKETS[marketIndex];
+
+  return {
+    // First: approve USDC spend
+    approve: {
+      to: USDC_BASE_SEPOLIA,
+      data: encodeFunctionData({
+        abi: ERC20_ABI,
+        functionName: "approve",
+        args: [MORPHO_BLUE_BASE, amount],
+      }),
+    },
+    // Then: supply to Morpho
+    supply: {
+      to: MORPHO_BLUE_BASE,
+      data: encodeFunctionData({
+        abi: MORPHO_BLUE_ABI,
+        functionName: "supply",
+        args: [
+          market.marketParams,
+          amount,
+          0n, // shares (0 = use assets)
+          userAddress,
+          "0x" as `0x${string}`,
+        ],
+      }),
+    },
+  };
+}
+
+export function buildMorphoWithdrawTx(
+  shares: bigint,
+  userAddress: `0x${string}`,
+  marketIndex: number = 0
+) {
+  const market = MORPHO_USDC_MARKETS[marketIndex];
+
+  return {
+    to: MORPHO_BLUE_BASE,
+    data: encodeFunctionData({
+      abi: MORPHO_BLUE_ABI,
+      functionName: "withdraw",
+      args: [
+        market.marketParams,
+        0n, // assets (0 = use shares)
+        shares,
+        userAddress,
+        userAddress,
+      ],
+    }),
+  };
+}
+
+// Helper to encode function data (simplified viem encodeFunctionData)
+function encodeFunctionData({
+  abi,
+  functionName,
+  args,
+}: {
+  abi: readonly any[];
+  functionName: string;
+  args: any[];
+}): `0x${string}` {
+  // In production, use viem's encodeFunctionData
+  // This is a placeholder that would need proper ABI encoding
+  return "0x" as `0x${string}`;
+}
+
+// Generate Morpho market ID from params
+function generateMarketId(params: (typeof MORPHO_USDC_MARKETS)[0]["marketParams"]): `0x${string}` {
+  // keccak256(abi.encode(marketParams))
+  // Placeholder - would compute actual hash
+  return "0x0000000000000000000000000000000000000000000000000000000000000000" as `0x${string}`;
+}

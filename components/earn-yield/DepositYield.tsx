@@ -3,7 +3,8 @@ import { EVMWallet, useWallet } from "@crossmint/client-sdk-react-ui";
 import { AmountInput } from "../common/AmountInput";
 import { PrimaryButton } from "../common/PrimaryButton";
 import { useBalance } from "@/hooks/useBalance";
-import { YieldOpportunity, enterYield } from "@/hooks/useYields";
+import { YieldOpportunity } from "@/hooks/useOptimizer";
+import { buildDepositTransaction } from "@/lib/yield-optimizer/executor";
 import { cn } from "@/lib/utils";
 
 interface DepositYieldProps {
@@ -51,8 +52,12 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
     onProcessing();
 
     try {
-      // Get unsigned transactions from yield.xyz
-      const response = await enterYield(yieldOpportunity.id, wallet.address, amount);
+      // Get unsigned transactions from optimizer
+      const response = await buildDepositTransaction(
+        yieldOpportunity.protocol,
+        wallet.address as `0x${string}`,
+        amount
+      );
       // Sort transactions by stepIndex to ensure correct order (APPROVAL before SUPPLY)
       const sortedTransactions = [...(response.transactions || [])].sort(
         (a: any, b: any) => (a.stepIndex || 0) - (b.stepIndex || 0)
@@ -85,7 +90,17 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
       onSuccess();
     } catch (err: any) {
       console.error("[Yield] Deposit error:", err);
-      setError(err.message || "Failed to deposit. Please try again.");
+      
+      // User-friendly error messages
+      let errorMessage = err.message || "Failed to deposit. Please try again.";
+      
+      if (errorMessage.includes("market not available")) {
+        errorMessage = "Morpho markets are not yet deployed on Base Sepolia testnet. Please check back later or switch to mainnet.";
+      } else if (errorMessage.includes("execution_reverted")) {
+        errorMessage = "Transaction would revert. This may be due to insufficient balance or market not available.";
+      }
+      
+      setError(errorMessage);
       setIsLoading(false);
     }
   };
@@ -106,7 +121,8 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
     }, 2000);
   };
 
-  const hasApiKey = !!process.env.NEXT_PUBLIC_YIELD_API_KEY;
+  // Always enabled - no API key needed for direct protocol integration
+  const isEnabled = true;
 
   return (
     <div className="mt-4 flex w-full flex-col">
@@ -180,37 +196,8 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
       {/* Error Display */}
       {error && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</div>}
 
-      {/* Demo Mode Notice */}
-      {!hasApiKey && (
-        <div className="mb-4 rounded-lg bg-yellow-50 p-3">
-          <div className="flex items-start gap-2">
-            <svg
-              className="mt-0.5 h-4 w-4 flex-shrink-0 text-yellow-600"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
-            <p className="text-xs text-yellow-700">
-              <strong>Demo Mode:</strong> Yield.xyz API key not configured. Add{" "}
-              <code className="rounded bg-yellow-100 px-1">NEXT_PUBLIC_YIELD_API_KEY</code> to your{" "}
-              <code className="rounded bg-yellow-100 px-1">.env</code> file for live transactions.
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* Deposit Button */}
-      <PrimaryButton
-        onClick={hasApiKey ? handleDeposit : handleDemoDeposit}
-        disabled={!isAmountValid || isLoading}
-      >
+      <PrimaryButton onClick={handleDeposit} disabled={!isAmountValid || isLoading}>
         {isLoading ? "Processing..." : `Deposit ${amount || "0"} USDC`}
       </PrimaryButton>
 

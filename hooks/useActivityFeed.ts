@@ -1,6 +1,6 @@
 import { useWallet } from "@crossmint/client-sdk-react-ui";
 import { useQuery } from "@tanstack/react-query";
-import { getUserYieldActions, YieldAction } from "./useYields";
+import { YieldPosition, useYieldPositions } from "./useOptimizer";
 
 // Unified activity event type
 export interface ActivityEvent {
@@ -12,16 +12,13 @@ export interface ActivityEvent {
   token_symbol?: string;
 }
 
-// Transform yield action to activity event format
-function yieldActionToActivityEvent(action: YieldAction): ActivityEvent {
-  const isEnter = action.intent === "enter";
-  const type = isEnter ? "yield-enter" : "yield-exit";
-
+// Transform yield position to activity event format
+function yieldPositionToActivityEvent(position: YieldPosition): ActivityEvent {
   return {
-    from_address: action.address,
-    timestamp: new Date(action.createdAt).getTime(),
-    type,
-    amount: action.amountUsd || action.amount || "0",
+    from_address: position.vaultAddress,
+    timestamp: position.enteredAt,
+    type: "yield-enter",
+    amount: position.amountUsd || position.amount || "0",
     token_symbol: "USDC",
   };
 }
@@ -36,22 +33,15 @@ export function useActivityFeed() {
     enabled: !!wallet?.address,
   });
 
-  // Fetch yield actions - uses same query key as useYieldPositions for cache sharing
-  const yieldActionsQuery = useQuery({
-    queryKey: ["yieldPositions", wallet?.address],
-    queryFn: () => getUserYieldActions(wallet!.address),
-    staleTime: 30 * 1000, // Match useYieldPositions cache time
-    enabled: !!wallet?.address,
-  });
+  // Fetch yield positions - uses optimizer API
+  const { positions, isLoading: positionsLoading } = useYieldPositions(wallet?.address);
 
   // Combine and sort events
   const combinedEvents = (() => {
     const walletEvents: ActivityEvent[] = walletActivityQuery.data?.events || [];
 
-    // Transform yield actions to activity events
-    const yieldEvents: ActivityEvent[] = (yieldActionsQuery.data || []).map(
-      yieldActionToActivityEvent
-    );
+    // Transform yield positions to activity events
+    const yieldEvents: ActivityEvent[] = positions.map(yieldPositionToActivityEvent);
 
     // Combine and sort by timestamp (most recent first)
     const allEvents = [...walletEvents, ...yieldEvents].sort((a, b) => b.timestamp - a.timestamp);
@@ -61,10 +51,10 @@ export function useActivityFeed() {
 
   return {
     data: { events: combinedEvents },
-    isLoading: walletActivityQuery.isLoading || yieldActionsQuery.isLoading,
-    error: walletActivityQuery.error || yieldActionsQuery.error,
+    isLoading: walletActivityQuery.isLoading || positionsLoading,
+    error: walletActivityQuery.error,
     refetch: async () => {
-      await Promise.all([walletActivityQuery.refetch(), yieldActionsQuery.refetch()]);
+      await walletActivityQuery.refetch();
     },
   };
 }

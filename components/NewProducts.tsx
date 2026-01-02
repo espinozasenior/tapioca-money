@@ -1,7 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import Image from "next/image";
 import { Container } from "./common/Container";
-import { useYields } from "@/hooks/useYields";
+import { useYields } from "@/hooks/useOptimizer";
 import { cn } from "@/lib/utils";
 
 interface NewProductProps {

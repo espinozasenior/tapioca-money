@@ -6,7 +6,7 @@ import { ScrollArea } from "../common/ScrollArea";
 import { YieldList } from "./YieldList";
 import { DepositYield } from "./DepositYield";
 import { PositionsList } from "./PositionsList";
-import { useYields, useYieldPositions, YieldOpportunity } from "@/hooks/useYields";
+import { useYields, useYieldPositions, YieldOpportunity } from "@/hooks/useOptimizer";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
 import { cn } from "@/lib/utils";
 
