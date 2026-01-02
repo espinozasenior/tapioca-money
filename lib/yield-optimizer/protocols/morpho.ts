@@ -1,9 +1,16 @@
-// Morpho Blue Protocol Integration (viem-based, no SDK)
+// Morpho Blue Protocol Integration (viem-based with simulation SDK)
 import { createPublicClient, http, parseUnits, formatUnits, encodeFunctionData, keccak256, encodeAbiParameters } from "viem";
 import { baseSepolia } from "viem/chains";
 import type { YieldOpportunity, Position } from "../types";
 import { MORPHO_BLUE_BASE, USDC_BASE_SEPOLIA } from "../types";
 import { CHAIN_CONFIG, PROTOCOLS, MORPHO_USDC_MARKET_PARAMS } from "../config";
+import { 
+  createSimulationState, 
+  sharesToAssets, 
+  calculateSupplyApy,
+  previewSupply,
+  type SupplyPreview 
+} from "./morpho-simulation";
 
 // Morpho Blue ABI (minimal for deposits/withdrawals)
 export const MORPHO_BLUE_ABI = [
@@ -162,21 +169,28 @@ export function buildMorphoSupplyData(
 }
 
 /**
- * Get Morpho yield opportunities (using direct viem calls)
+ * Get Morpho yield opportunities (using simulation SDK for APY)
  */
 export async function getMorphoOpportunities(): Promise<YieldOpportunity[]> {
-  // Return opportunity with configured market params
-  // APY is estimated since testnet may not have active market
+  // Create simulation state to calculate APY
+  const simState = createSimulationState();
+  const apy = calculateSupplyApy(simState);
+  
+  // Get TVL from simulation state
+  const marketId = getMarketId(MORPHO_USDC_MARKET_PARAMS);
+  const market = simState.tryGetMarket(marketId as unknown as import("@morpho-org/blue-sdk").MarketId);
+  const tvl = market?.totalSupplyAssets || 0n;
+  
   return [{
     id: "morpho-usdc",
     protocol: "morpho" as const,
     name: "Morpho USDC Lending",
     asset: "USDC",
-    apy: 0.045, // 4.5% estimated APY
-    tvl: BigInt(0),
+    apy,
+    tvl,
     address: MORPHO_BLUE_BASE,
     riskScore: 0.2,
-    liquidityDepth: BigInt(0),
+    liquidityDepth: tvl,
     metadata: { 
       marketParams: MORPHO_USDC_MARKET_PARAMS,
     }
@@ -184,7 +198,7 @@ export async function getMorphoOpportunities(): Promise<YieldOpportunity[]> {
 }
 
 /**
- * Get user's Morpho position using direct viem calls
+ * Get user's Morpho position using simulation SDK for accurate conversion
  */
 export async function getMorphoPosition(userAddress: `0x${string}`): Promise<Position | null> {
   try {
@@ -205,16 +219,17 @@ export async function getMorphoPosition(userAddress: `0x${string}`): Promise<Pos
       return null;
     }
 
-    // For simplicity, treat shares as 1:1 with assets (close approximation)
-    // In production, would fetch market state for accurate conversion
-    const supplyAssets = supplyShares;
+    // Use simulation SDK for accurate share→asset conversion
+    const simState = createSimulationState();
+    const supplyAssets = sharesToAssets(supplyShares, simState);
+    const apy = calculateSupplyApy(simState);
 
     return {
       protocol: "morpho",
       vaultAddress: PROTOCOLS.morpho.core,
       shares: supplyShares,
       assets: supplyAssets,
-      apy: 0.045, // Estimated APY
+      apy,
       enteredAt: Date.now(),
     };
   } catch (error) {
@@ -222,6 +237,20 @@ export async function getMorphoPosition(userAddress: `0x${string}`): Promise<Pos
     return null;
   }
 }
+
+/**
+ * Preview a supply operation before executing
+ * Returns expected shares, APY, and price impact
+ */
+export function previewMorphoSupply(
+  userAddress: `0x${string}`,
+  amount: bigint
+): SupplyPreview {
+  return previewSupply(userAddress, amount);
+}
+
+// Re-export simulation utilities for external use
+export { previewSupply, createSimulationState, sharesToAssets, calculateSupplyApy } from "./morpho-simulation";
 
 /**
  * Build deposit transaction with approval + supply

@@ -23,6 +23,9 @@ importers:
       '@morpho-org/morpho-ts':
         specifier: ^2.0.2
         version: 2.4.6
+      '@morpho-org/simulation-sdk':
+        specifier: 2.0.0
+        version: 2.0.0(@morpho-org/blue-sdk@2.3.2(@morpho-org/morpho-ts@2.4.6))(@morpho-org/morpho-ts@2.4.6)
       '@radix-ui/react-dialog':
         specifier: 1.1.1
         version: 1.1.1(@types/react-dom@19.1.2(@types/react@19.1.1))(@types/react@19.1.1)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -1422,6 +1425,12 @@ packages:
 
   '@morpho-org/morpho-ts@2.4.6':
     resolution: {integrity: sha512-LWglkfjjU5xXOwNg8dog9g7+k42rBbgvx6xf1SBje8ZQOurhC+BB0yh/Jl/ArcTf/siiFeXDKievEhETZEo4jg==}
+
+  '@morpho-org/simulation-sdk@2.0.0':
+    resolution: {integrity: sha512-nHUbEHNKgXRFZR89usDLIBiA1AudS8f05v9DVamZ9k7pFkDUBRgUdQbUVz8KzaD7yJ2iuezqEAwYSz0mRC71Ng==}
+    peerDependencies:
+      '@morpho-org/blue-sdk': ^2.0.0
+      '@morpho-org/morpho-ts': ^2.0.0
 
   '@msgpack/msgpack@3.1.2':
     resolution: {integrity: sha512-JEW4DEtBzfe8HvUYecLU9e6+XJnKDlUAIve8FvPzF3Kzs6Xo/KuZkZJsDH0wJXl/qEZbeeE7edxDNY3kMs39hQ==}
@@ -4187,6 +4196,10 @@ packages:
 
   multiformats@9.9.0:
     resolution: {integrity: sha512-HoMUjhH9T8DDBNT+6xzkrd9ga/XiBI4xLr58LJACwK6G3HTOPeMz4nB4KJs33L2BelrIJa7P0VuNaVF3hMYfjg==}
+
+  mutative@1.3.0:
+    resolution: {integrity: sha512-8MJj6URmOZAV70dpFe1YnSppRTKC4DsMkXQiBDFayLcDI4ljGokHxmpqaBQuDWa4iAxWaJJ1PS8vAmbntjjKmQ==}
+    engines: {node: '>=14.0'}
 
   nanoclone@0.2.1:
     resolution: {integrity: sha512-wynEP02LmIbLpcYw8uBKpcfF6dmg2vcpKqxeH5UcoKEYdExslsdUA4ugFauuaeYdTB76ez6gJW8XAZ6CgkXYxA==}
@@ -7866,6 +7879,12 @@ snapshots:
       '@noble/hashes': 1.8.0
 
   '@morpho-org/morpho-ts@2.4.6': {}
+
+  '@morpho-org/simulation-sdk@2.0.0(@morpho-org/blue-sdk@2.3.2(@morpho-org/morpho-ts@2.4.6))(@morpho-org/morpho-ts@2.4.6)':
+    dependencies:
+      '@morpho-org/blue-sdk': 2.3.2(@morpho-org/morpho-ts@2.4.6)
+      '@morpho-org/morpho-ts': 2.4.6
+      mutative: 1.3.0
 
   '@msgpack/msgpack@3.1.2': {}
 
@@ -11723,6 +11742,8 @@ snapshots:
   ms@2.1.3: {}
 
   multiformats@9.9.0: {}
+
+  mutative@1.3.0: {}
 
   nanoclone@0.2.1: {}
 
