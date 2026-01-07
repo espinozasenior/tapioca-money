@@ -10,10 +10,13 @@ function transformOpportunity(o: any) {
     liquidityDepth: o.liquidityDepth.toString(),
     // Legacy Yield.xyz compatibility
     providerId: o.protocol,
-    network: "base-sepolia",
+    network: "base",
     metadata: {
+      // Preserve original metadata (vaultAddress, curator, isVault, etc)
+      ...o.metadata,
+      // Add/override legacy fields
       name: o.name,
-      description: `Earn yield on USDC via ${o.protocol}`,
+      description: o.metadata?.description || `Earn yield on USDC via ${o.protocol}`,
     },
     rewardRate: {
       total: o.apy,
@@ -23,7 +26,7 @@ function transformOpportunity(o: any) {
       exit: true,
     },
     mechanics: {
-      type: "lending" as const,
+      type: o.metadata?.isVault ? "vault" : "lending",
     },
   };
 }
@@ -32,7 +35,10 @@ function transformOpportunity(o: any) {
 function transformPosition(p: any) {
   if (!p) return null;
   return {
-    ...p,
+    protocol: p.protocol,
+    vaultAddress: p.vaultAddress,
+    apy: p.apy,
+    enteredAt: p.enteredAt,
     id: `${p.protocol}-${p.vaultAddress}`,
     yieldId: `base-usdc-${p.protocol}`,
     shares: p.shares.toString(),

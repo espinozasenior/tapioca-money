@@ -21,6 +21,10 @@ export interface YieldOpportunity {
   metadata: {
     name: string;
     description?: string;
+    vaultAddress?: `0x${string}`; // For Morpho vaults
+    curator?: string;
+    isVault?: boolean;
+    marketParams?: Record<string, unknown>;
   };
   rewardRate: {
     total: number;

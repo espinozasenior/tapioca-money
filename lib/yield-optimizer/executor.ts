@@ -1,13 +1,13 @@
 // Transaction executor for yield optimizer
 import { encodeFunctionData, parseUnits } from "viem";
-import { USDC_BASE_SEPOLIA, MORPHO_BLUE_BASE } from "./types";
+import { MORPHO_BLUE_BASE } from "./types";
 import { 
   findActiveUsdcMarket, 
   buildMorphoDepositTx, 
   buildMorphoWithdrawTx,
   MORPHO_BLUE_ABI 
 } from "./protocols/morpho";
-import { PROTOCOLS } from "./config";
+import { PROTOCOLS, USDC_ADDRESS } from "./config";
 
 // ERC20 ABI for approvals
 const ERC20_ABI = [
@@ -59,17 +59,30 @@ interface DepositTransactionResult {
 
 /**
  * Build deposit transaction for a yield opportunity
+ * @param protocol - Protocol name (morpho, aave, etc)
+ * @param userAddress - User's wallet address
+ * @param amount - Amount to deposit in USDC (decimals)
+ * @param vaultAddress - Optional vault address for Morpho vaults (ERC4626)
  */
 export async function buildDepositTransaction(
   protocol: string,
   userAddress: `0x${string}`,
-  amount: string
+  amount: string,
+  vaultAddress?: `0x${string}`
 ): Promise<DepositTransactionResult> {
   const amountWei = parseUnits(amount, 6); // USDC has 6 decimals
   const transactions: DepositTransactionResult["transactions"] = [];
 
   // Step 1: Approve USDC spend
-  const targetAddress = protocol === "aave" ? AAVE_POOL : MORPHO_BLUE_BASE;
+  // If vault address provided, approve for vault; otherwise use protocol default
+  let targetAddress: `0x${string}`;
+  if (protocol === "morpho" && vaultAddress) {
+    targetAddress = vaultAddress; // Approve vault for ERC4626 deposit
+  } else if (protocol === "aave") {
+    targetAddress = AAVE_POOL;
+  } else {
+    targetAddress = MORPHO_BLUE_BASE; // Fallback to Morpho Core
+  }
 
   const approveData = encodeFunctionData({
     abi: ERC20_ABI,
@@ -83,7 +96,7 @@ export async function buildDepositTransaction(
     type: "APPROVAL",
     status: "CREATED",
     unsignedTransaction: JSON.stringify({
-      to: USDC_BASE_SEPOLIA,
+      to: USDC_ADDRESS,
       data: approveData,
       value: "0x0",
     }),
@@ -95,7 +108,7 @@ export async function buildDepositTransaction(
     const supplyData = encodeFunctionData({
       abi: AAVE_POOL_ABI,
       functionName: "supply",
-      args: [USDC_BASE_SEPOLIA, amountWei, userAddress, 0],
+      args: [USDC_ADDRESS, amountWei, userAddress, 0],
     });
 
     transactions.push({
@@ -111,33 +124,50 @@ export async function buildDepositTransaction(
       stepIndex: 1,
     });
   } else if (protocol === "morpho") {
-    // Check if market is available
-    const marketParams = await findActiveUsdcMarket();
-    
-    if (!marketParams) {
-      throw new Error(
-        "Morpho USDC market not available. " +
-        "Please ensure the market is deployed on Base Sepolia or switch to mainnet."
-      );
+    // Use vault deposit if vault address is provided (production path)
+    if (vaultAddress) {
+      // Build ERC4626 vault deposit transaction
+      const morphoTxs = buildMorphoDepositTx(amountWei, userAddress, vaultAddress);
+      
+      transactions.push({
+        id: `supply-${Date.now()}`,
+        title: "Deposit to Morpho Vault",
+        type: "SUPPLY",
+        status: "CREATED",
+        unsignedTransaction: JSON.stringify({
+          to: morphoTxs.supply.to,
+          data: morphoTxs.supply.data,
+          value: "0x0",
+        }),
+        stepIndex: 1,
+      });
+    } else {
+      // Fallback: direct market supply (for testing/legacy)
+      const marketParams = await findActiveUsdcMarket();
+      
+      if (!marketParams) {
+        throw new Error(
+          "Morpho USDC market not available. " +
+          "Please provide a vault address for production deposits."
+        );
+      }
+      
+      // Build deposit transactions using refactored function
+      const morphoTxs = buildMorphoDepositTx(amountWei, userAddress);
+      
+      transactions.push({
+        id: `supply-${Date.now()}`,
+        title: "Supply to Morpho",
+        type: "SUPPLY",
+        status: "CREATED",
+        unsignedTransaction: JSON.stringify({
+          to: morphoTxs.supply.to,
+          data: morphoTxs.supply.data,
+          value: "0x0",
+        }),
+        stepIndex: 1,
+      });
     }
-    
-    // Build deposit transactions using refactored function
-    const morphoTxs = buildMorphoDepositTx(amountWei, userAddress);
-    
-    // Approval transaction (already added above)
-    // Just add the supply transaction
-    transactions.push({
-      id: `supply-${Date.now()}`,
-      title: "Supply to Morpho",
-      type: "SUPPLY",
-      status: "CREATED",
-      unsignedTransaction: JSON.stringify({
-        to: morphoTxs.supply.to,
-        data: morphoTxs.supply.data,
-        value: "0x0",
-      }),
-      stepIndex: 1,
-    });
   } else if (protocol === "moonwell") {
     // Moonwell deposit - not deployed on testnet
     transactions.push({
@@ -214,7 +244,7 @@ export async function buildWithdrawTransaction(
       abi: AAVE_WITHDRAW_ABI,
       functionName: "withdraw",
       args: [
-        USDC_BASE_SEPOLIA,
+        USDC_ADDRESS,
         assets || 0n, // Withdraw all if not specified
         userAddress,
       ],

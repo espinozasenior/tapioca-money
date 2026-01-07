@@ -1,11 +1,11 @@
 #!/usr/bin/env tsx
 /**
- * Morpho Blue Test Market Deployment Script
+ * Morpho Blue Main Market Deployment Script
  * 
- * This script deploys a USDC lending market on Morpho Blue (Base Sepolia testnet).
+ * This script deploys a USDC lending market on Morpho Blue (Base Mainnet).
  * 
  * Prerequisites:
- * - Wallet with Sepolia ETH for gas
+ * - Wallet with Base Mainnet ETH for gas
  * - Private key in .env as DEPLOYER_PRIVATE_KEY
  * - USDC tokens available at configured address
  * 
@@ -15,7 +15,7 @@
 
 import { createWalletClient, createPublicClient, http, parseEther } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { baseSepolia } from "viem/chains";
+import { base } from "viem/chains";
 import { CHAIN_CONFIG, PROTOCOLS, USDC_ADDRESS } from "../lib/yield-optimizer/config";
 
 // ============================================================================
@@ -91,13 +91,13 @@ async function main() {
   const account = privateKeyToAccount(DEPLOYER_PRIVATE_KEY as `0x${string}`);
   
   const publicClient = createPublicClient({
-    chain: baseSepolia,
+    chain: base,
     transport: http(CHAIN_CONFIG.rpcUrl),
   });
 
   const walletClient = createWalletClient({
     account,
-    chain: baseSepolia,
+    chain: base,
     transport: http(CHAIN_CONFIG.rpcUrl),
   });
 
@@ -220,7 +220,7 @@ async function main() {
     ] as const,
     functionName: "idToMarketParams",
     args: ["0x0000000000000000000000000000000000000000000000000000000000000000"], // Will be calculated properly
-  }).catch(() => null);
+  } as any).catch(() => null);
 
   // ============================================================================
   // STEP 5: Output Configuration

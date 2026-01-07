@@ -53,10 +53,14 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
 
     try {
       // Get unsigned transactions from optimizer
+      // For Morpho vaults, pass the vault address from the opportunity
+      const vaultAddress = yieldOpportunity.metadata?.vaultAddress as `0x${string}` | undefined;
+      
       const response = await buildDepositTransaction(
         yieldOpportunity.protocol,
         wallet.address as `0x${string}`,
-        amount
+        amount,
+        vaultAddress // Pass vault address for ERC4626 deposits
       );
       // Sort transactions by stepIndex to ensure correct order (APPROVAL before SUPPLY)
       const sortedTransactions = [...(response.transactions || [])].sort(

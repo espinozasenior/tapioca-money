@@ -1,8 +1,9 @@
 // Yield Optimizer - Main Entry Point
 export * from "./types";
 export * from "./strategy/evaluator";
+export * from "./morpho-api";
 
-import { getMorphoOpportunities, getMorphoPosition } from "./protocols/morpho";
+import { getMorphoOpportunities, getMorphoPosition, getMorphoVaultPosition } from "./protocols/morpho";
 import { getAaveOpportunities, getAavePosition } from "./protocols/aave";
 import { getMoonwellOpportunities, getMoonwellPosition } from "./protocols/moonwell";
 import { evaluateRebalance } from "./strategy/evaluator";

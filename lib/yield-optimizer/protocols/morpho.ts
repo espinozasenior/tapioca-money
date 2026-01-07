@@ -1,9 +1,10 @@
 // Morpho Blue Protocol Integration (viem-based with simulation SDK)
 import { createPublicClient, http, parseUnits, formatUnits, encodeFunctionData, keccak256, encodeAbiParameters } from "viem";
-import { baseSepolia } from "viem/chains";
+import { base } from "viem/chains";
 import type { YieldOpportunity, Position } from "../types";
-import { MORPHO_BLUE_BASE, USDC_BASE_SEPOLIA } from "../types";
-import { CHAIN_CONFIG, PROTOCOLS, MORPHO_USDC_MARKET_PARAMS } from "../config";
+import { MORPHO_BLUE_BASE } from "../types";
+import { CHAIN_CONFIG, PROTOCOLS, MORPHO_USDC_MARKET_PARAMS, USDC_ADDRESS } from "../config";
+import { fetchMorphoUsdcVaults, getBestUsdcVault, type MorphoVault } from "../morpho-api";
 import { 
   createSimulationState, 
   sharesToAssets, 
@@ -104,9 +105,63 @@ const ERC20_ABI = [
 ] as const;
 
 const client = createPublicClient({
-  chain: baseSepolia,
+  chain: base,
   transport: http(CHAIN_CONFIG.rpcUrl),
 });
+
+// ERC4626 Vault ABI for Morpho Vaults
+export const ERC4626_VAULT_ABI = [
+  {
+    name: "deposit",
+    type: "function",
+    inputs: [
+      { name: "assets", type: "uint256" },
+      { name: "receiver", type: "address" },
+    ],
+    outputs: [{ name: "shares", type: "uint256" }],
+  },
+  {
+    name: "withdraw",
+    type: "function",
+    inputs: [
+      { name: "assets", type: "uint256" },
+      { name: "receiver", type: "address" },
+      { name: "owner", type: "address" },
+    ],
+    outputs: [{ name: "shares", type: "uint256" }],
+  },
+  {
+    name: "redeem",
+    type: "function",
+    inputs: [
+      { name: "shares", type: "uint256" },
+      { name: "receiver", type: "address" },
+      { name: "owner", type: "address" },
+    ],
+    outputs: [{ name: "assets", type: "uint256" }],
+  },
+  {
+    name: "balanceOf",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "account", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    name: "convertToAssets",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "shares", type: "uint256" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    name: "totalAssets",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+] as const;
 
 // Market parameter type
 export interface MarketParams {
@@ -169,32 +224,51 @@ export function buildMorphoSupplyData(
 }
 
 /**
- * Get Morpho yield opportunities (using simulation SDK for APY)
+ * Get Morpho yield opportunities from production vaults via API
  */
 export async function getMorphoOpportunities(): Promise<YieldOpportunity[]> {
-  // Create simulation state to calculate APY
-  const simState = createSimulationState();
-  const apy = calculateSupplyApy(simState);
+  // Fetch live vault data from Morpho API
+  const vaults = await fetchMorphoUsdcVaults();
   
-  // Get TVL from simulation state
-  const marketId = getMarketId(MORPHO_USDC_MARKET_PARAMS);
-  const market = simState.tryGetMarket(marketId as unknown as import("@morpho-org/blue-sdk").MarketId);
-  const tvl = market?.totalSupplyAssets || 0n;
-  
-  return [{
-    id: "morpho-usdc",
+  if (vaults.length === 0) {
+    // Fallback to simulation-based APY if API fails
+    const simState = createSimulationState();
+    const apy = calculateSupplyApy(simState);
+    const marketId = getMarketId(MORPHO_USDC_MARKET_PARAMS);
+    const market = simState.tryGetMarket(marketId as unknown as import("@morpho-org/blue-sdk").MarketId);
+    const tvl = market?.totalSupplyAssets || 0n;
+    
+    return [{
+      id: "morpho-usdc",
+      protocol: "morpho" as const,
+      name: "Morpho USDC Lending",
+      asset: "USDC",
+      apy,
+      tvl,
+      address: MORPHO_BLUE_BASE,
+      riskScore: 0.2,
+      liquidityDepth: tvl,
+      metadata: { marketParams: MORPHO_USDC_MARKET_PARAMS }
+    }];
+  }
+
+  // Convert API vaults to yield opportunities
+  return vaults.map((vault) => ({
+    id: `morpho-vault-${vault.address.slice(0, 8)}`,
     protocol: "morpho" as const,
-    name: "Morpho USDC Lending",
+    name: vault.name,
     asset: "USDC",
-    apy,
-    tvl,
-    address: MORPHO_BLUE_BASE,
+    apy: vault.apy.netApy,
+    tvl: BigInt(vault.totalAssets),
+    address: vault.address,
     riskScore: 0.2,
-    liquidityDepth: tvl,
-    metadata: { 
-      marketParams: MORPHO_USDC_MARKET_PARAMS,
+    liquidityDepth: BigInt(vault.totalAssets),
+    metadata: {
+      vaultAddress: vault.address,
+      curator: vault.curator,
+      isVault: true,
     }
-  }];
+  }));
 }
 
 /**
@@ -254,23 +328,45 @@ export { previewSupply, createSimulationState, sharesToAssets, calculateSupplyAp
 
 /**
  * Build deposit transaction with approval + supply
- * Returns array of transactions to be executed sequentially
+ * Supports both direct Morpho Blue markets and ERC4626 vaults
  */
 export function buildMorphoDepositTx(
   amount: bigint,
-  userAddress: `0x${string}`
+  userAddress: `0x${string}`,
+  vaultAddress?: `0x${string}`
 ) {
+  // If vault address provided, use ERC4626 vault deposit
+  if (vaultAddress) {
+    return {
+      approve: {
+        to: USDC_ADDRESS as `0x${string}`,
+        data: encodeFunctionData({
+          abi: ERC20_ABI,
+          functionName: "approve",
+          args: [vaultAddress, amount],
+        }),
+      },
+      supply: {
+        to: vaultAddress,
+        data: encodeFunctionData({
+          abi: ERC4626_VAULT_ABI,
+          functionName: "deposit",
+          args: [amount, userAddress],
+        }),
+      },
+    };
+  }
+
+  // Fallback: direct Morpho Blue market supply
   return {
-    // Step 1: Approve USDC spend
     approve: {
-      to: USDC_BASE_SEPOLIA,
+      to: USDC_ADDRESS as `0x${string}`,
       data: encodeFunctionData({
         abi: ERC20_ABI,
         functionName: "approve",
         args: [PROTOCOLS.morpho.core, amount],
       }),
     },
-    // Step 2: Supply to Morpho
     supply: {
       to: PROTOCOLS.morpho.core,
       data: encodeFunctionData({
@@ -279,9 +375,9 @@ export function buildMorphoDepositTx(
         args: [
           MORPHO_USDC_MARKET_PARAMS,
           amount,
-          0n, // shares (0 = use assets amount)
+          0n,
           userAddress,
-          "0x" as `0x${string}`, // empty callback data
+          "0x" as `0x${string}`,
         ],
       }),
     },
@@ -290,18 +386,41 @@ export function buildMorphoDepositTx(
 
 /**
  * Build withdrawal transaction to exit position
- * Can withdraw by shares or by assets amount
+ * Supports both direct Morpho Blue markets and ERC4626 vaults
  */
 export function buildMorphoWithdrawTx(
   userAddress: `0x${string}`,
   shares?: bigint,
-  assets?: bigint
+  assets?: bigint,
+  vaultAddress?: `0x${string}`
 ) {
-  // Must provide either shares or assets
   if (!shares && !assets) {
     throw new Error("Must provide either shares or assets to withdraw");
   }
 
+  // If vault address provided, use ERC4626 vault redeem/withdraw
+  if (vaultAddress) {
+    if (shares) {
+      return {
+        to: vaultAddress,
+        data: encodeFunctionData({
+          abi: ERC4626_VAULT_ABI,
+          functionName: "redeem",
+          args: [shares, userAddress, userAddress],
+        }),
+      };
+    }
+    return {
+      to: vaultAddress,
+      data: encodeFunctionData({
+        abi: ERC4626_VAULT_ABI,
+        functionName: "withdraw",
+        args: [assets!, userAddress, userAddress],
+      }),
+    };
+  }
+
+  // Fallback: direct Morpho Blue market withdraw
   return {
     to: PROTOCOLS.morpho.core,
     data: encodeFunctionData({
@@ -309,11 +428,53 @@ export function buildMorphoWithdrawTx(
       functionName: "withdraw",
       args: [
         MORPHO_USDC_MARKET_PARAMS,
-        assets || 0n, // If assets specified, use it; otherwise 0 = use shares
-        shares || 0n, // If shares specified, use it; otherwise 0 = use assets
-        userAddress, // onBehalf - withdraw from this user's position
-        userAddress, // receiver - send withdrawn assets to this address
+        assets || 0n,
+        shares || 0n,
+        userAddress,
+        userAddress,
       ],
     }),
   };
+}
+
+/**
+ * Get user's position in a Morpho vault (ERC4626)
+ */
+export async function getMorphoVaultPosition(
+  userAddress: `0x${string}`,
+  vaultAddress: `0x${string}`
+): Promise<Position | null> {
+  try {
+    const shares = await client.readContract({
+      address: vaultAddress,
+      abi: ERC4626_VAULT_ABI,
+      functionName: "balanceOf",
+      args: [userAddress],
+    }) as bigint;
+
+    if (shares === 0n) return null;
+
+    const assets = await client.readContract({
+      address: vaultAddress,
+      abi: ERC4626_VAULT_ABI,
+      functionName: "convertToAssets",
+      args: [shares],
+    }) as bigint;
+
+    // Get APY from API
+    const vault = await getBestUsdcVault();
+    const apy = vault?.apy.netApy || 0.045;
+
+    return {
+      protocol: "morpho",
+      vaultAddress,
+      shares,
+      assets,
+      apy,
+      enteredAt: Date.now(),
+    };
+  } catch (error) {
+    console.error("Error fetching vault position:", error);
+    return null;
+  }
 }
