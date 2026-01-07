@@ -228,15 +228,30 @@ export function PositionsList({ positions, yields, isLoading, onExitSuccess }: P
               )}
             </div>
 
-            {/* Earnings info */}
-            <div className="mt-3 rounded-lg bg-green-50 p-2">
-              {estimatedYearlyEarnings ? (
-                <p className="text-xs text-green-700">
-                  💰 Earning ~${estimatedYearlyEarnings} USDC/year at{" "}
-                  {apy ? formatApyLocal(apy) : "current"} rate
-                </p>
-              ) : (
-                <p className="text-xs text-green-700">📈 Position active - earning yield</p>
+            {/* Rewards & Earnings info */}
+            <div className="mt-3 space-y-2">
+              {position.rewards && (
+                <div className="rounded-lg bg-blue-50 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-blue-900">
+                      📈 Total Earned: ${position.rewards.totalEarned} USDC
+                    </span>
+                    <span className="text-xs text-blue-700">
+                      {position.rewards.daysActive} {position.rewards.daysActive === 1 ? "day" : "days"} active
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-blue-700">
+                    💰 Current rate: ~${position.rewards.monthlyRate} USDC/month
+                  </p>
+                </div>
+              )}
+              {!position.rewards && estimatedYearlyEarnings && (
+                <div className="rounded-lg bg-green-50 p-2">
+                  <p className="text-xs text-green-700">
+                    💰 Earning ~${estimatedYearlyEarnings} USDC/year at{" "}
+                    {apy ? formatApyLocal(apy) : "current"} rate
+                  </p>
+                </div>
               )}
             </div>
 

@@ -51,6 +51,13 @@ export interface YieldPosition {
   amount: string;
   amountUsd: string;
   createdAt: string;
+  // Rewards tracking
+  rewards?: {
+    totalEarned: string; // Display-friendly format (USDC)
+    earnedThisMonth: string; // Current month estimate
+    monthlyRate: string; // Current monthly earning rate
+    daysActive: number; // Days since entry
+  };
 }
 
 interface OptimizerDecision {

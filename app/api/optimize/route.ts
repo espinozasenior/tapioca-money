@@ -1,6 +1,7 @@
 // Auto-Optimization API Endpoint
 import { NextRequest, NextResponse } from "next/server";
 import { optimize, getAllOpportunities, getCurrentPosition } from "@/lib/yield-optimizer";
+import { calculateAccruedRewards } from "@/lib/yield-optimizer/rewards-calculator";
 
 // Transform opportunity to include legacy compatibility fields
 function transformOpportunity(o: any) {
@@ -31,9 +32,13 @@ function transformOpportunity(o: any) {
   };
 }
 
-// Transform position to include legacy compatibility fields
+// Transform position to include legacy compatibility fields and rewards
 function transformPosition(p: any) {
   if (!p) return null;
+  
+  // Calculate rewards for this position
+  const rewards = calculateAccruedRewards(p);
+  
   return {
     protocol: p.protocol,
     vaultAddress: p.vaultAddress,
@@ -46,6 +51,12 @@ function transformPosition(p: any) {
     amount: (Number(p.assets) / 1e6).toFixed(2),
     amountUsd: (Number(p.assets) / 1e6).toFixed(2),
     createdAt: new Date(p.enteredAt).toISOString(),
+    rewards: {
+      totalEarned: rewards.totalEarned.toFixed(2),
+      earnedThisMonth: (rewards.currentMonthlyRate * (Math.min(rewards.daysActive, 30) / 30)).toFixed(2),
+      monthlyRate: rewards.currentMonthlyRate.toFixed(2),
+      daysActive: rewards.daysActive,
+    },
   };
 }
 
