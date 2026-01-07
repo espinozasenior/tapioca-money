@@ -274,7 +274,43 @@ export async function getMorphoOpportunities(): Promise<YieldOpportunity[]> {
 /**
  * Get user's Morpho position using simulation SDK for accurate conversion
  */
-export async function getMorphoPosition(userAddress: `0x${string}`): Promise<Position | null> {
+/**
+ * Get user's positions across all Morpho vaults and direct markets
+ * Checks both ERC4626 vaults and direct Morpho Blue market
+ */
+export async function getMorphoPosition(userAddress: `0x${string}`): Promise<Position[]> {
+  const positions: Position[] = [];
+
+  // Check direct Morpho Blue market position (legacy)
+  const directPosition = await getMorphoDirectPosition(userAddress);
+  if (directPosition) {
+    positions.push(directPosition);
+  }
+
+  // Check all ERC4626 vault positions
+  try {
+    const vaults = await fetchMorphoUsdcVaults();
+    const vaultPositions = await Promise.allSettled(
+      vaults.map(vault => getMorphoVaultPosition(userAddress, vault.address))
+    );
+    
+    vaultPositions.forEach(result => {
+      if (result.status === "fulfilled" && result.value) {
+        positions.push(result.value);
+      }
+    });
+  } catch (error) {
+    console.error("Morpho: Error fetching vault positions:", error);
+  }
+
+  return positions;
+}
+
+/**
+ * Get user's position in direct Morpho Blue market (legacy)
+ * Not typically used anymore as deposits go to ERC4626 vaults
+ */
+export async function getMorphoDirectPosition(userAddress: `0x${string}`): Promise<Position | null> {
   try {
     const marketId = getMarketId(MORPHO_USDC_MARKET_PARAMS);
 
@@ -307,7 +343,7 @@ export async function getMorphoPosition(userAddress: `0x${string}`): Promise<Pos
       enteredAt: Date.now(),
     };
   } catch (error) {
-    console.error("Morpho: Error fetching position:", error);
+    console.error("Morpho: Error fetching direct position:", error);
     return null;
   }
 }

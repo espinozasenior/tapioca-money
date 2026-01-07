@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
 
     const usdcBalance = balance ? BigInt(balance) : BigInt(0);
     const decision = await optimize(address, usdcBalance);
-    const currentPosition = await getCurrentPosition(address);
+    const currentPositions = await getCurrentPosition(address);
 
     return NextResponse.json({
       decision: {
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
         to: decision.to ? transformOpportunity(decision.to) : null,
       },
       opportunities: transformedOpportunities,
-      positions: currentPosition ? [transformPosition(currentPosition)] : [],
+      positions: currentPositions.map(transformPosition),  // Map all positions
       timestamp: Date.now(),
     });
   } catch (error) {

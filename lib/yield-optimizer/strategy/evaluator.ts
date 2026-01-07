@@ -44,13 +44,23 @@ export function riskAdjustedApy(opportunity: YieldOpportunity): number {
 }
 
 /**
- * Compare current position to best opportunity
+ * Compare current position(s) to best opportunity
+ * Accepts Position[] since users can have multiple vault positions
+ * For rebalancing, only considers first position if multiple exist
  */
 export function evaluateRebalance(
-  currentPosition: Position | null,
+  currentPositions: Position[] | Position | null,
   opportunities: YieldOpportunity[],
   usdcBalance: bigint
 ): RebalanceDecision {
+  // Normalize to single position for rebalancing logic
+  // Multi-position rebalancing is out of scope
+  let currentPosition: Position | null = null;
+  if (Array.isArray(currentPositions) && currentPositions.length > 0) {
+    currentPosition = currentPositions[0];
+  } else if (!Array.isArray(currentPositions)) {
+    currentPosition = currentPositions;
+  }
   if (opportunities.length === 0) {
     return {
       shouldRebalance: false,

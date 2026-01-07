@@ -10,7 +10,9 @@ import { getAddress } from "viem";
 export const CHAIN_CONFIG = {
   chainId: 8453,
   name: "Base",
-  rpcUrl: "https://mainnet.base.org",
+  // Use environment variable for RPC URL (e.g., Alchemy for better rate limits)
+  // Falls back to public endpoint if not configured
+  rpcUrl: process.env.NEXT_PUBLIC_BASE_RPC_URL || "https://mainnet.base.org",
 } as const;
 
 // USDC on Base Mainnet (Circle official)

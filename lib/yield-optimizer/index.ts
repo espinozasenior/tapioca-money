@@ -3,7 +3,7 @@ export * from "./types";
 export * from "./strategy/evaluator";
 export * from "./morpho-api";
 
-import { getMorphoOpportunities, getMorphoPosition, getMorphoVaultPosition } from "./protocols/morpho";
+import { getMorphoOpportunities, getMorphoPosition } from "./protocols/morpho";
 import { getAaveOpportunities, getAavePosition } from "./protocols/aave";
 import { getMoonwellOpportunities, getMoonwellPosition } from "./protocols/moonwell";
 import { evaluateRebalance } from "./strategy/evaluator";
@@ -23,18 +23,23 @@ export async function getAllOpportunities(): Promise<YieldOpportunity[]> {
 }
 
 /**
- * Get user's current yield position (if any)
+ * Get user's current yield positions across all protocols
+ * Returns array of positions as users can have multiple vaults
  */
-export async function getCurrentPosition(userAddress: `0x${string}`): Promise<Position | null> {
-  // Check each protocol for existing position
-  const [morpho, aave, moonwell] = await Promise.all([
-    getMorphoPosition(userAddress),
-    getAavePosition(userAddress),
-    getMoonwellPosition(userAddress),
+export async function getCurrentPosition(userAddress: `0x${string}`): Promise<Position[]> {
+  // Check each protocol for existing positions
+  const [morphoPositions, aave, moonwell] = await Promise.all([
+    getMorphoPosition(userAddress),    // Returns Position[] (can be multiple vaults)
+    getAavePosition(userAddress),       // Returns Position | null
+    getMoonwellPosition(userAddress),   // Returns Position | null
   ]);
 
-  // Return first found position (user should only have one)
-  return morpho || aave || moonwell || null;
+  // Flatten all positions from all protocols
+  return [
+    ...morphoPositions,
+    ...(aave ? [aave] : []),
+    ...(moonwell ? [moonwell] : []),
+  ];
 }
 
 /**
@@ -44,12 +49,12 @@ export async function optimize(
   userAddress: `0x${string}`,
   usdcBalance: bigint
 ): Promise<RebalanceDecision> {
-  const [opportunities, currentPosition] = await Promise.all([
+  const [opportunities, currentPositions] = await Promise.all([
     getAllOpportunities(),
-    getCurrentPosition(userAddress),
+    getCurrentPosition(userAddress),  // Now returns Position[]
   ]);
 
-  return evaluateRebalance(currentPosition, opportunities, usdcBalance);
+  return evaluateRebalance(currentPositions, opportunities, usdcBalance);
 }
 
 /**
