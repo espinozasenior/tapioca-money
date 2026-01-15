@@ -6,7 +6,13 @@ import { calculateAccruedRewards } from "@/lib/yield-optimizer/rewards-calculato
 // Transform opportunity to include legacy compatibility fields
 function transformOpportunity(o: any) {
   return {
-    ...o,
+    id: o.id,
+    protocol: o.protocol,
+    name: o.name,
+    asset: o.asset,
+    apy: o.apy,
+    address: o.address,
+    riskScore: o.riskScore,
     tvl: o.tvl.toString(),
     liquidityDepth: o.liquidityDepth.toString(),
     // Legacy Yield.xyz compatibility
@@ -85,13 +91,16 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       decision: {
-        ...decision,
+        shouldRebalance: decision.shouldRebalance,
         estimatedGasCost: decision.estimatedGasCost.toString(),
+        estimatedSlippage: decision.estimatedSlippage,
+        netGain: decision.netGain,
+        reason: decision.reason,
         from: decision.from ? transformPosition(decision.from) : null,
         to: decision.to ? transformOpportunity(decision.to) : null,
       },
       opportunities: transformedOpportunities,
-      positions: currentPositions.map(transformPosition),  // Map all positions
+      positions: currentPositions.map(transformPosition),
       timestamp: Date.now(),
     });
   } catch (error) {
@@ -129,8 +138,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       executed: false, // Would be true after actual execution
       decision: {
-        ...decision,
+        shouldRebalance: decision.shouldRebalance,
         estimatedGasCost: decision.estimatedGasCost.toString(),
+        estimatedSlippage: decision.estimatedSlippage,
+        netGain: decision.netGain,
+        reason: decision.reason,
+        from: decision.from ? transformPosition(decision.from) : null,
+        to: decision.to ? transformOpportunity(decision.to) : null,
       },
       message: "Rebalance recommended - client should execute",
     });
