@@ -6,19 +6,20 @@ import { CHAIN_CONFIG } from "@/lib/yield-optimizer/config";
 
 /**
  * POST /api/withdraw
- * 
+ *
  * Build withdrawal transaction for exiting a yield position
- * 
+ *
  * Body:
  * - protocol: "morpho" | "aave" | "moonwell"
  * - userAddress: `0x${string}`
+ * - vaultAddress?: `0x${string}` (vault address for ERC4626 vaults like Morpho)
  * - shares?: string (amount of shares to withdraw)
  * - assets?: string (alternative: amount of assets to withdraw)
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { protocol, userAddress, shares, assets } = body;
+    const { protocol, userAddress, shares, assets, vaultAddress } = body;
 
     // Validation
     if (!protocol) {
@@ -50,6 +51,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (vaultAddress && !/^0x[a-fA-F0-9]{40}$/.test(vaultAddress)) {
+      return NextResponse.json(
+        { error: "Invalid vault address format" },
+        { status: 400 }
+      );
+    }
+
     // Convert string amounts to bigint
     const sharesBigInt = shares ? BigInt(shares) : undefined;
     const assetsBigInt = assets ? BigInt(assets) : undefined;
@@ -66,7 +74,8 @@ export async function POST(req: NextRequest) {
       protocol,
       userAddress as `0x${string}`,
       sharesBigInt,
-      assetsBigInt
+      assetsBigInt,
+      vaultAddress as `0x${string}` | undefined
     );
 
     if (result.transactions.length === 0) {

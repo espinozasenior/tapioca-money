@@ -91,6 +91,7 @@ export function PositionsList({ positions, yields, isLoading, onExitSuccess }: P
         body: JSON.stringify({
           protocol: position.protocol || "morpho",
           userAddress: wallet.address,
+          vaultAddress: position.vaultAddress,
           // For Morpho, we withdraw all shares
           // The position.amount is in USDC units, convert to smallest unit (6 decimals)
           shares: position.shares || (BigInt(Math.floor(parseFloat(position.amount) * 1e6))).toString(),

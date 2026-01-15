@@ -198,7 +198,8 @@ export async function buildWithdrawTransaction(
   protocol: string,
   userAddress: `0x${string}`,
   shares?: bigint,
-  assets?: bigint
+  assets?: bigint,
+  vaultAddress?: `0x${string}`
 ): Promise<DepositTransactionResult> {
   const transactions: DepositTransactionResult["transactions"] = [];
 
@@ -211,7 +212,7 @@ export async function buildWithdrawTransaction(
     }
 
     // Build withdrawal transaction
-    const withdrawTx = buildMorphoWithdrawTx(userAddress, shares, assets);
+    const withdrawTx = buildMorphoWithdrawTx(userAddress, shares, assets, vaultAddress);
     
     transactions.push({
       id: `withdraw-${Date.now()}`,
