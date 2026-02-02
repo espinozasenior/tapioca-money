@@ -1,47 +1,44 @@
 "use client";
 
-import {
-  CrossmintProvider,
-  CrossmintAuthProvider,
-  CrossmintWalletProvider,
-} from "@crossmint/client-sdk-react-ui";
+import { PrivyProvider } from "@privy-io/react-auth";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { base } from "viem/chains";
 
-if (!process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY || !process.env.NEXT_PUBLIC_CHAIN_ID) {
-  throw new Error("NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY or NEXT_PUBLIC_CHAIN_ID is not set");
+// Validate environment variables
+if (!process.env.NEXT_PUBLIC_PRIVY_APP_ID) {
+  throw new Error("NEXT_PUBLIC_PRIVY_APP_ID is not set");
 }
 
-const queryClient = new QueryClient();
-const chain = process.env.NEXT_PUBLIC_CHAIN_ID as any;
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000, // 1 minute
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <CrossmintProvider apiKey={process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY || ""}>
-        <CrossmintAuthProvider
-          authModalTitle="Fintech Starter App"
-          loginMethods={["email", "google"]}
-          termsOfServiceText={
-            <p>
-              By continuing, you accept the{" "}
-              <a href="https://www.crossmint.com/legal/terms-of-service" target="_blank">
-                Wallet's Terms of Service
-              </a>
-              , and to recieve marketing communications from Crossmint.
-            </p>
-          }
-        >
-          <CrossmintWalletProvider
-            showPasskeyHelpers={chain !== "solana"}
-            createOnLogin={{
-              chain,
-              signer: { type: "email" },
-            }}
-          >
-            {children}
-          </CrossmintWalletProvider>
-        </CrossmintAuthProvider>
-      </CrossmintProvider>
+      <PrivyProvider
+        appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID!}
+        config={{
+          loginMethods: ['email', 'google'],
+          appearance: {
+            theme: 'light',
+            accentColor: '#676FFF',
+          },
+          embeddedWallets: {
+            ethereum: {
+              createOnLogin: 'all-users', // Force embedded wallet creation for all users
+            },
+          },
+          defaultChain: base,
+        }}
+      >
+        {children}
+      </PrivyProvider>
     </QueryClientProvider>
   );
 }

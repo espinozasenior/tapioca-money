@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useWallet } from "@crossmint/client-sdk-react-ui";
+import { useWallet } from "./useWallet";
 
 export function useBalance() {
   const { wallet } = useWallet();
@@ -11,6 +11,7 @@ export function useBalance() {
   } = useQuery({
     queryKey: ["balances", wallet?.address],
     queryFn: async () => (await wallet?.balances(["usdc"])) ?? null,
+    enabled: !!wallet,
   });
 
   return {

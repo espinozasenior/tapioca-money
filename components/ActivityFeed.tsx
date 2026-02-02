@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { useWallet } from "@crossmint/client-sdk-react-ui";
+import { useWallet } from "../hooks/useWallet";
 import { ArrowUpRight, Plus, Percent, Ban } from "lucide-react";
 import { useActivityFeed } from "../hooks/useActivityFeed";
 import { Container } from "./common/Container";

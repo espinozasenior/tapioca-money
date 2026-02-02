@@ -43,6 +43,49 @@ Create your own Fintech app in minutes using **[Crossmint](https://crossmint.com
 - Powered by [Yield.xyz](https://yield.xyz) - the unified yield infrastructure for Web3
 - The wallets in this demo use testnet tokens to interact with mainnet yield protocols. Testnet deposits won't actually earn yield — this is for demonstration purposes only.
 
+**New: Autonomous Yield Agent (EIP-7702)**
+
+The LiqX Agent automatically rebalances user funds across DeFi protocols to maximize yield using EIP-7702 delegation.
+
+### How It Works
+
+1. **One-Time Authorization**: Users authorize EIP-7702 delegation through a simple UI interaction
+2. **Continuous Monitoring**: Agent monitors yield opportunities across protocols every 5 minutes
+3. **Smart Rebalancing**: When APY improvement exceeds your threshold, the agent rebalances automatically
+4. **Gasless Transactions**: All transactions are executed via Gelato Relay with no gas fees to users
+5. **Full Control**: Users can enable/disable auto-optimize or revoke authorization anytime
+
+### Features
+
+- ✅ **Fully Autonomous**: No manual intervention required once enabled
+- ✅ **User-Controlled**: Set custom APY thresholds and disable anytime
+- ✅ **Gasless**: Zero transaction fees for users
+- ✅ **Transparent**: View all agent actions in real-time dashboard
+- ✅ **Safe**: Built on EIP-7702 with user authorization required
+
+### Agent Dashboard
+
+Track your agent's performance:
+- Total rebalances executed
+- Success rate and APY improvements
+- Estimated yearly gains
+- Complete activity timeline with transaction details
+
+### Security
+
+- Agent operates only with explicit user authorization (EIP-7702)
+- Authorization can be revoked at any time
+- All transactions are simulated before execution
+- Rate limits and safety checks prevent excessive operations
+
+### For Developers
+
+See [AGENT_OPERATIONS_GUIDE.md](./AGENT_OPERATIONS_GUIDE.md) for:
+- Architecture overview and system design
+- Deployment instructions and configuration
+- Monitoring and troubleshooting guides
+- Database queries and performance optimization
+
 **Coming soon**
 
 - Currency conversion

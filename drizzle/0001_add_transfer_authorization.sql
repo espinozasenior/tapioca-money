@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "transfer_authorization" jsonb;

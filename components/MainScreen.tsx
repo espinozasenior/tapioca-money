@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Image from "next/image";
-import { useAuth } from "@crossmint/client-sdk-react-ui";
+import { useAuth } from "@/hooks/useWallet";
 import { DepositModal } from "@/components/deposit";
 import { SendFundsModal } from "@/components/send-funds";
 import { EarnYieldModal } from "@/components/earn-yield";

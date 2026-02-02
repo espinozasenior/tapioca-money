@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { Chain, Wallet } from "@crossmint/client-sdk-react-ui";
 import { getTransactions } from "@/server-actions/getTransactions";
 import { useBalance } from "./useBalance";
 import { useActivityFeed } from "./useActivityFeed";
@@ -21,7 +20,13 @@ const setProccesedTransactions = (transactionId: string) => {
   }
 };
 
-export function useProcessWithdrawal(userId?: string, wallet?: Wallet<Chain>) {
+// Type for wallet compatible with both old and new implementations
+interface WalletLike {
+  address?: string;
+  send: (to: string, asset: string, amount: string) => Promise<any>;
+}
+
+export function useProcessWithdrawal(userId?: string, wallet?: WalletLike) {
   const { refetch: refetchBalance } = useBalance();
   const { refetch: refetchActivityFeed } = useActivityFeed();
   useEffect(() => {

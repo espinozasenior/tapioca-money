@@ -1,4 +1,5 @@
-import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
+import { useAuth, useWallet } from "@/hooks/useWallet";
+import { useBalance } from "@/hooks/useBalance";
 import Image from "next/image";
 import { Dialog, DialogContent, DialogTitle } from "../common/Dialog";
 import { Details } from "../common/Details";
@@ -8,14 +9,7 @@ import { shortenAddress } from "@/utils/shortenAddress";
 export function WalletDetails({ onClose, open }: { onClose: () => void; open: boolean }) {
   const { wallet } = useWallet();
   const { user } = useAuth();
-
-  // Format chain name for display (e.g., "base-sepolia" -> "Base-Sepolia")
-  const formatChainName = (chain: string) => {
-    return chain
-      .split("-")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join("-");
-  };
+  const { displayableBalance, isLoading: isBalanceLoading } = useBalance();
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -44,8 +38,12 @@ export function WalletDetails({ onClose, open }: { onClose: () => void; open: bo
                 ),
               },
               {
-                label: "Chain",
-                value: <span>{formatChainName(wallet?.chain || "")}</span>,
+                label: "Balance",
+                value: isBalanceLoading ? (
+                  <span className="text-gray-400">Loading...</span>
+                ) : (
+                  <span>${displayableBalance}</span>
+                ),
               },
               {
                 label: "Owner",

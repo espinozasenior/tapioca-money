@@ -2,6 +2,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { ArrowUpRight, ArrowRightLeft, Wallet, MoreVertical } from "lucide-react";
 import { WalletBalance } from "./WalletBallance";
+import { RewardsBalance } from "./RewardsBalance";
 import { DepositButton } from "../common/DepositButton";
 import { Container } from "../common/Container";
 import { Dialog, DialogContent, DialogTitle } from "../common/Dialog";
@@ -12,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "../common/DropdownMenu";
 import { WalletDetails } from "./WalletDetails";
-import { useWallet, useAuth } from "@crossmint/client-sdk-react-ui";
+import { useWallet, useAuth } from "@/hooks/useWallet";
 
 interface DashboardSummaryProps {
   onDepositClick: () => void;
@@ -42,7 +43,10 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
   return (
     <>
       <Container className="flex w-full max-w-5xl flex-col items-center justify-between md:flex-row md:items-center">
-        <WalletBalance />
+        <div className="flex w-full flex-col gap-4 md:flex-row md:gap-8">
+          <WalletBalance />
+          <RewardsBalance />
+        </div>
         <div className="flex w-full items-center gap-3 md:w-auto md:justify-end">
           <button
             type="button"

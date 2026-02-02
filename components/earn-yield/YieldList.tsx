@@ -1,7 +1,7 @@
 import React from "react";
 import { Info } from "lucide-react";
 import Image from "next/image";
-import { YieldOpportunity } from "@/hooks/useYields";
+import { YieldOpportunity } from "@/hooks/useOptimizer";
 import { cn } from "@/lib/utils";
 
 interface YieldListProps {
@@ -74,16 +74,8 @@ export function YieldList({ yields, isLoading, error, onSelectYield }: YieldList
         <div className="flex items-start gap-3">
           <Info className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-500" />
           <p className="text-xs text-blue-700">
-            Yields are provided by trusted DeFi protocols. APY rates are variable and may change
-            based on market conditions. Powered by{" "}
-            <a
-              href="https://yield.xyz"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium underline"
-            >
-              Yield.xyz
-            </a>
+            Yields are provided by trusted DeFi protocols (Morpho, Aave, Moonwell). APY rates are
+            variable and may change based on market conditions.
           </p>
         </div>
       </div>
@@ -91,15 +83,16 @@ export function YieldList({ yields, isLoading, error, onSelectYield }: YieldList
       {/* Yield list */}
       {yields.map((yieldOpp) => {
         const canEnter = yieldOpp.status?.enter !== false;
+        const isPending = yieldOpp.id.includes("pending");
 
         return (
           <button
             key={yieldOpp.id}
-            onClick={() => canEnter && onSelectYield(yieldOpp)}
-            disabled={!canEnter}
+            onClick={() => canEnter && !isPending && onSelectYield(yieldOpp)}
+            disabled={!canEnter || isPending}
             className={cn(
               "group w-full rounded-xl border border-gray-200 bg-white p-4 text-left transition",
-              canEnter ? "hover:border-primary/30 hover:shadow-md" : "cursor-not-allowed opacity-60"
+              canEnter && !isPending ? "hover:border-primary/30 hover:shadow-md" : "cursor-not-allowed opacity-60"
             )}
           >
             <div className="flex items-center justify-between">

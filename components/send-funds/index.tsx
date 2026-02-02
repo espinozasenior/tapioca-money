@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
+import React, { useState, useEffect } from "react";
+import { useAuth, useWallet } from "@/hooks/useWallet";
 import { AmountInput } from "../common/AmountInput";
 import { OrderPreview } from "./OrderPreview";
 import { RecipientInput } from "./RecipientInput";
@@ -7,7 +7,7 @@ import { useBalance } from "@/hooks/useBalance";
 import { Dialog, DialogContent, DialogTitle, DialogClose } from "../common/Dialog";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
 import { isEmail, isValidAddress } from "@/lib/utils";
-import { ArrowLeft, X } from "lucide-react";
+import { ArrowLeft, X, Zap } from "lucide-react";
 
 interface SendFundsModalProps {
   open: boolean;
@@ -22,8 +22,51 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
   const [showPreview, setShowPreview] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [useGasless, setUseGasless] = useState(false);
+  const [gaslessEnabled, setGaslessEnabled] = useState(false);
+  const [gaslessLoading, setGaslessLoading] = useState(false);
+  const [sessionExpiry, setSessionExpiry] = useState<number | null>(null);
   const { displayableBalance, refetch: refetchBalance } = useBalance();
   const { refetch: refetchActivityFeed } = useActivityFeed();
+
+  // Check gasless transfer session status
+  useEffect(() => {
+    async function checkGaslessStatus() {
+      if (!wallet || !open) return;
+
+      try {
+        const address = await wallet.balances();
+        if (!address) return;
+
+        const response = await fetch(`/api/transfer/register?address=${address.address}`);
+        const status = await response.json();
+
+        if (status.isEnabled) {
+          setGaslessEnabled(true);
+          setSessionExpiry(status.expiry);
+          setUseGasless(true); // Auto-enable if available
+        } else {
+          setGaslessEnabled(false);
+          setUseGasless(false);
+        }
+      } catch (error) {
+        console.error('Failed to check gasless status:', error);
+        setGaslessEnabled(false);
+      }
+    }
+
+    checkGaslessStatus();
+  }, [wallet, open]);
+
+  // Debug logging
+  console.log('[SendFunds] State:', {
+    recipient,
+    amount,
+    displayableBalance,
+    showPreview,
+    isLoading,
+    hasWallet: !!wallet,
+  });
 
   const isRecipientValid = isValidAddress(recipient) || isEmail(recipient);
   const isAmountValid =
@@ -69,9 +112,19 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
         return;
       }
 
+      // Email recipients not supported with Privy - only wallet addresses
       if (isEmail(recipient)) {
-        await wallet.send(`email:${recipient}`, "usdc", amount);
+        setError("Email recipients not yet supported. Please use a wallet address.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Use gasless or regular transaction based on toggle
+      if (useGasless && gaslessEnabled) {
+        console.log('[SendFunds] Sending gasless transaction');
+        await wallet.sendSponsored(recipient, "USDC", amount);
       } else {
+        console.log('[SendFunds] Sending regular transaction');
         await wallet.send(recipient, "usdc", amount);
       }
 
@@ -134,6 +187,75 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
             </div>
             <div className="mt-4 w-full">
               <RecipientInput recipient={recipient} onChange={setRecipient} error={error} />
+            </div>
+            <div className="mt-4 w-full">
+              {gaslessEnabled ? (
+                <div className="flex items-center justify-between rounded-lg border border-gray-200 p-4">
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-yellow-500" />
+                      <label className="text-sm font-medium text-gray-900">
+                        Gasless Transaction
+                      </label>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      No ETH needed - ZeroDev sponsors gas fees
+                    </p>
+                    {sessionExpiry && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        Session expires: {new Date(sessionExpiry * 1000).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setUseGasless(!useGasless)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      useGasless ? 'bg-blue-600' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        useGasless ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setGaslessLoading(true);
+                    setError(null);
+                    try {
+                      if (!wallet?.enableGaslessTransfers) {
+                        setError('Gasless transfers not available');
+                        return;
+                      }
+                      const result = await wallet.enableGaslessTransfers();
+                      setGaslessEnabled(true);
+                      setSessionExpiry(result.expiry);
+                      setUseGasless(true);
+                    } catch (err: any) {
+                      setError(err.message || 'Failed to enable gasless transfers');
+                    } finally {
+                      setGaslessLoading(false);
+                    }
+                  }}
+                  disabled={gaslessLoading}
+                  className="w-full rounded-lg border-2 border-dashed border-blue-300 bg-blue-50 p-4 hover:bg-blue-100 disabled:opacity-50"
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <Zap className="h-5 w-5 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-900">
+                      {gaslessLoading ? 'Enabling...' : 'Enable Gasless Transfers'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-blue-700 mt-1">
+                    Send USDC without paying gas fees
+                  </p>
+                </button>
+              )}
             </div>
             <div className="mt-auto w-full pt-8">
               <button

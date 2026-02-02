@@ -19,11 +19,13 @@ export function AmountInput({ amount, onChange }: AmountInputProps) {
 
   return (
     <input
-      placeholder="$0"
-      className="w-full border-none text-center text-5xl font-bold text-gray-900 outline-none focus:ring-0"
+      type="text"
+      placeholder="$0.00"
+      className="w-full border-none bg-transparent text-center text-5xl font-bold text-gray-900 outline-none placeholder:text-gray-300 focus:ring-0"
       value={amount ? `$${amount}` : ""}
       onChange={handleChange}
-      style={{ maxWidth: 200 }}
+      style={{ maxWidth: 300, minHeight: 80 }}
+      autoFocus
     />
   );
 }
