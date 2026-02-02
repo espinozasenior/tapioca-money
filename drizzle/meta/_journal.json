@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1769742143359,
+      "tag": "0000_ordinary_goblin_queen",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1769920256147,
+      "tag": "0001_add_transfer_authorization",
+      "breakpoints": true
+    }
+  ]
+}

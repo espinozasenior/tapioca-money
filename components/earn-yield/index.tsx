@@ -1,14 +1,17 @@
 import React, { useState } from "react";
-import { useWallet } from "@crossmint/client-sdk-react-ui";
+import { useWallet } from "@/hooks/useWallet";
 import { Check, ArrowLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogClose } from "../common/Dialog";
 import { ScrollArea } from "../common/ScrollArea";
 import { YieldList } from "./YieldList";
 import { DepositYield } from "./DepositYield";
 import { PositionsList } from "./PositionsList";
-import { useYields, useYieldPositions, YieldOpportunity } from "@/hooks/useYields";
+import { AutoOptimize } from "./AutoOptimize";
+import { useYields, useYieldPositions, YieldOpportunity } from "@/hooks/useOptimizer";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
+import { useBalance } from "@/hooks/useBalance";
 import { cn } from "@/lib/utils";
+import { parseUnits } from "viem";
 
 interface EarnYieldModalProps {
   open: boolean;
@@ -20,6 +23,7 @@ type Tab = "opportunities" | "positions";
 
 export function EarnYieldModal({ open, onClose }: EarnYieldModalProps) {
   const { wallet } = useWallet();
+  const { balances } = useBalance();
   const { yields, isLoading: yieldsLoading, error: yieldsError } = useYields();
   const {
     positions,
@@ -131,12 +135,15 @@ export function EarnYieldModal({ open, onClose }: EarnYieldModalProps) {
             {/* Tab content */}
             <ScrollArea className="h-0 flex-1">
               {activeTab === "opportunities" && (
-                <YieldList
-                  yields={yields}
-                  isLoading={yieldsLoading}
-                  error={yieldsError}
-                  onSelectYield={handleSelectYield}
-                />
+                <div className="space-y-6 p-6">
+                  <AutoOptimize usdcBalance={parseUnits(balances?.usdc?.amount ?? "0", 6)} />
+                  <YieldList
+                    yields={yields}
+                    isLoading={yieldsLoading}
+                    error={yieldsError}
+                    onSelectYield={handleSelectYield}
+                  />
+                </div>
               )}
 
               {activeTab === "positions" && (

@@ -2,8 +2,8 @@ import React, { useCallback, useState } from "react";
 import {
   CrossmintCheckoutProvider,
   CrossmintProvider,
-  useAuth,
 } from "@crossmint/client-sdk-react-ui";
+import { useAuth } from "@/hooks/useWallet";
 import { Checkout } from "./Checkout";
 import { AmountInput } from "../common/AmountInput";
 import { Dialog, DialogContent, DialogTitle, DialogClose } from "../common/Dialog";
