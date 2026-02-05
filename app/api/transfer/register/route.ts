@@ -16,6 +16,11 @@ import {
   type PrivyWalletProvider,
 } from '@/lib/zerodev/transfer-session';
 import { encryptAuthorization } from '@/lib/security/session-encryption';
+import {
+  requireAuthForAddress,
+  unauthorizedResponse,
+  forbiddenResponse,
+} from '@/lib/auth/middleware';
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -98,6 +103,15 @@ export async function POST(request: NextRequest) {
         { error: 'Address required' },
         { status: 400 }
       );
+    }
+
+    // SECURITY: Verify authenticated user owns the requested address
+    const authResult = await requireAuthForAddress(request, address);
+    if (!authResult.authenticated) {
+      if (authResult.error === 'Address does not belong to authenticated user') {
+        return forbiddenResponse(authResult.error);
+      }
+      return unauthorizedResponse(authResult.error);
     }
 
     // Note: In production, privyWallet would be obtained from the authenticated session
@@ -190,6 +204,15 @@ export async function DELETE(request: NextRequest) {
         { error: 'Address required' },
         { status: 400 }
       );
+    }
+
+    // SECURITY: Verify authenticated user owns the requested address
+    const authResult = await requireAuthForAddress(request, address);
+    if (!authResult.authenticated) {
+      if (authResult.error === 'Address does not belong to authenticated user') {
+        return forbiddenResponse(authResult.error);
+      }
+      return unauthorizedResponse(authResult.error);
     }
 
     console.log('[API] Revoking transfer session for:', address);

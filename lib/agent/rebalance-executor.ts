@@ -1,4 +1,4 @@
-import { encodeFunctionData, parseAbi, createPublicClient, http } from 'viem';
+import { encodeFunctionData, parseAbi, createPublicClient, http, type Hex } from 'viem';
 import { base } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
@@ -15,10 +15,20 @@ const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
 const MAX_UINT256 = BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
 // EntryPoint V0.7 object (required format for ZeroDev SDK v5)
-// ZeroDev SDK expects { address, version } not just the address string
 const ENTRYPOINT_V07 = {
   address: "0x0000000071727De22E5E9d8BAf0edAc6f37da032" as `0x${string}`,
   version: "0.7" as const,
+};
+
+// Function selectors for scoped permissions
+const FUNCTION_SELECTORS = {
+  // ERC4626 Vault operations
+  REDEEM: "0xba087652" as Hex,   // redeem(uint256,address,address)
+  DEPOSIT: "0x6e553f65" as Hex,  // deposit(uint256,address)
+  WITHDRAW: "0xb460af94" as Hex, // withdraw(uint256,address,address)
+  // ERC20 operations
+  APPROVE: "0x095ea7b3" as Hex,  // approve(address,uint256)
+  TRANSFER: "0xa9059cbb" as Hex, // transfer(address,uint256)
 };
 
 export interface RebalanceParams {
@@ -94,13 +104,44 @@ export function buildRebalanceCalls(params: RebalanceParams): RebalanceCall[] {
  * @param sessionPrivateKey - Session key private key from database
  * @returns Task ID and success status
  */
+/**
+ * Build scoped call policy permissions for vault operations
+ *
+ * SECURITY: Uses toCallPolicy instead of toSudoPolicy to limit
+ * session key permissions to only approved vault operations.
+ *
+ * @param approvedVaults - List of vault addresses the session key can interact with
+ * @returns Call policy permissions array
+ */
+function buildScopedPermissions(approvedVaults: `0x${string}`[]) {
+  const permissions: Array<{ target: `0x${string}`; selector: Hex }> = [];
+
+  // Add vault operation permissions for each approved vault
+  for (const vaultAddress of approvedVaults) {
+    permissions.push(
+      { target: vaultAddress, selector: FUNCTION_SELECTORS.REDEEM },
+      { target: vaultAddress, selector: FUNCTION_SELECTORS.DEPOSIT },
+      { target: vaultAddress, selector: FUNCTION_SELECTORS.WITHDRAW }
+    );
+  }
+
+  // Add USDC approve permission (for all vaults)
+  permissions.push({
+    target: USDC_ADDRESS,
+    selector: FUNCTION_SELECTORS.APPROVE,
+  });
+
+  return permissions;
+}
+
 export async function executeRebalance(
   smartAccountAddress: `0x${string}`,
   params: RebalanceParams,
-  sessionPrivateKey: `0x${string}`
+  sessionPrivateKey: `0x${string}`,
+  approvedVaults?: `0x${string}`[]
 ): Promise<RebalanceResult> {
   try {
-    console.log('[Rebalance] Starting ZeroDev execution...');
+    console.log('[Rebalance] Starting ZeroDev execution with scoped permissions...');
 
     // 1. Create session key signer from private key
     const sessionKeySigner = privateKeyToAccount(sessionPrivateKey);
@@ -115,20 +156,36 @@ export async function executeRebalance(
     const { createKernelAccount, createKernelAccountClient } = await import('@zerodev/sdk');
     const { KERNEL_V3_1 } = await import('@zerodev/sdk/constants');
     const { toPermissionValidator } = await import('@zerodev/permissions');
-    const { toSudoPolicy } = await import('@zerodev/permissions/policies');
+    const { toCallPolicy, toSudoPolicy } = await import('@zerodev/permissions/policies');
     const { toECDSASigner } = await import('@zerodev/permissions/signers');
 
     // 4. Convert session key to ModularSigner for permission validator
     const sessionSigner = await toECDSASigner({ signer: sessionKeySigner });
 
-    // 5. Create permission validator with session key
-    // Use EntryPoint object format for SDK v5 compatibility
+    // 5. Build policy based on whether approved vaults are provided
+    // SECURITY: Use scoped toCallPolicy when vault list is available
+    // Fallback to toSudoPolicy for backward compatibility (legacy registrations)
+    let policy;
+    if (approvedVaults && approvedVaults.length > 0) {
+      const permissions = buildScopedPermissions(approvedVaults);
+      console.log('[Rebalance] Using scoped policy with', permissions.length, 'permissions');
+      // Use CallPolicyVersion enum for SDK compatibility
+      const { CallPolicyVersion } = await import('@zerodev/permissions/policies');
+      policy = toCallPolicy({
+        policyVersion: CallPolicyVersion.V0_0_5,
+        permissions,
+      });
+    } else {
+      // DEPRECATED: Legacy path for old registrations without vault list
+      console.warn('[Rebalance] Using sudo policy (legacy) - consider re-registering');
+      policy = toSudoPolicy({});
+    }
+
+    // 6. Create permission validator with session key
     const permissionValidator = await toPermissionValidator(publicClient, {
       signer: sessionSigner,
       entryPoint: ENTRYPOINT_V07,
-      policies: [
-        toSudoPolicy({}), // Full permissions within allowed contracts
-      ],
+      policies: [policy],
       kernelVersion: KERNEL_V3_1,
     });
 

@@ -2,6 +2,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from '@neondatabase/serverless';
 import { encryptAuthorization } from '@/lib/security/session-encryption';
+import {
+  requireAuthForAddress,
+  unauthorizedResponse,
+  forbiddenResponse,
+} from '@/lib/auth/middleware';
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -17,10 +22,20 @@ const sql = neon(process.env.DATABASE_URL!);
  */
 export async function POST(request: NextRequest) {
   try {
-    const { address, authorization } = await request.json();
+    const body = await request.json();
+    const { address, authorization } = body;
 
     if (!address) {
       return NextResponse.json({ error: "Missing wallet address" }, { status: 400 });
+    }
+
+    // SECURITY: Verify authenticated user owns the requested address
+    const authResult = await requireAuthForAddress(request, address);
+    if (!authResult.authenticated) {
+      if (authResult.error === 'Address does not belong to authenticated user') {
+        return forbiddenResponse(authResult.error);
+      }
+      return unauthorizedResponse(authResult.error);
     }
 
     if (!authorization) {
@@ -145,10 +160,20 @@ export async function GET(request: NextRequest) {
  */
 export async function PATCH(request: NextRequest) {
   try {
-    const { address, autoOptimizeEnabled } = await request.json();
+    const body = await request.json();
+    const { address, autoOptimizeEnabled } = body;
 
     if (!address) {
       return NextResponse.json({ error: "Missing wallet address" }, { status: 400 });
+    }
+
+    // SECURITY: Verify authenticated user owns the requested address
+    const authResult = await requireAuthForAddress(request, address);
+    if (!authResult.authenticated) {
+      if (authResult.error === 'Address does not belong to authenticated user') {
+        return forbiddenResponse(authResult.error);
+      }
+      return unauthorizedResponse(authResult.error);
     }
 
     if (typeof autoOptimizeEnabled !== 'boolean') {

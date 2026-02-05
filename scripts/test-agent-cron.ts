@@ -13,7 +13,7 @@ config({ path: resolve(__dirname, '../.env') });
 
 const SIMULATION_FLAG = process.argv.includes('--simulation');
 const API_URL = process.env.API_URL || 'http://localhost:3000';
-const CRON_SECRET = process.env.CRON_SECRET;
+const CRON_SECRET: string = process.env.CRON_SECRET || '';
 
 if (!CRON_SECRET) {
   console.error('❌ Error: CRON_SECRET not set in environment');

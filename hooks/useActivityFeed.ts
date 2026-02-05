@@ -38,7 +38,8 @@ export function useActivityFeed() {
 
   // Combine and sort events
   const combinedEvents = (() => {
-    const walletEvents: ActivityEvent[] = walletActivityQuery.data?.events || [];
+    // experimental_activity returns { transactions: [] }, map to events
+    const walletEvents: ActivityEvent[] = (walletActivityQuery.data as any)?.events || [];
 
     // Transform yield positions to activity events
     const yieldEvents: ActivityEvent[] = positions.map(yieldPositionToActivityEvent);

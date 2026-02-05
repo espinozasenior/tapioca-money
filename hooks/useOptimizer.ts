@@ -3,7 +3,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "./useWallet";
-import { useWallets } from "@privy-io/react-auth";
+import { useWallets, usePrivy } from "@privy-io/react-auth";
 
 // Types matching what components expect (compatible with legacy Yield.xyz types)
 export interface YieldOpportunity {
@@ -180,8 +180,9 @@ export function useAgent() {
   const queryClient = useQueryClient();
   const address = wallet?.address;
 
-  // Access Privy wallets for ZeroDev integration
+  // Access Privy wallets and auth for ZeroDev integration
   const { wallets } = useWallets();
+  const { getAccessToken } = usePrivy();
 
   const status = useQuery({
     queryKey: ["agent-status", address],
@@ -198,13 +199,14 @@ export function useAgent() {
     mutationFn: async () => {
       if (!wallet || !address) throw new Error("No wallet connected");
 
-      console.log("[Agent Registration] Starting ZeroDev smart account registration", {
+      console.log("[Agent Registration] Starting secure ZeroDev registration", {
         address,
       });
 
       try {
-        // Import ZeroDev client helper
-        const { registerAgentWithZeroDev } = await import("@/lib/zerodev/client");
+        // SECURITY: Use secure client that generates session key server-side
+        // This prevents XSS attacks from accessing the private key
+        const { registerAgentSecure } = await import("@/lib/zerodev/client-secure");
 
         // Use Privy wallet from hook scope
         const privyWallet = wallets?.[0];
@@ -212,35 +214,23 @@ export function useAgent() {
           throw new Error("Privy wallet not found");
         }
 
-        // Execute ZeroDev Kernel smart account creation + session key grant (client-side)
-        // No agent wallet needed - session key allows backend to execute on behalf of user
-        console.log("[Agent Registration] Creating ZeroDev Kernel smart account...");
-        const authorization = await registerAgentWithZeroDev(privyWallet as any);
-
-        console.log("[Agent Registration] ✓ Kernel smart account created");
-        console.log("[Agent Registration] Sending authorization to backend...");
-
-        // Send session key authorization to backend for storage
-        const res = await fetch("/api/agent/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            address,
-            authorization: {
-              type: "zerodev-session-key",
-              ...authorization
-            }
-          }),
-        });
-
-        if (!res.ok) {
-          const errorData = await res.json().catch(() => ({}));
-          console.error("[Agent Registration] ❌ Backend storage failed:", errorData);
-          throw new Error(errorData.error || "Failed to store authorization");
+        // Get Privy access token for API authentication
+        const accessToken = await getAccessToken();
+        if (!accessToken) {
+          throw new Error("Failed to get access token");
         }
 
-        const result = await res.json();
-        console.log("[Agent Registration] ✅ Registration complete!");
+        // Execute secure registration flow:
+        // 1. Client creates smart account
+        // 2. Server generates session key (private key never leaves server)
+        // 3. Server returns only public session key address
+        console.log("[Agent Registration] Creating ZeroDev Kernel smart account (secure flow)...");
+        const result = await registerAgentSecure(privyWallet as any, accessToken);
+
+        console.log("[Agent Registration] ✅ Secure registration complete!");
+        console.log("[Agent Registration] Session key address:", result.sessionKeyAddress);
+        console.log("[Agent Registration] Expiry:", new Date(result.expiry * 1000).toISOString());
+
         return result;
       } catch (error: any) {
         console.error("[Agent Registration] ❌ Registration failed:", error);
@@ -256,9 +246,18 @@ export function useAgent() {
     mutationFn: async (enabled: boolean) => {
       if (!address) throw new Error("No wallet connected");
 
+      // Get access token for authenticated request
+      const accessToken = await getAccessToken();
+      if (!accessToken) {
+        throw new Error("Failed to get access token");
+      }
+
       const res = await fetch("/api/agent/register", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`,
+        },
         body: JSON.stringify({
           address,
           autoOptimizeEnabled: enabled
