@@ -3,7 +3,7 @@
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { type Hex, createPublicClient, createWalletClient, custom, http, formatUnits, parseUnits, encodeFunctionData } from "viem";
 import { base } from "viem/chains";
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 
 // USDC on Base
 const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
@@ -36,7 +36,7 @@ const erc20Abi = [
  * making migration easier by keeping the same API surface.
  */
 export function useWallet() {
-  const { authenticated, user, ready } = usePrivy();
+  const { authenticated, user, ready, getAccessToken } = usePrivy();
   const { wallets } = useWallets();
 
   const wallet = wallets?.[0]; // Primary wallet (Privy embedded wallet)
@@ -150,6 +150,12 @@ export function useWallet() {
           throw new Error('Only USDC gasless transfers supported');
         }
 
+        // Get access token for authenticated request
+        const accessToken = await getAccessToken();
+        if (!accessToken) {
+          throw new Error("Authentication required for gasless transfers");
+        }
+
         // Check if user has transfer session key
         const statusResponse = await fetch(`/api/transfer/register?address=${address}`);
         const status = await statusResponse.json();
@@ -158,10 +164,13 @@ export function useWallet() {
           throw new Error('Gasless transfers not enabled. Please enable in settings first.');
         }
 
-        // Execute gasless transfer
+        // Execute gasless transfer with authentication
         const response = await fetch('/api/transfer/send', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+          },
           body: JSON.stringify({ address, recipient: to, amount })
         });
 
@@ -180,17 +189,26 @@ export function useWallet() {
        */
       async enableGaslessTransfers() {
         if (!address) throw new Error("Wallet address not yet available");
-        if (!embeddedWallet) throw new Error("Embedded wallet not available");
+        if (!wallet) throw new Error("Wallet not available");
 
-        // Create transfer session key
+        // Get access token for authenticated request
+        const accessToken = await getAccessToken();
+        if (!accessToken) {
+          throw new Error("Authentication required");
+        }
+
+        // Create transfer session key with authentication
         const response = await fetch('/api/transfer/register', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+          },
           body: JSON.stringify({
             address,
             privyWallet: {
-              address: embeddedWallet.address,
-              getEthereumProvider: embeddedWallet.getEthereumProvider.bind(embeddedWallet),
+              address: wallet.address,
+              getEthereumProvider: wallet.getEthereumProvider.bind(wallet),
             }
           })
         });
@@ -213,9 +231,18 @@ export function useWallet() {
       async revokeGaslessTransfers() {
         if (!address) throw new Error("Wallet address not yet available");
 
+        // Get access token for authenticated request
+        const accessToken = await getAccessToken();
+        if (!accessToken) {
+          throw new Error("Authentication required");
+        }
+
         const response = await fetch('/api/transfer/register', {
           method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+          },
           body: JSON.stringify({ address })
         });
 
@@ -242,7 +269,7 @@ export function useWallet() {
         };
       },
     };
-  }, [isReady, address, wallet, publicClient]);
+  }, [isReady, address, wallet, publicClient, getAccessToken]);
 
   return {
     wallet: walletObject,

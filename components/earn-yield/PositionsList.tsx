@@ -1,8 +1,11 @@
 import React, { useState } from "react";
-import { EVMWallet, useWallet } from "@crossmint/client-sdk-react-ui";
 import Image from "next/image";
 import { Info } from "lucide-react";
-import { YieldAction, YieldOpportunity, exitYield, getYieldBalance } from "@/hooks/useYields";
+import { useWallet } from "@/hooks/useWallet";
+import { YieldOpportunity, YieldPosition } from "@/hooks/useOptimizer";
+
+// Legacy type alias for backward compatibility
+type YieldAction = YieldPosition;
 
 interface PositionsListProps {
   positions: YieldAction[];
@@ -52,7 +55,7 @@ const formatApy = (apy: number) => {
 };
 
 export function PositionsList({ positions, yields, isLoading, onExitSuccess }: PositionsListProps) {
-  const { wallet } = useWallet();
+  const { wallet, isReady } = useWallet();
   const [exitingId, setExitingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,38 +74,10 @@ export function PositionsList({ positions, yields, isLoading, onExitSuccess }: P
     setExitingId(position.id);
 
     try {
-      // Fetch current balance to pass to exit
-      const balance = await getYieldBalance(position.yieldId, wallet.address);
-
-      // Get unsigned transactions for exit
-      const response = await exitYield(position.yieldId, wallet.address, balance);
-
-      // Sort transactions by stepIndex to ensure correct order
-      const sortedTransactions = [...(response.transactions || [])].sort(
-        (a: any, b: any) => (a.stepIndex || 0) - (b.stepIndex || 0)
-      );
-
-      // Execute each transaction through Crossmint wallet
-      const evmWallet = EVMWallet.from(wallet);
-
-      for (let i = 0; i < sortedTransactions.length; i++) {
-        const tx = sortedTransactions[i];
-        const unsignedTx = JSON.parse(tx.unsignedTransaction);
-
-        // Send the transaction with all relevant parameters
-        const txResult = await evmWallet.sendTransaction({
-          to: unsignedTx.to,
-          data: unsignedTx.data,
-          value: unsignedTx.value || "0x0",
-          ...(unsignedTx.gasLimit && { gas: unsignedTx.gasLimit }),
-        });
-
-        // Small delay between transactions
-        if (i < sortedTransactions.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-        }
-      }
-
+      // TODO: Implement exit functionality via Morpho vault redeem
+      // The agent handles rebalancing automatically, manual exit needs to be implemented
+      // For now, show a message directing users to disable auto-optimize to stop earning
+      setError("Manual exit not yet implemented. Disable Auto-Optimize to stop earning.");
       onExitSuccess();
     } catch (err: any) {
       console.error("[Yield] Exit error:", err);

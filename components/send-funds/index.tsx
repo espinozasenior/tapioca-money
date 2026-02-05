@@ -32,13 +32,10 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
   // Check gasless transfer session status
   useEffect(() => {
     async function checkGaslessStatus() {
-      if (!wallet || !open) return;
+      if (!wallet?.address || !open) return;
 
       try {
-        const address = await wallet.balances();
-        if (!address) return;
-
-        const response = await fetch(`/api/transfer/register?address=${address.address}`);
+        const response = await fetch(`/api/transfer/register?address=${wallet.address}`);
         const status = await response.json();
 
         if (status.isEnabled) {

@@ -104,7 +104,7 @@ export async function createTransferSessionKey(
     // 6. Create session key validator with restricted call policy
     // Unlike agent sessions (sudo policy), this uses call policy to restrict to USDC.transfer() only
     const { toPermissionValidator } = await import('@zerodev/permissions');
-    const { toCallPolicy } = await import('@zerodev/permissions/policies');
+    const { toCallPolicy, CallPolicyVersion } = await import('@zerodev/permissions/policies');
     const { toECDSASigner } = await import('@zerodev/permissions/signers');
 
     const expiry = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60; // 30 days
@@ -126,6 +126,7 @@ export async function createTransferSessionKey(
       entryPoint: ENTRYPOINT_V07,
       policies: [
         toCallPolicy({
+          policyVersion: CallPolicyVersion.V0_0_5,
           permissions: [
             {
               target: USDC_ADDRESS,

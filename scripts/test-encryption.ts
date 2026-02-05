@@ -83,12 +83,12 @@ console.log(`Match: ${decryptedAuth.sessionPrivateKey === agentAuth.sessionPriva
 console.log('Test 5: Transfer Session Authorization Encryption');
 console.log('─────────────────────────────────────────────────');
 const transferAuth: TransferSessionAuthorization = {
-  type: 'transfer-session-key',
-  smartAccountAddress: '0x5555555555555555555555555555555555555555',
-  sessionKeyAddress: '0x6666666666666666666666666666666666666666',
+  type: 'zerodev-transfer-session',
+  smartAccountAddress: '0x5555555555555555555555555555555555555555' as `0x${string}`,
+  sessionKeyAddress: '0x6666666666666666666666666666666666666666' as `0x${string}`,
   sessionPrivateKey: '0x7777777777777777777777777777777777777777777777777777777777777777',
   expiry: Math.floor(Date.now() / 1000) + 86400 * 7,
-  timestamp: Date.now(),
+  createdAt: Date.now(),
 };
 
 console.log(`Original sessionPrivateKey: ${transferAuth.sessionPrivateKey}`);

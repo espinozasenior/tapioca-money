@@ -79,7 +79,7 @@ export async function executeGaslessTransfer(
     const { createKernelAccount, createKernelAccountClient } = await import('@zerodev/sdk');
     const { KERNEL_V3_1 } = await import('@zerodev/sdk/constants');
     const { toPermissionValidator } = await import('@zerodev/permissions');
-    const { toCallPolicy } = await import('@zerodev/permissions/policies');
+    const { toCallPolicy, CallPolicyVersion } = await import('@zerodev/permissions/policies');
     const { toECDSASigner } = await import('@zerodev/permissions/signers');
 
     // 4. Convert session key to ModularSigner for permission validator
@@ -98,6 +98,7 @@ export async function executeGaslessTransfer(
       entryPoint: ENTRYPOINT_V07,
       policies: [
         toCallPolicy({
+          policyVersion: CallPolicyVersion.V0_0_5,
           permissions: [
             {
               target: USDC_ADDRESS,
