@@ -9,17 +9,23 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createPublicKey, verify } from 'crypto';
+import { PrivyClient } from '@privy-io/server-auth';
 
 const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
 const PRIVY_APP_SECRET = process.env.PRIVY_APP_SECRET;
 
-// Privy JWKS endpoint for token verification
-const PRIVY_JWKS_URL = 'https://auth.privy.io/api/v1/apps/{appId}/jwks.json';
+// Initialize Privy client (singleton)
+let privyClient: PrivyClient | null = null;
 
-// Cache for JWKS keys (refresh every hour)
-let jwksCache: { keys: JsonWebKey[]; fetchedAt: number } | null = null;
-const JWKS_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+function getPrivyClient(): PrivyClient {
+  if (!privyClient) {
+    if (!PRIVY_APP_ID || !PRIVY_APP_SECRET) {
+      throw new Error('PRIVY_APP_ID and PRIVY_APP_SECRET must be configured');
+    }
+    privyClient = new PrivyClient(PRIVY_APP_ID, PRIVY_APP_SECRET);
+  }
+  return privyClient;
+}
 
 export interface AuthResult {
   authenticated: boolean;
@@ -28,146 +34,17 @@ export interface AuthResult {
   error?: string;
 }
 
-export interface PrivyTokenClaims {
-  aud: string; // Audience (app ID)
-  exp: number; // Expiration timestamp
-  iat: number; // Issued at timestamp
-  iss: string; // Issuer (privy.io)
-  sub: string; // Subject (Privy user ID: did:privy:...)
-  sid?: string; // Session ID
-  linked_accounts?: Array<{
-    type: string;
-    address?: string;
-    verified_at?: number;
-    chain_type?: string;
-  }>;
-}
-
 /**
- * Fetch JWKS from Privy (with caching)
+ * Extract wallet address from Privy user's linked accounts
  */
-async function getJwks(): Promise<JsonWebKey[]> {
-  const now = Date.now();
-
-  if (jwksCache && now - jwksCache.fetchedAt < JWKS_CACHE_TTL) {
-    return jwksCache.keys;
-  }
-
-  if (!PRIVY_APP_ID) {
-    throw new Error('PRIVY_APP_ID not configured');
-  }
-
-  const url = PRIVY_JWKS_URL.replace('{appId}', PRIVY_APP_ID);
-  const response = await fetch(url, {
-    headers: {
-      'privy-app-id': PRIVY_APP_ID,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch JWKS: ${response.status}`);
-  }
-
-  const { keys } = await response.json();
-  jwksCache = { keys, fetchedAt: now };
-
-  return keys;
-}
-
-/**
- * Verify Privy JWT token using JWKS
- */
-async function verifyPrivyToken(token: string): Promise<PrivyTokenClaims> {
-  // Decode header to get key ID
-  const [headerB64, payloadB64, signatureB64] = token.split('.');
-
-  if (!headerB64 || !payloadB64 || !signatureB64) {
-    throw new Error('Invalid token format');
-  }
-
-  const header = JSON.parse(Buffer.from(headerB64, 'base64url').toString());
-  const payload = JSON.parse(
-    Buffer.from(payloadB64, 'base64url').toString()
-  ) as PrivyTokenClaims;
-
-  // Validate claims
-  const now = Math.floor(Date.now() / 1000);
-
-  if (payload.exp && payload.exp < now) {
-    throw new Error('Token expired');
-  }
-
-  if (payload.iss !== 'privy.io') {
-    throw new Error('Invalid token issuer');
-  }
-
-  if (payload.aud !== PRIVY_APP_ID) {
-    throw new Error('Invalid token audience');
-  }
-
-  // Verify signature using JWKS
-  const jwks = await getJwks();
-  const key = jwks.find((k: any) => k.kid === header.kid);
-
-  if (!key) {
-    // Refresh cache and try again
-    jwksCache = null;
-    const refreshedJwks = await getJwks();
-    const refreshedKey = refreshedJwks.find((k: any) => k.kid === header.kid);
-
-    if (!refreshedKey) {
-      throw new Error('Signing key not found');
-    }
-
-    await verifyJwtSignature(token, refreshedKey);
-  } else {
-    await verifyJwtSignature(token, key);
-  }
-
-  return payload;
-}
-
-/**
- * Verify JWT signature using public key
- */
-async function verifyJwtSignature(
-  token: string,
-  jwk: JsonWebKey
-): Promise<void> {
-  const [headerB64, payloadB64, signatureB64] = token.split('.');
-  const signedData = `${headerB64}.${payloadB64}`;
-  const signature = Buffer.from(signatureB64, 'base64url');
-
-  // Import JWK as public key
-  const publicKey = createPublicKey({
-    key: jwk as any,
-    format: 'jwk',
-  });
-
-  // Verify signature
-  const isValid = verify(
-    'RS256',
-    Buffer.from(signedData),
-    publicKey,
-    signature
-  );
-
-  if (!isValid) {
-    throw new Error('Invalid token signature');
-  }
-}
-
-/**
- * Extract wallet address from Privy token claims
- */
-function extractWalletAddress(claims: PrivyTokenClaims): string | null {
-  if (!claims.linked_accounts) {
+function extractWalletAddress(linkedAccounts: any[]): string | null {
+  if (!linkedAccounts || linkedAccounts.length === 0) {
     return null;
   }
 
   // Find embedded wallet (prioritize over external wallets)
-  const embeddedWallet = claims.linked_accounts.find(
-    (account) => account.type === 'wallet' && account.chain_type === 'ethereum'
+  const embeddedWallet = linkedAccounts.find(
+    (account) => account.type === 'wallet' && account.chainType === 'ethereum'
   );
 
   if (embeddedWallet?.address) {
@@ -175,7 +52,7 @@ function extractWalletAddress(claims: PrivyTokenClaims): string | null {
   }
 
   // Fallback to any wallet
-  const anyWallet = claims.linked_accounts.find(
+  const anyWallet = linkedAccounts.find(
     (account) => account.type === 'wallet' && account.address
   );
 
@@ -211,15 +88,17 @@ export async function authenticateRequest(
       };
     }
 
-    // Verify token
-    const claims = await verifyPrivyToken(token);
+    // Verify token using Privy SDK
+    const privy = getPrivyClient();
+    const verifiedClaims = await privy.verifyAuthToken(token);
 
-    // Extract wallet address
-    const walletAddress = extractWalletAddress(claims);
+    // Get user details to access linked accounts
+    const user = await privy.getUser(verifiedClaims.userId);
+    const walletAddress = extractWalletAddress(user.linkedAccounts);
 
     return {
       authenticated: true,
-      userId: claims.sub,
+      userId: verifiedClaims.userId,
       walletAddress: walletAddress || undefined,
     };
   } catch (error: any) {
