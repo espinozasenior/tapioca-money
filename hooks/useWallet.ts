@@ -268,6 +268,15 @@ export function useWallet() {
           transactions: [],
         };
       },
+
+      /**
+       * Get the Ethereum provider for custom transactions
+       * Used for complex multi-step transactions like vault deposits
+       */
+      async getEthereumProvider() {
+        if (!wallet) throw new Error("Wallet not ready");
+        return await wallet.getEthereumProvider();
+      },
     };
   }, [isReady, address, wallet, publicClient, getAccessToken]);
 
