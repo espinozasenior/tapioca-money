@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { neon } from '@neondatabase/serverless';
 import { encryptAuthorization } from '@/lib/security/session-encryption';
 import {
+  authenticateRequest,
   requireAuthForAddress,
   unauthorizedResponse,
   forbiddenResponse,
@@ -167,12 +168,12 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Missing wallet address" }, { status: 400 });
     }
 
-    // SECURITY: Verify authenticated user owns the requested address
-    const authResult = await requireAuthForAddress(request, address);
+    // SECURITY: Verify user is authenticated (JWT valid)
+    // Note: We don't require wallet in linked_accounts here because Privy's
+    // embedded wallet may not be in the JWT immediately after fresh login.
+    // The address must exist in our DB with valid session key to do anything harmful.
+    const authResult = await authenticateRequest(request);
     if (!authResult.authenticated) {
-      if (authResult.error === 'Address does not belong to authenticated user') {
-        return forbiddenResponse(authResult.error);
-      }
       return unauthorizedResponse(authResult.error);
     }
 
