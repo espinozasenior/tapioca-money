@@ -6,7 +6,7 @@ import { RecipientInput } from "./RecipientInput";
 import { useBalance } from "@/hooks/useBalance";
 import { Dialog, DialogContent, DialogTitle, DialogClose } from "../common/Dialog";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
-import { isEmail, isValidAddress } from "@/lib/utils";
+import { isEmail, isValidEvmAddress } from "@/lib/utils";
 import { ArrowLeft, X } from "lucide-react";
 
 interface SendFundsModalProps {
@@ -25,7 +25,7 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
   const { displayableBalance, refetch: refetchBalance } = useBalance();
   const { refetch: refetchActivityFeed } = useActivityFeed();
 
-  const isRecipientValid = isValidAddress(recipient) || isEmail(recipient);
+  const isRecipientValid = isValidEvmAddress(recipient) || isEmail(recipient);
   const isAmountValid =
     !!amount &&
     !Number.isNaN(Number(amount)) &&

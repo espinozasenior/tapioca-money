@@ -9,7 +9,7 @@ interface RecipientInputProps {
 export function RecipientInput({ recipient, onChange, error }: RecipientInputProps) {
   return (
     <div className="w-full">
-      <label className="mb-2 block text-sm font-semibold text-gray-900">Receipient</label>
+      <label className="mb-2 block text-sm font-semibold text-gray-900">Recipient</label>
       <input
         type="text"
         placeholder="Enter email or wallet address"
