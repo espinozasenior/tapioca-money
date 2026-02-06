@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import Image from "next/image";
 import { Info } from "lucide-react";
 import { useWallet } from "@/hooks/useWallet";
-import { YieldOpportunity, YieldPosition } from "@/hooks/useOptimizer";
+import { YieldOpportunity, YieldPosition, useVaultExit } from "@/hooks/useOptimizer";
 
 // Legacy type alias for backward compatibility
 type YieldAction = YieldPosition;
@@ -58,6 +58,7 @@ export function PositionsList({ positions, yields, isLoading, onExitSuccess }: P
   const { wallet, isReady } = useWallet();
   const [exitingId, setExitingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const vaultExit = useVaultExit();
 
   // Find the yield opportunity for a position to get APY
   const getYieldForPosition = (yieldId: string) => {
@@ -74,10 +75,10 @@ export function PositionsList({ positions, yields, isLoading, onExitSuccess }: P
     setExitingId(position.id);
 
     try {
-      // TODO: Implement exit functionality via Morpho vault redeem
-      // The agent handles rebalancing automatically, manual exit needs to be implemented
-      // For now, show a message directing users to disable auto-optimize to stop earning
-      setError("Manual exit not yet implemented. Disable Auto-Optimize to stop earning.");
+      await vaultExit.mutateAsync({
+        vaultAddress: position.vaultAddress,
+        shares: position.shares.toString(),
+      });
       onExitSuccess();
     } catch (err: any) {
       console.error("[Yield] Exit error:", err);

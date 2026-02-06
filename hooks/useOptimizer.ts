@@ -289,6 +289,46 @@ export function useAgent() {
   };
 }
 
+// Vault exit hook - for exiting Morpho vault positions
+export function useVaultExit() {
+  const { wallet } = useWallet();
+  const queryClient = useQueryClient();
+  const { getAccessToken } = usePrivy();
+
+  return useMutation({
+    mutationFn: async ({ vaultAddress, shares }: { vaultAddress: string; shares: string }) => {
+      if (!wallet?.address) throw new Error("No wallet connected");
+
+      const accessToken = await getAccessToken();
+      if (!accessToken) {
+        throw new Error("Failed to get access token");
+      }
+
+      const res = await fetch("/api/vault/redeem", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ vaultAddress, shares }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to exit position");
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      // Invalidate positions query to trigger refetch
+      queryClient.invalidateQueries({ queryKey: ["optimizer"] });
+      queryClient.invalidateQueries({ queryKey: ["balance"] });
+    },
+  });
+}
+
 // Helper functions
 export function formatApy(apy: number): string {
   return `${(apy * 100).toFixed(2)}%`;
