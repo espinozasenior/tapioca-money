@@ -1,5 +1,3 @@
-"use client";
-
 export interface RiskBreakdown {
   score: number; // 0-1
   level: "low" | "medium" | "high";
