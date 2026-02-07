@@ -37,6 +37,17 @@ export interface MorphoVault {
   avgNetApy: number; // Average net APY (e.g., 0.05 = 5%)
   netApy: number | null;
   apy: number | null;
+
+  // Risk & Safety Fields
+  warnings?: Array<{ type: string; level: "YELLOW" | "RED" }>;
+  whitelisted?: boolean;
+  curators?: { items?: Array<{ name: string; addresses?: Array<{ address: string }> }> };
+  owner?: { address: string };
+  performanceFee?: number;
+  managementFee?: number;
+  liquidity?: string; // BigInt string
+  liquidityUsd?: number;
+  idleAssetsUsd?: number;
 }
 
 export interface MorphoUserPosition {
@@ -134,6 +145,27 @@ export class MorphoClient {
             avgNetApy
             netApy
             apy
+            whitelisted
+            performanceFee
+            managementFee
+            liquidity
+            liquidityUsd
+            idleAssetsUsd
+            warnings {
+              type
+              level
+            }
+            curators {
+              items {
+                name
+                addresses {
+                  address
+                }
+              }
+            }
+            owner {
+              address
+            }
           }
         }
       }
@@ -189,6 +221,27 @@ export class MorphoClient {
             avgNetApy
             netApy
             apy
+            whitelisted
+            performanceFee
+            managementFee
+            liquidity
+            liquidityUsd
+            idleAssetsUsd
+            warnings {
+              type
+              level
+            }
+            curators {
+              items {
+                name
+                addresses {
+                  address
+                }
+              }
+            }
+            owner {
+              address
+            }
           }
         }
       }
