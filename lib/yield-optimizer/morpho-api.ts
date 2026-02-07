@@ -13,45 +13,51 @@ export interface MorphoVault {
   totalAssetsUsd: number;
   apy: {
     netApy: number;
-    monthlyApy: number;
+    avgNetApy: number;
   };
   curator?: string;
+  // Risk & Safety Fields
+  warnings?: Array<{ type: string; level: "YELLOW" | "RED" }>;
+  whitelisted?: boolean;
+  curators?: { items?: Array<{ name: string; addresses?: Array<{ address: string }> }> };
+  performanceFee?: number;
+  managementFee?: number;
+  liquidityUsd?: number;
 }
 
-export interface MorphoVaultsResponse {
-  vaults: {
-    items: Array<{
-      address: string;
-      name: string;
-      symbol: string;
-      asset?: {
-        address: string;
-      };
-      state: {
-        totalAssets: string;
-        totalAssetsUsd: number;
-        netApy: number;
-        monthlyApy: number;
-      };
-      metadata?: {
-        curators?: Array<{ name: string }>;
-      };
-    }>;
+interface VaultV2Item {
+  address: string;
+  name: string;
+  symbol: string;
+  asset: {
+    address: string;
+    symbol: string;
   };
+  totalAssets: string;
+  totalAssetsUsd: number;
+  netApy: number | null;
+  avgNetApy: number | null;
+  warnings: Array<{ type: string; level: string }>;
+  whitelisted: boolean;
+  curators: { items: Array<{ name: string; addresses?: Array<{ address: string }> }> };
+  performanceFee: number;
+  managementFee: number;
+  liquidityUsd: number;
 }
 
 /**
- * Fetch USDC vaults on Base Mainnet from Morpho API
+ * Fetch USDC vaults on Base Mainnet from Morpho API (vaultV2s endpoint)
  */
 export async function fetchMorphoUsdcVaults(): Promise<MorphoVault[]> {
   const query = `
-    query GetUsdcVaults($chainId: Int!) {
-      vaults(
-        where: { 
-          chainId_in: [$chainId],
-          whitelisted: true
+    query GetVaults($chainId: Int!, $first: Int!) {
+      vaultV2s(
+        first: $first
+        where: {
+          chainId_in: [$chainId]
         }
-        first: 100
+        orderBy: NetApy
+        orderDirection: Desc
       ) {
         items {
           address
@@ -59,18 +65,28 @@ export async function fetchMorphoUsdcVaults(): Promise<MorphoVault[]> {
           symbol
           asset {
             address
+            symbol
           }
-          state {
-            totalAssets
-            totalAssetsUsd
-            netApy
-            monthlyApy
+          totalAssets
+          totalAssetsUsd
+          netApy
+          avgNetApy
+          warnings {
+            type
+            level
           }
-          metadata {
-            curators {
+          whitelisted
+          curators {
+            items {
               name
+              addresses {
+                address
+              }
             }
           }
+          performanceFee
+          managementFee
+          liquidityUsd
         }
       }
     }
@@ -86,6 +102,7 @@ export async function fetchMorphoUsdcVaults(): Promise<MorphoVault[]> {
         query,
         variables: {
           chainId: CHAIN_CONFIG.chainId,
+          first: 100,
         },
       }),
     });
@@ -96,15 +113,15 @@ export async function fetchMorphoUsdcVaults(): Promise<MorphoVault[]> {
       throw new Error(`Morpho API error: ${response.status}`);
     }
 
-    const data = await response.json() as { data: MorphoVaultsResponse };
-    
-    if (!data.data?.vaults?.items) {
+    const data = await response.json() as { data: { vaultV2s: { items: VaultV2Item[] } } };
+
+    if (!data.data?.vaultV2s?.items) {
       console.warn("No vaults returned from Morpho API");
       return [];
     }
 
     // Filter for USDC vaults only
-    const usdcVaults = data.data.vaults.items.filter((vault) => 
+    const usdcVaults = data.data.vaultV2s.items.filter((vault) =>
       vault.asset?.address?.toLowerCase() === USDC_ADDRESS.toLowerCase()
     );
 
@@ -112,13 +129,20 @@ export async function fetchMorphoUsdcVaults(): Promise<MorphoVault[]> {
       address: vault.address as `0x${string}`,
       name: vault.name,
       symbol: vault.symbol,
-      totalAssets: vault.state.totalAssets,
-      totalAssetsUsd: vault.state.totalAssetsUsd,
+      totalAssets: vault.totalAssets,
+      totalAssetsUsd: vault.totalAssetsUsd,
       apy: {
-        netApy: vault.state.netApy,
-        monthlyApy: vault.state.monthlyApy,
+        netApy: vault.netApy ?? vault.avgNetApy ?? 0,
+        avgNetApy: vault.avgNetApy ?? 0,
       },
-      curator: vault.metadata?.curators?.[0]?.name,
+      curator: vault.curators?.items?.[0]?.name,
+      // Risk & Safety fields
+      warnings: vault.warnings as MorphoVault["warnings"],
+      whitelisted: vault.whitelisted,
+      curators: vault.curators,
+      performanceFee: vault.performanceFee,
+      managementFee: vault.managementFee,
+      liquidityUsd: vault.liquidityUsd,
     }));
   } catch (error) {
     console.error("Failed to fetch Morpho vaults:", error);
@@ -131,7 +155,7 @@ export async function fetchMorphoUsdcVaults(): Promise<MorphoVault[]> {
  */
 export async function getBestUsdcVault(): Promise<MorphoVault | null> {
   const vaults = await fetchMorphoUsdcVaults();
-  
+
   if (vaults.length === 0) {
     return null;
   }

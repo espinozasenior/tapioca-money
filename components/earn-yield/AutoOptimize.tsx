@@ -1,7 +1,7 @@
 "use client";
 
-import { useOptimizer, useRebalance, useAgent, formatApy, getProtocolColor, YieldOpportunity } from "@/hooks/useOptimizer";
-import { Loader2, TrendingUp, ArrowRight, Zap, Shield, AlertCircle } from "lucide-react";
+import { useOptimizer, useRebalance, useAgent, formatApy, getProtocolColor } from "@/hooks/useOptimizer";
+import { Loader2, TrendingUp, ArrowRight, Zap, AlertCircle } from "lucide-react";
 
 interface AutoOptimizeProps {
   usdcBalance: bigint;
@@ -160,34 +160,6 @@ export function AutoOptimize({ usdcBalance }: AutoOptimizeProps) {
         </div>
       )}
 
-      {/* Opportunities List */}
-      {data?.opportunities && (
-        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-          <h4 className="mb-3 text-sm font-medium text-gray-500">Available Protocols</h4>
-          <div className="space-y-2">
-            {data.opportunities.map((opp: YieldOpportunity) => (
-              <div
-                key={opp.id}
-                className="flex items-center justify-between rounded-lg bg-white px-3 py-2 shadow-sm"
-              >
-                <div className="flex items-center gap-2">
-                  <div
-                    className="h-2 w-2 rounded-full"
-                    style={{ backgroundColor: getProtocolColor(opp.protocol) }}
-                  />
-                  <span className="text-sm text-gray-900">{opp.name}</span>
-                  {opp.riskScore < 0.2 && (
-                    <div title="Low risk">
-                      <Shield className="h-3 w-3 text-emerald-600" />
-                    </div>
-                  )}
-                </div>
-                <span className="text-sm font-medium text-emerald-600">{formatApy(opp.apy)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
