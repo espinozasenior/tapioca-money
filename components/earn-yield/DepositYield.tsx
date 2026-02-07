@@ -8,6 +8,7 @@ import { useBalance } from "@/hooks/useBalance";
 import { YieldOpportunity } from "@/hooks/useOptimizer";
 import { buildDepositTransaction } from "@/lib/yield-optimizer/executor";
 import { cn } from "@/lib/utils";
+import { VaultSafetyDetails } from "./VaultSafetyDetails";
 
 interface DepositYieldProps {
   yieldOpportunity: YieldOpportunity;
@@ -222,6 +223,11 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
         {yieldOpportunity.metadata.description && (
           <p className="mt-3 text-xs text-gray-500">{yieldOpportunity.metadata.description}</p>
         )}
+
+        {/* Safety Information */}
+        <div className="mt-4 border-t border-primary/10 pt-4">
+          <VaultSafetyDetails vault={yieldOpportunity} />
+        </div>
       </div>
 
       {/* Amount Input */}

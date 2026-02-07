@@ -1,8 +1,18 @@
-import React from "react";
-import { Info } from "lucide-react";
+import React, { useState } from "react";
+import { Info, Shield, ChevronDown } from "lucide-react";
 import Image from "next/image";
 import { YieldOpportunity } from "@/hooks/useOptimizer";
 import { cn } from "@/lib/utils";
+import {
+  getRiskLevel,
+  getRiskColor,
+} from "@/lib/morpho/risk-scoring";
+import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from "@/components/common/Collapsible";
+import { VaultSafetyDetails } from "./VaultSafetyDetails";
 
 interface YieldListProps {
   yields: YieldOpportunity[];
@@ -84,50 +94,75 @@ export function YieldList({ yields, isLoading, error, onSelectYield }: YieldList
       {yields.map((yieldOpp) => {
         const canEnter = yieldOpp.status?.enter !== false;
         const isPending = yieldOpp.id.includes("pending");
+        const riskLevel = getRiskLevel(yieldOpp.riskScore);
+        const riskColor = getRiskColor(riskLevel);
 
         return (
-          <button
-            key={yieldOpp.id}
-            onClick={() => canEnter && !isPending && onSelectYield(yieldOpp)}
-            disabled={!canEnter || isPending}
-            className={cn(
-              "group w-full rounded-xl border border-gray-200 bg-white p-4 text-left transition",
+          <Collapsible key={yieldOpp.id} asChild>
+            <div className={cn(
+              "rounded-xl border border-gray-200 bg-white transition",
               canEnter && !isPending ? "hover:border-primary/30 hover:shadow-md" : "cursor-not-allowed opacity-60"
-            )}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Image
-                  src={"/usdc.svg"}
-                  alt={yieldOpp.metadata.name}
-                  width={36}
-                  height={36}
-                  unoptimized
-                />
+            )}>
+              {/* Main button */}
+              <button
+                onClick={() => canEnter && !isPending && onSelectYield(yieldOpp)}
+                disabled={!canEnter || isPending}
+                className="w-full p-4 text-left"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 flex-1">
+                    <Image
+                      src={"/usdc.svg"}
+                      alt={yieldOpp.metadata.name}
+                      width={36}
+                      height={36}
+                      unoptimized
+                    />
 
-                {/* Protocol Info */}
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-gray-900">
-                      {formatProviderName(yieldOpp.providerId)}
-                    </span>
-                    <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600">
-                      {getMechanicLabel(yieldOpp.mechanics?.type || "vault")}
-                    </span>
+                    {/* Protocol Info */}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-gray-900">
+                          {formatProviderName(yieldOpp.providerId)}
+                        </span>
+                        <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600">
+                          {getMechanicLabel(yieldOpp.mechanics?.type || "vault")}
+                        </span>
+                        {/* Risk Badge */}
+                        <div className="flex items-center gap-1" style={{ color: riskColor }}>
+                          <Shield className="h-3 w-3" />
+                          <span className="text-xs font-medium capitalize">
+                            {riskLevel}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-muted-foreground text-sm">{yieldOpp.metadata.name}</p>
+                    </div>
                   </div>
-                  <p className="text-muted-foreground text-sm">{yieldOpp.metadata.name}</p>
-                </div>
-              </div>
 
-              {/* APY */}
-              <div className="text-right">
-                <div className="text-lg font-semibold text-green-500">
-                  {formatApy(yieldOpp.rewardRate?.total || 0)}
+                  {/* APY */}
+                  <div className="text-right">
+                    <div className="text-lg font-semibold text-green-500">
+                      {formatApy(yieldOpp.rewardRate?.total || 0)}
+                    </div>
+                    <div className="text-muted-foreground text-xs">APY</div>
+                  </div>
                 </div>
-                <div className="text-muted-foreground text-xs">APY</div>
-              </div>
+              </button>
+
+              {/* Expandable Safety Details */}
+              <CollapsibleTrigger asChild>
+                <button className="w-full px-4 py-2 flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 border-t border-gray-100">
+                  <span>Safety Details</span>
+                  <ChevronDown className="h-3 w-3" />
+                </button>
+              </CollapsibleTrigger>
+
+              <CollapsibleContent className="px-4 pb-4">
+                <VaultSafetyDetails vault={yieldOpp} />
+              </CollapsibleContent>
             </div>
-          </button>
+          </Collapsible>
         );
       })}
     </div>

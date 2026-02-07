@@ -4,14 +4,16 @@ import { base } from "viem/chains";
 import type { YieldOpportunity, Position } from "../types";
 import { MORPHO_BLUE_BASE } from "../types";
 import { CHAIN_CONFIG, PROTOCOLS, MORPHO_USDC_MARKET_PARAMS, USDC_ADDRESS } from "../config";
-import { fetchMorphoUsdcVaults, getBestUsdcVault, type MorphoVault } from "../morpho-api";
-import { 
-  createSimulationState, 
-  sharesToAssets, 
+import { fetchMorphoUsdcVaults, getBestUsdcVault } from "../morpho-api";
+import type { MorphoVault } from "@/lib/morpho/api-client";
+import {
+  createSimulationState,
+  sharesToAssets,
   calculateSupplyApy,
   previewSupply,
-  type SupplyPreview 
+  type SupplyPreview
 } from "./morpho-simulation";
+import { calculateRiskScore } from "@/lib/morpho/risk-scoring";
 
 // Morpho Blue ABI (minimal for deposits/withdrawals)
 export const MORPHO_BLUE_ABI = [
@@ -237,7 +239,7 @@ export async function getMorphoOpportunities(): Promise<YieldOpportunity[]> {
     const marketId = getMarketId(MORPHO_USDC_MARKET_PARAMS);
     const market = simState.tryGetMarket(marketId as unknown as import("@morpho-org/blue-sdk").MarketId);
     const tvl = market?.totalSupplyAssets || 0n;
-    
+
     return [{
       id: "morpho-usdc",
       protocol: "morpho" as const,
@@ -246,27 +248,38 @@ export async function getMorphoOpportunities(): Promise<YieldOpportunity[]> {
       apy,
       tvl,
       address: MORPHO_BLUE_BASE,
-      riskScore: 0.2,
+      riskScore: 0.15, // Direct Morpho Blue market - low risk
       liquidityDepth: tvl,
       metadata: { marketParams: MORPHO_USDC_MARKET_PARAMS }
     }];
   }
 
-  // Convert API vaults to yield opportunities
-  return vaults.map((vault) => ({
+  // Filter out vaults with RED warnings and convert API vaults to yield opportunities
+  const safeVaults = vaults.filter((vault: any) =>
+    !vault.warnings?.some((w: any) => w.level === "RED")
+  );
+
+  return safeVaults.map((vault: any) => ({
     id: `morpho-vault-${vault.address.slice(0, 8)}`,
     protocol: "morpho" as const,
     name: vault.name,
     asset: "USDC",
-    apy: vault.apy.netApy,
+    apy: vault.netApy ?? vault.avgNetApy ?? 0,
     tvl: BigInt(vault.totalAssets),
     address: vault.address,
-    riskScore: 0.2,
+    riskScore: calculateRiskScore(vault),
     liquidityDepth: BigInt(vault.totalAssets),
     metadata: {
       vaultAddress: vault.address,
       curator: vault.curator,
       isVault: true,
+      // Include risk metadata for display
+      warnings: vault.warnings,
+      whitelisted: vault.whitelisted,
+      curators: vault.curators,
+      performanceFee: vault.performanceFee,
+      managementFee: vault.managementFee,
+      liquidityUsd: vault.liquidityUsd,
     }
   }));
 }
