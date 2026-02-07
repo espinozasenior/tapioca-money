@@ -5,7 +5,6 @@ import type { YieldOpportunity, Position } from "../types";
 import { MORPHO_BLUE_BASE } from "../types";
 import { CHAIN_CONFIG, PROTOCOLS, MORPHO_USDC_MARKET_PARAMS, USDC_ADDRESS } from "../config";
 import { fetchMorphoUsdcVaults, getBestUsdcVault } from "../morpho-api";
-import type { MorphoVault } from "@/lib/morpho/api-client";
 import {
   createSimulationState,
   sharesToAssets,
@@ -231,7 +230,7 @@ export function buildMorphoSupplyData(
 export async function getMorphoOpportunities(): Promise<YieldOpportunity[]> {
   // Fetch live vault data from Morpho API
   const vaults = await fetchMorphoUsdcVaults();
-  
+
   if (vaults.length === 0) {
     // Fallback to simulation-based APY if API fails
     const simState = createSimulationState();
@@ -254,17 +253,17 @@ export async function getMorphoOpportunities(): Promise<YieldOpportunity[]> {
     }];
   }
 
-  // Filter out vaults with RED warnings and convert API vaults to yield opportunities
-  const safeVaults = vaults.filter((vault: any) =>
+  // Filter out vaults with RED warnings
+  const safeVaults = vaults.filter((vault) =>
     !vault.warnings?.some((w: any) => w.level === "RED")
   );
 
-  return safeVaults.map((vault: any) => ({
+  return safeVaults.map((vault) => ({
     id: `morpho-vault-${vault.address.slice(0, 8)}`,
     protocol: "morpho" as const,
     name: vault.name,
     asset: "USDC",
-    apy: vault.netApy ?? vault.avgNetApy ?? 0,
+    apy: vault.apy.netApy ?? 0,
     tvl: BigInt(vault.totalAssets),
     address: vault.address,
     riskScore: calculateRiskScore(vault),
@@ -280,6 +279,7 @@ export async function getMorphoOpportunities(): Promise<YieldOpportunity[]> {
       performanceFee: vault.performanceFee,
       managementFee: vault.managementFee,
       liquidityUsd: vault.liquidityUsd,
+      totalAssetsUsd: vault.totalAssetsUsd,
     }
   }));
 }
