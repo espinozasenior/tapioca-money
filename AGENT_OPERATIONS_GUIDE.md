@@ -1,8 +1,8 @@
-# LiqX Agent Operations Guide
+# Tapioca Finance - Agent Operations Guide
 
 ## Overview
 
-The LiqX Autonomous Yield Agent is a fully automated system that monitors user positions and rebalances funds across DeFi protocols to maximize yield. Built using EIP-7702 delegation, the agent can execute gasless transactions on behalf of users while maintaining full user control.
+The Tapioca Finance Autonomous Yield Agent is a fully automated system that monitors user positions and rebalances funds across DeFi protocols to maximize yield. Built using EIP-7702 delegation, the agent can execute gasless transactions on behalf of users while maintaining full user control.
 
 ## Architecture
 
@@ -41,7 +41,7 @@ The LiqX Autonomous Yield Agent is a fully automated system that monitors user p
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
 │          External Services Integration                      │
-│  • Crossmint/Gelato: EIP-7702 execution + task tracking    │
+│  • ZeroDev: Smart account execution + gas sponsorship       │
 │  • Morpho API: Yield opportunities                          │
 │  • Aave/Moonwell: Alternative protocols                     │
 │  • Postgres (Neon): State persistence                       │
@@ -147,7 +147,7 @@ Expected response:
   "status": "healthy",
   "services": {
     "database": "up",
-    "gelato": "up",
+    "zerodev": "up",
     "morphoApi": "up"
   },
   "metrics": {

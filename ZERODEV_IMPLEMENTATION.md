@@ -21,7 +21,7 @@ User (Privy EOA)
     ↓
 [Click "Auto-Optimize"]
     ↓
-Create Kernel V3 Smart Account (lib/gelato/frontend.ts)
+Create Kernel V3 Smart Account (lib/zerodev/client.ts)
     ├─ Privy wallet = signer
     ├─ Generate session key
     └─ Set permissions (Morpho vaults only)
@@ -44,7 +44,7 @@ Cron job runs every 5 minutes
 
 ### Frontend (Client-Side)
 
-**File:** `lib/gelato/frontend.ts`
+**File:** `lib/zerodev/client.ts`
 
 ```typescript
 // 1. Create Kernel V3 smart account
@@ -191,16 +191,16 @@ curl -X POST http://localhost:3000/api/agent/cron \
 
 ---
 
-## Differences from Previous Implementation
+## Current Implementation
 
-| Aspect | Old (Gelato) | New (ZeroDev) |
-|--------|--------------|---------------|
-| **Smart Account** | Attempted Gelato SDK | Kernel V3 ✓ |
-| **Session Keys** | ERC-7715 (attempted) | Session Key Plugin ✓ |
-| **SDK Compatibility** | ❌ client.extend error | ✅ Works with Privy |
-| **Documentation** | Limited | Comprehensive |
-| **Agent Wallet** | Required separate wallet | ❌ Not needed |
-| **Permission Model** | ERC-7715 (unreleased) | ZeroDev Policies ✓ |
+| Aspect | ZeroDev |
+|--------|---------|
+| **Smart Account** | Kernel V3 ✓ |
+| **Session Keys** | Session Key Plugin ✓ |
+| **SDK Compatibility** | ✅ Works with Privy |
+| **Documentation** | Comprehensive |
+| **Agent Wallet** | ❌ Not needed (session key = permission grant) |
+| **Permission Model** | ZeroDev Policies ✓ |
 
 ---
 
