@@ -1,183 +1,136 @@
-<div align="center">
-<img width="200" alt="Image" src="https://github.com/user-attachments/assets/8b617791-cd37-4a5a-8695-a7c9018b7c70" />
-<br>
-<br>
-<h1>Fintech Starter App</h1>
+# Tapioca Finance
 
-<div align="center">
-<a href="https://fintech-starter-app.demos-crossmint.com/">Live Demo</a>  | <a href="https://docs.crossmint.com/">Docs</a> | <a href="https://crossmint.com/quickstarts">See all quickstarts</a>  | <a href="https://t.me/crossmintdevs">Join our Telegram</a> 
-</div>
+Smart yield optimization on Base. Deposit USDC, earn yield across DeFi protocols, and let an autonomous agent maximize your returns.
 
-<br>
-<br>
-<img width="full" alt="image" src="https://github.com/user-attachments/assets/4a1c2c44-23f6-435c-a780-17e89ebe1f66" />
-</div>
+## Features
 
-## Table of contents
+- **Privy Authentication** — Login with email or Google, embedded wallets auto-created
+- **USDC on Base** — Deposit, send, and manage USDC on Base mainnet
+- **Earn Yield** — Deposit into Morpho vaults with real-time APY and risk scoring
+- **Autonomous Yield Agent** — ZeroDev session keys enable hands-free rebalancing across vaults
+- **Gasless Transactions** — All operations sponsored via ZeroDev Bundler + Paymaster (ERC-4337)
+- **Activity Feed** — Full transaction history and agent action timeline
 
-- [Introduction](#introduction)
-- [Deploy](#deploy)
-- [Setup](#setup)
-- [Using another chain](#using-another-chain)
-- [Using in production](#using-in-production)
-  - [Enabling Withdrawals](#enabling-withdrawals)
+## Autonomous Yield Agent
 
-## Introduction
-
-Create your own Fintech app in minutes using **[Crossmint](https://crossmint.com)** wallets and onramp.
-
-**Key features**
-
-- Login with email or social media
-- Automatically create non-custodial wallets for your users
-- Top up with USDC using a credit or debit card
-- Transfer USDC to another wallet or email address
-- View your wallet activity
-- Withdraw USDC to your bank account
-- Support for +40 chains (Solana, EVM, etc)
-- Leverage more than +200 onchain tools integrating [GOAT](https://github.com/goat-sdk/goat)
-
-**New: Yield Integration**
-
-- Earn yield on your USDC through DeFi protocols (Aave, Morpho, Compound)
-- Powered by [Yield.xyz](https://yield.xyz) - the unified yield infrastructure for Web3
-- The wallets in this demo use testnet tokens to interact with mainnet yield protocols. Testnet deposits won't actually earn yield — this is for demonstration purposes only.
-
-**New: Autonomous Yield Agent (EIP-7702)**
-
-The LiqX Agent automatically rebalances user funds across DeFi protocols to maximize yield using EIP-7702 delegation.
+The agent continuously monitors yield opportunities and rebalances your funds automatically.
 
 ### How It Works
 
-1. **One-Time Authorization**: Users authorize EIP-7702 delegation through a simple UI interaction
-2. **Continuous Monitoring**: Agent monitors yield opportunities across protocols every 5 minutes
-3. **Smart Rebalancing**: When APY improvement exceeds your threshold, the agent rebalances automatically
-4. **Gasless Transactions**: All transactions are executed via Gelato Relay with no gas fees to users
-5. **Full Control**: Users can enable/disable auto-optimize or revoke authorization anytime
-
-### Features
-
-- ✅ **Fully Autonomous**: No manual intervention required once enabled
-- ✅ **User-Controlled**: Set custom APY thresholds and disable anytime
-- ✅ **Gasless**: Zero transaction fees for users
-- ✅ **Transparent**: View all agent actions in real-time dashboard
-- ✅ **Safe**: Built on EIP-7702 with user authorization required
-
-### Agent Dashboard
-
-Track your agent's performance:
-- Total rebalances executed
-- Success rate and APY improvements
-- Estimated yearly gains
-- Complete activity timeline with transaction details
+1. **One-Time Setup**: Register a ZeroDev Kernel V3 smart account and grant a scoped session key
+2. **Continuous Monitoring**: Agent evaluates Morpho vault APYs every 5 minutes
+3. **Smart Rebalancing**: When APY improvement exceeds threshold (default 0.5%), the agent moves funds
+4. **Gasless Execution**: All transactions sponsored — zero gas fees for users
+5. **Full Control**: Disable auto-optimize or revoke session keys anytime
 
 ### Security
 
-- Agent operates only with explicit user authorization (EIP-7702)
-- Authorization can be revoked at any time
-- All transactions are simulated before execution
+- Session keys are scoped to approved Morpho vaults only (30-day expiry)
+- Authorization revocable at any time
+- All transactions simulated before execution
 - Rate limits and safety checks prevent excessive operations
 
-### For Developers
-
-See [AGENT_OPERATIONS_GUIDE.md](./AGENT_OPERATIONS_GUIDE.md) for:
-- Architecture overview and system design
-- Deployment instructions and configuration
-- Monitoring and troubleshooting guides
-- Database queries and performance optimization
-
-**Coming soon**
-
-- Currency conversion
-- Issue a debit card linked to your wallet
-
-Get in touch with us to get early access to these features!
-
-Join our [Telegram community](https://t.me/crossmintdevs) to stay updated on the latest features and announcements.
-
-## Deploy
-
-Easily deploy the template to Vercel with the button below. You will need to set the required environment variables in the Vercel dashboard.
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FCrossmint%2Ffintech-starter-app&env=NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY,NEXT_PUBLIC_CHAIN_ID,NEXT_PUBLIC_USDC_MINT)
+See [AGENT_OPERATIONS_GUIDE.md](./AGENT_OPERATIONS_GUIDE.md) for architecture details.
 
 ## Setup
 
-1. Clone the repository and navigate to the project folder:
+1. Clone and install:
 
 ```bash
-git clone https://github.com/crossmint/fintech-starter-app.git && cd fintech-starter-app
-```
-
-2. Install all dependencies:
-
-```bash
-npm install
-# or
-yarn install
-# or
+git clone <your-repo-url> && cd tapioca
 pnpm install
-# or
-bun install
 ```
 
-3. Set up the environment variables:
+2. Configure environment:
 
 ```bash
 cp .env.template .env
 ```
 
-4. Login to the <a href="https://staging.crossmint.com/console" target="_blank">Crossmint staging console</a> and get the client API key from the <a href="https://staging.crossmint.com/console/overview" target="_blank">overview page</a>:
+3. Set required variables:
 
-```env
-NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY=your_client_side_API_key
-```
+| Variable | Source | Notes |
+|----------|--------|-------|
+| `NEXT_PUBLIC_PRIVY_APP_ID` | [Privy Dashboard](https://dashboard.privy.io) | Public, safe to expose |
+| `PRIVY_APP_SECRET` | Privy Dashboard | Secret, server-only |
+| `ZERODEV_PROJECT_ID` | [ZeroDev Dashboard](https://dashboard.zerodev.app) | For Kernel V3 smart accounts |
+| `DATABASE_URL` | [Neon Console](https://console.neon.tech) | Use pooled connection string with `?sslmode=require` |
+| `DATABASE_ENCRYPTION_KEY` | Generate: `openssl rand -hex 32` | 32-byte key for AES-256 encryption of session keys |
+| `CRON_SECRET` | Generate: `openssl rand -hex 16` | Authenticates cron requests |
+| `NEXT_PUBLIC_CHAIN_ID` | Fixed: `base` | Production chain |
+| `NEXT_PUBLIC_USDC_MINT` | Fixed: `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` | Base mainnet USDC |
 
-5. Run the development server:
+Optional:
+- `ZERODEV_BUNDLER_URL` — Custom bundler endpoint (defaults to ZeroDev's)
+- `AGENT_SIMULATION_MODE` — `true` for testing without real transactions
+- `AGENT_MIN_APY_THRESHOLD` — Minimum APY improvement to trigger rebalance (default: `0.005`)
+
+4. Set up the database:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm db:push
+```
+
+5. Run:
+
+```bash
 pnpm dev
-# or
-bun dev
 ```
 
-## Using another chain
+## Deployment
 
-To use another chain, you'll need to:
+Deploy to Vercel with automatic cron job support for the autonomous agent.
 
-1. Update the chain environment variable to the chain you want to use.
+### Quick Deploy
 
-```env
-NEXT_PUBLIC_CHAIN_ID=solana
+```bash
+# Build and verify locally
+pnpm build && pnpm test:run
+
+# Deploy
+vercel deploy --prod
 ```
 
-2. Update the USDC locator to the USDC of the chain you want to use.
+### Cron Configuration
 
-```env
-# For solana 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
-NEXT_PUBLIC_USDC_MINT=your_USDC_mint
+The autonomous agent runs every 5 minutes via Vercel cron (configured in `vercel.json`):
+
+```json
+{
+  "crons": [{ "path": "/api/agent/cron", "schedule": "*/5 * * * *" }]
+}
 ```
 
-## Using in production
+Tuning parameters:
+- `CRON_BATCH_SIZE` — Users per batch (default: 50)
+- `CRON_CONCURRENCY` — Parallel user processing (default: 10)
 
-This starter app is designed for rapid prototyping and testing in a staging environment. To move to production you'll need to:
+### Health Monitoring
 
-1. Login to the [Crossmint production console](https://www.crossmint.com/console) and [create a client side API key](https://www.crossmint.com/console/projects/apiKeys) with the following scopes: `users.create`, `users.read`, `wallets.read`, `wallets.create`, `wallets:transactions.create`, `wallets:transactions.sign`, `wallets:transactions.read`, `wallets:balance.read`, `wallets.fund`.
-2. Update the chain environment variable to a mainnet chain.
-   - **Note ⚠️**: Non custodial signers for solana are not available in production yet since they are undergoing a security audit. Reach out to us on [Telegram](https://t.me/crossmintdevs) to be the first to know when they are available.
-3. Update the USDC locator to the USDC of the mainnet chain you want to use.
-4. Customize your email template for login and signup in the [Crossmint console](https://www.crossmint.com/console) under the Settings tab in the Branding section.
-5. For using onramp in production reach out to us on [Telegram](https://t.me/fintechstarterapp).
+```bash
+curl https://your-domain.vercel.app/api/agent/health
+```
 
-### Enabling Withdrawals
+Returns service status for database, ZeroDev bundler, and Morpho API, plus agent metrics (active users, rebalance success rate, error rate).
 
-Withdrawals are powered by [Coinbase](https://www.coinbase.com/en-es/developer-platform) and only work in production. For enabling withdrawals you'll need to:
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for the full production deployment guide including database migrations, rollback procedures, troubleshooting, and monitoring.
 
-1. [Create a Coinbase developer account](https://www.coinbase.com/en-es/developer-platform)
-2. Create a Server API Key
-3. Add the `NEXT_PUBLIC_COINBASE_APP_ID`, `COINBASE_API_KEY_ID`, and `API_KEY_SECRET` to the `.env` file.
-4. In the [Onramp configuration](https://portal.cdp.coinbase.com/products/onramp) add your domain to the domain allowlist
+## Tech Stack
+
+- Next.js 15 (React 19, App Router, Turbopack)
+- Privy (auth + embedded wallets)
+- ZeroDev SDK v5 (Kernel V3 smart accounts, session keys, bundler + paymaster)
+- Morpho Blue (vault deposits and yield)
+- Viem v2, Base mainnet
+- Tailwind CSS v4, Radix UI
+- Drizzle ORM + Neon Postgres
+
+## License
+
+Licensed under the Business Source License 1.1. See [LICENSE](./LICENSE) for details.
+
+After the Change Date (February 8, 2029), the license converts to Apache 2.0.
+
+## Attribution
+
+This project is derived from [Crossmint's fintech-starter-app](https://github.com/Crossmint/fintech-starter-app) (MIT). See [NOTICE](./NOTICE) and [THIRD_PARTY_LICENSES](./THIRD_PARTY_LICENSES).
