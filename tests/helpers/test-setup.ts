@@ -146,9 +146,9 @@ export function createTestClient() {
 }
 
 /**
- * Mock Gelato/Crossmint API response
+ * Mock transaction API response
  */
-export function mockGelatoResponse(
+export function mockTransactionResponse(
   success: boolean = true,
   txHash?: string
 ): any {

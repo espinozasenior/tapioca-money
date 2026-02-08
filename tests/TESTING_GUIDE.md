@@ -172,7 +172,7 @@ Expected response:
   },
   "services": {
     "database": "up",
-    "gelato": "up",
+    "zerodev": "up",
     "morphoApi": "up"
   }
 }
@@ -406,7 +406,7 @@ curl https://staging.crossmint.com/api/v1-alpha1/health \
 
 **Solution**:
 - Check if simulation mode is enabled
-- Verify Gelato relay is responding
+- Verify ZeroDev bundler is responding
 - Check for infinite loops in code
 
 ## Best Practices
