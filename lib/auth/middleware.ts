@@ -9,7 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { PrivyClient } from '@privy-io/server-auth';
+import { PrivyClient } from '@privy-io/node';
 
 const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
 const PRIVY_APP_SECRET = process.env.PRIVY_APP_SECRET;
@@ -22,7 +22,7 @@ function getPrivyClient(): PrivyClient {
     if (!PRIVY_APP_ID || !PRIVY_APP_SECRET) {
       throw new Error('PRIVY_APP_ID and PRIVY_APP_SECRET must be configured');
     }
-    privyClient = new PrivyClient(PRIVY_APP_ID, PRIVY_APP_SECRET);
+    privyClient = new PrivyClient({ appId: PRIVY_APP_ID, appSecret: PRIVY_APP_SECRET });
   }
   return privyClient;
 }
@@ -90,15 +90,15 @@ export async function authenticateRequest(
 
     // Verify token using Privy SDK
     const privy = getPrivyClient();
-    const verifiedClaims = await privy.verifyAuthToken(token);
+    const verifiedClaims = await privy.utils().auth().verifyAccessToken(token);
 
     // Get user details to access linked accounts
-    const user = await privy.getUser(verifiedClaims.userId);
-    const walletAddress = extractWalletAddress(user.linkedAccounts);
+    const user = await privy.users()._get(verifiedClaims.user_id);
+    const walletAddress = extractWalletAddress(user.linked_accounts);
 
     return {
       authenticated: true,
-      userId: verifiedClaims.userId,
+      userId: verifiedClaims.user_id,
       walletAddress: walletAddress || undefined,
     };
   } catch (error: any) {
