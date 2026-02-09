@@ -49,18 +49,19 @@ cp .env.template .env
 
 3. Set required variables:
 
-| Variable | Source | Notes |
-|----------|--------|-------|
-| `NEXT_PUBLIC_PRIVY_APP_ID` | [Privy Dashboard](https://dashboard.privy.io) | Public, safe to expose |
-| `PRIVY_APP_SECRET` | Privy Dashboard | Secret, server-only |
-| `ZERODEV_PROJECT_ID` | [ZeroDev Dashboard](https://dashboard.zerodev.app) | For Kernel V3 smart accounts |
-| `DATABASE_URL` | [Neon Console](https://console.neon.tech) | Use pooled connection string with `?sslmode=require` |
-| `DATABASE_ENCRYPTION_KEY` | Generate: `openssl rand -hex 32` | 32-byte key for AES-256 encryption of session keys |
-| `CRON_SECRET` | Generate: `openssl rand -hex 16` | Authenticates cron requests |
-| `NEXT_PUBLIC_CHAIN_ID` | Fixed: `base` | Production chain |
-| `NEXT_PUBLIC_USDC_MINT` | Fixed: `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` | Base mainnet USDC |
+| Variable                   | Source                                              | Notes                                                |
+| -------------------------- | --------------------------------------------------- | ---------------------------------------------------- |
+| `NEXT_PUBLIC_PRIVY_APP_ID` | [Privy Dashboard](https://dashboard.privy.io)       | Public, safe to expose                               |
+| `PRIVY_APP_SECRET`         | Privy Dashboard                                     | Secret, server-only                                  |
+| `ZERODEV_PROJECT_ID`       | [ZeroDev Dashboard](https://dashboard.zerodev.app)  | For Kernel V3 smart accounts                         |
+| `DATABASE_URL`             | [Neon Console](https://console.neon.tech)           | Use pooled connection string with `?sslmode=require` |
+| `DATABASE_ENCRYPTION_KEY`  | Generate: `openssl rand -hex 32`                    | 32-byte key for AES-256 encryption of session keys   |
+| `CRON_SECRET`              | Generate: `openssl rand -hex 16`                    | Authenticates cron requests                          |
+| `NEXT_PUBLIC_CHAIN_ID`     | Fixed: `base`                                       | Production chain                                     |
+| `NEXT_PUBLIC_USDC_MINT`    | Fixed: `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` | Base mainnet USDC                                    |
 
 Optional:
+
 - `ZERODEV_BUNDLER_URL` — Custom bundler endpoint (defaults to ZeroDev's)
 - `AGENT_SIMULATION_MODE` — `true` for testing without real transactions
 - `AGENT_MIN_APY_THRESHOLD` — Minimum APY improvement to trigger rebalance (default: `0.005`)
@@ -102,6 +103,7 @@ The autonomous agent runs every 5 minutes via Vercel cron (configured in `vercel
 ```
 
 Tuning parameters:
+
 - `CRON_BATCH_SIZE` — Users per batch (default: 50)
 - `CRON_CONCURRENCY` — Parallel user processing (default: 10)
 
@@ -127,9 +129,24 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for the full production deployment guide in
 
 ## License
 
-Licensed under the Business Source License 1.1. See [LICENSE](./LICENSE) for details.
+This project is licensed under the **Tapioca Finance Business Source License Version 1.0**. See [LICENSE](./LICENSE) for the full terms.
 
-After the Change Date (February 8, 2029), the license converts to Apache 2.0.
+### Key Points
+
+- **Commercial Use**: Allowed, subject to the restrictions in Section 2 of the license
+- **Competitive Restriction**: You may not provide this software as a service to third parties if such service competes with Tapioca Finance's commercial offerings without a separate commercial license
+- **Patent Grant**: Includes the Apache 2.0 patent grant
+- **Automatic Conversion**: On **February 9, 2029** (4 years from the effective date), this license automatically converts to the Apache License 2.0, and the competitive restrictions no longer apply
+
+### Why This License?
+
+This license model allows Tapioca Finance to:
+
+- Generate revenue through commercial offerings
+- Protect against competitors directly rehosting our software as a service
+- Contribute to the open-source community by automatically converting to Apache 2.0 after 4 years
+
+For questions about commercial licensing before the conversion date, contact licensing@tapioca.finance.
 
 ## Attribution
 
