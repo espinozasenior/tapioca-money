@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Tapioca Finance — smart yield optimization on Base with autonomous DeFi agent",
-  "license": "BUSL-1.1",
+  "license": "proprietary",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
