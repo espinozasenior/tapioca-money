@@ -79,7 +79,8 @@
   "pnpm": {
     "overrides": {
       "use-sync-external-store": ">=1.2.0",
-      "@privy-io/react-auth>permissionless": "^0.3.4"
+      "@privy-io/react-auth>permissionless": "^0.3.4",
+      "viem": "$viem"
     }
   }
 }
