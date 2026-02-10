@@ -1,12 +1,10 @@
 import React, { useState } from "react";
 import { useWallet } from "@/hooks/useWallet";
-import { createWalletClient, createPublicClient, custom, http } from "viem";
-import { base } from "viem/chains";
+import { usePrivy } from "@privy-io/react-auth";
 import { AmountInput } from "../common/AmountInput";
 import { PrimaryButton } from "../common/PrimaryButton";
 import { useBalance } from "@/hooks/useBalance";
 import { YieldOpportunity } from "@/hooks/useOptimizer";
-import { buildDepositTransaction } from "@/lib/yield-optimizer/executor";
 import { cn } from "@/lib/utils";
 import { VaultSafetyDetails } from "./VaultSafetyDetails";
 
@@ -23,16 +21,12 @@ const formatApy = (apy: number) => {
 
 export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: DepositYieldProps) {
   const { wallet } = useWallet();
+  const { getAccessToken } = usePrivy();
   const { displayableBalance, refetch: refetchBalance } = useBalance();
   const [amount, setAmount] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentStep, setCurrentStep] = useState<{
-    index: number;
-    title: string;
-    hash?: string;
-    total?: number;
-  } | null>(null);
+  const [txHash, setTxHash] = useState<string | null>(null);
 
   const isAmountValid =
     !!amount &&
@@ -51,152 +45,67 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
       return;
     }
 
-    // Ensure wallet has required methods
-    if (!wallet.getEthereumProvider) {
-      setError("Wallet provider not available");
+    if (!isAmountValid) {
+      setError("Invalid amount");
       return;
     }
 
-    if (!isAmountValid) {
-      setError("Invalid amount");
+    const vaultAddress = yieldOpportunity.metadata?.vaultAddress as string | undefined;
+    if (!vaultAddress) {
+      setError("Vault address not available for this opportunity");
       return;
     }
 
     setError(null);
     setIsLoading(true);
+    setTxHash(null);
     onProcessing();
 
-    // Track current step locally (not via React state) so catch block has access
-    let activeStep: { index: number; title: string } | null = null;
-
     try {
-      // Get unsigned transactions from optimizer
-      // For Morpho vaults, pass the vault address from the opportunity
-      const vaultAddress = yieldOpportunity.metadata?.vaultAddress as `0x${string}` | undefined;
-
-      const response = await buildDepositTransaction(
-        yieldOpportunity.protocol,
-        wallet.address as `0x${string}`,
-        amount,
-        vaultAddress // Pass vault address for ERC4626 deposits
-      );
-      // Sort transactions by stepIndex to ensure correct order (APPROVAL before SUPPLY)
-      const sortedTransactions = [...(response.transactions || [])].sort(
-        (a: any, b: any) => (a.stepIndex || 0) - (b.stepIndex || 0)
-      );
-
-      // Get Ethereum provider from Privy wallet
-      const provider = await wallet.getEthereumProvider();
-
-      // Create wallet client with the provider
-      const walletClient = createWalletClient({
-        account: wallet.address as `0x${string}`,
-        chain: base,
-        transport: custom(provider),
-      });
-
-      // Create public client for waiting transaction receipts
-      const publicClient = createPublicClient({
-        chain: base,
-        transport: http(),
-      });
-
-      const totalSteps = sortedTransactions.length;
-
-      // Execute each transaction through Privy wallet
-      for (let i = 0; i < sortedTransactions.length; i++) {
-        const tx = sortedTransactions[i];
-        const unsignedTx = JSON.parse(tx.unsignedTransaction);
-
-        activeStep = { index: i + 1, title: tx.title };
-
-        // Update UI with current step
-        setCurrentStep({
-          index: i + 1,
-          title: tx.title,
-          total: totalSteps,
-        });
-
-        // Send the transaction through wallet client
-        const hash = await walletClient.sendTransaction({
-          to: unsignedTx.to as `0x${string}`,
-          data: unsignedTx.data as `0x${string}`,
-          value: BigInt(unsignedTx.value || "0x0"),
-          ...(unsignedTx.gas && { gas: BigInt(unsignedTx.gas) }),
-        });
-
-        console.log(`[Yield] Step ${i + 1}/${totalSteps} (${tx.title}) hash:`, hash);
-
-        // Update step with transaction hash
-        setCurrentStep({
-          index: i + 1,
-          title: tx.title,
-          hash,
-          total: totalSteps,
-        });
-
-        // Wait for transaction confirmation
-        const receipt = await publicClient.waitForTransactionReceipt({
-          hash,
-        });
-
-        // Verify transaction succeeded
-        if (receipt.status !== "success") {
-          throw new Error(
-            `Transaction failed: ${tx.title}. Check on Basescan: https://basescan.org/tx/${hash}`
-          );
-        }
-
-        console.log(
-          `[Yield] Step ${i + 1}/${totalSteps} confirmed:`,
-          receipt.transactionHash
-        );
+      const accessToken = await getAccessToken();
+      if (!accessToken) {
+        throw new Error("Failed to get access token. Please try logging in again.");
       }
+
+      const res = await fetch("/api/vault/deposit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ vaultAddress, amount }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to deposit");
+      }
+
+      console.log("[Yield] Gasless deposit success:", data.txHash);
+      setTxHash(data.txHash);
 
       // Refresh balance after successful deposit
       await refetchBalance();
-      setCurrentStep(null);
       onSuccess();
     } catch (err: any) {
-      console.error("[Yield] Deposit error at step", activeStep?.index, ":", err);
+      console.error("[Yield] Deposit error:", err);
 
-      // User-friendly error messages with context
       let errorMessage = err.message || "Failed to deposit. Please try again.";
 
-      if (activeStep) {
-        errorMessage = `Failed at step ${activeStep.index} (${activeStep.title}): ${errorMessage}`;
-      }
-
-      if (errorMessage.includes("market not available")) {
-        errorMessage = "Morpho markets are not yet deployed on Base Sepolia testnet. Please check back later or switch to mainnet.";
-      } else if (errorMessage.includes("execution_reverted")) {
-        errorMessage = "Transaction would revert. This may be due to insufficient balance or market not available.";
+      if (errorMessage.includes("Agent not registered")) {
+        errorMessage = "Please register your agent first to enable gasless deposits.";
+      } else if (errorMessage.includes("Session key expired")) {
+        errorMessage = "Your session has expired. Please re-register your agent.";
+      } else if (errorMessage.includes("Vault not approved")) {
+        errorMessage = "This vault is not approved. Please re-register your agent with updated vault permissions.";
       }
 
       setError(errorMessage);
       setIsLoading(false);
-      setCurrentStep(null);
+      setTxHash(null);
     }
   };
-
-  // Demo mode handler (when API key is not configured)
-  const handleDemoDeposit = () => {
-    if (!isAmountValid) {
-      setError("Invalid amount");
-      return;
-    }
-
-    setError(null);
-    onProcessing();
-
-    // Simulate transaction processing
-    setTimeout(() => {
-      onSuccess();
-    }, 2000);
-  };
-
-  // Always enabled - no API key needed for direct protocol integration
-  const isEnabled = true;
 
   return (
     <div className="mt-4 flex w-full flex-col">
@@ -276,32 +185,28 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
       {error && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</div>}
 
       {/* Transaction Hash Display */}
-      {currentStep && currentStep.hash && (
+      {txHash && (
         <div className="mb-4 rounded-lg bg-blue-50 p-3 text-xs text-blue-600">
-          <p className="font-medium">
-            Step {currentStep.index}: {currentStep.title}
-          </p>
+          <p className="font-medium">Deposit confirmed</p>
           <p className="mt-1 break-all font-mono">
-            Tx: {currentStep.hash.slice(0, 10)}...{currentStep.hash.slice(-8)}
+            Tx: {txHash.slice(0, 10)}...{txHash.slice(-8)}
           </p>
           <a
-            href={`https://basescan.org/tx/${currentStep.hash}`}
+            href={`https://basescan.org/tx/${txHash}`}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-2 inline-block text-blue-700 underline hover:text-blue-900"
           >
-            View on Basescan →
+            View on Basescan
           </a>
         </div>
       )}
 
       {/* Deposit Button */}
       <PrimaryButton onClick={handleDeposit} disabled={!isAmountValid || isLoading}>
-        {isLoading && currentStep
-          ? `Step ${currentStep.index}/${currentStep.total}: ${currentStep.title}...`
-          : isLoading
-            ? "Processing..."
-            : `Deposit ${amount || "0"} USDC`}
+        {isLoading
+          ? "Processing deposit..."
+          : `Deposit ${amount || "0"} USDC`}
       </PrimaryButton>
 
       {/* Risk Disclaimer */}
