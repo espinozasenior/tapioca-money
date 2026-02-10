@@ -4,7 +4,7 @@ import { base } from "viem/chains";
 import type { YieldOpportunity, Position } from "../types";
 import { MORPHO_BLUE_BASE } from "../types";
 import { CHAIN_CONFIG, PROTOCOLS, MORPHO_USDC_MARKET_PARAMS, USDC_ADDRESS } from "../config";
-import { fetchMorphoUsdcVaults, getBestUsdcVault } from "../morpho-api";
+import { fetchMorphoUsdcVaults } from "../morpho-api";
 import {
   createSimulationState,
   sharesToAssets,
@@ -108,6 +108,7 @@ const ERC20_ABI = [
 const client = createPublicClient({
   chain: base,
   transport: http(CHAIN_CONFIG.rpcUrl),
+  batch: { multicall: true },
 });
 
 // ERC4626 Vault ABI for Morpho Vaults
@@ -115,6 +116,7 @@ export const ERC4626_VAULT_ABI = [
   {
     name: "deposit",
     type: "function",
+    stateMutability: "nonpayable",
     inputs: [
       { name: "assets", type: "uint256" },
       { name: "receiver", type: "address" },
@@ -124,6 +126,7 @@ export const ERC4626_VAULT_ABI = [
   {
     name: "withdraw",
     type: "function",
+    stateMutability: "nonpayable",
     inputs: [
       { name: "assets", type: "uint256" },
       { name: "receiver", type: "address" },
@@ -134,6 +137,7 @@ export const ERC4626_VAULT_ABI = [
   {
     name: "redeem",
     type: "function",
+    stateMutability: "nonpayable",
     inputs: [
       { name: "shares", type: "uint256" },
       { name: "receiver", type: "address" },
@@ -300,18 +304,65 @@ export async function getMorphoPosition(userAddress: `0x${string}`): Promise<Pos
     positions.push(directPosition);
   }
 
-  // Check all ERC4626 vault positions
+  // Check all ERC4626 vault positions using batched multicall
+  // With batch.multicall enabled on the client, concurrent readContract calls
+  // are automatically batched into single eth_call via Multicall3
   try {
     const vaults = await fetchMorphoUsdcVaults();
-    const vaultPositions = await Promise.allSettled(
-      vaults.map(vault => getMorphoVaultPosition(userAddress, vault.address))
+    if (vaults.length === 0) return positions;
+
+    // Phase 1: batch all balanceOf calls (auto-batched by viem into 1 multicall)
+    const balanceResults = await Promise.allSettled(
+      vaults.map(vault =>
+        client.readContract({
+          address: vault.address as `0x${string}`,
+          abi: ERC4626_VAULT_ABI,
+          functionName: "balanceOf",
+          args: [userAddress],
+        })
+      )
     );
-    
-    vaultPositions.forEach(result => {
-      if (result.status === "fulfilled" && result.value) {
-        positions.push(result.value);
+
+    // Filter to vaults with non-zero balances
+    const vaultsWithBalance: { address: `0x${string}`; shares: bigint; apy: number }[] = [];
+    for (let i = 0; i < balanceResults.length; i++) {
+      const result = balanceResults[i];
+      if (result.status === "fulfilled" && (result.value as bigint) > 0n) {
+        vaultsWithBalance.push({
+          address: vaults[i].address as `0x${string}`,
+          shares: result.value as bigint,
+          apy: vaults[i].apy?.netApy ?? 0.045,
+        });
       }
-    });
+    }
+
+    if (vaultsWithBalance.length === 0) return positions;
+
+    // Phase 2: batch convertToAssets calls only for vaults with balances
+    const assetResults = await Promise.allSettled(
+      vaultsWithBalance.map(v =>
+        client.readContract({
+          address: v.address,
+          abi: ERC4626_VAULT_ABI,
+          functionName: "convertToAssets",
+          args: [v.shares],
+        })
+      )
+    );
+
+    for (let i = 0; i < assetResults.length; i++) {
+      const result = assetResults[i];
+      if (result.status === "fulfilled") {
+        positions.push({
+          protocol: "morpho",
+          vaultAddress: vaultsWithBalance[i].address,
+          shares: vaultsWithBalance[i].shares,
+          assets: result.value as bigint,
+          apy: vaultsWithBalance[i].apy,
+          enteredAt: Date.now(),
+        });
+      }
+    }
   } catch (error) {
     console.error("Morpho: Error fetching vault positions:", error);
   }
@@ -486,44 +537,3 @@ export function buildMorphoWithdrawTx(
   };
 }
 
-/**
- * Get user's position in a Morpho vault (ERC4626)
- */
-export async function getMorphoVaultPosition(
-  userAddress: `0x${string}`,
-  vaultAddress: `0x${string}`
-): Promise<Position | null> {
-  try {
-    const shares = await client.readContract({
-      address: vaultAddress,
-      abi: ERC4626_VAULT_ABI,
-      functionName: "balanceOf",
-      args: [userAddress],
-    }) as bigint;
-
-    if (shares === 0n) return null;
-
-    const assets = await client.readContract({
-      address: vaultAddress,
-      abi: ERC4626_VAULT_ABI,
-      functionName: "convertToAssets",
-      args: [shares],
-    }) as bigint;
-
-    // Get APY from API
-    const vault = await getBestUsdcVault();
-    const apy = vault?.apy.netApy || 0.045;
-
-    return {
-      protocol: "morpho",
-      vaultAddress,
-      shares,
-      assets,
-      apy,
-      enteredAt: Date.now(),
-    };
-  } catch (error) {
-    console.error("Error fetching vault position:", error);
-    return null;
-  }
-}
