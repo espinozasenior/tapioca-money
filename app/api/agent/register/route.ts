@@ -66,10 +66,11 @@ export async function POST(request: NextRequest) {
     });
 
     const authJson = JSON.stringify(authorizationData);
+    const normalizedAddress = address.toLowerCase();
 
     await sql`
       INSERT INTO users (wallet_address, auto_optimize_enabled, agent_registered, authorization_7702)
-      VALUES (${address}, true, true, ${authJson}::jsonb)
+      VALUES (${normalizedAddress}, true, true, ${authJson}::jsonb)
       ON CONFLICT (wallet_address)
       DO UPDATE SET
         auto_optimize_enabled = true,
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
     // Ensure user has a strategy entry
     await sql`
       INSERT INTO user_strategies (user_id)
-      SELECT id FROM users WHERE wallet_address = ${address}
+      SELECT id FROM users WHERE wallet_address = ${normalizedAddress}
       ON CONFLICT (user_id) DO NOTHING
     `;
 
@@ -114,11 +115,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing address" }, { status: 400 });
   }
 
+  const normalizedAddress = address.toLowerCase();
+
   try {
     const users = await sql`
       SELECT auto_optimize_enabled, authorization_7702
       FROM users
-      WHERE wallet_address = ${address}
+      WHERE wallet_address = ${normalizedAddress}
     `;
 
     // Debug logging
@@ -182,10 +185,11 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Check if user exists and has authorization
+    const normalizedAddress = address.toLowerCase();
     const users = await sql`
       SELECT authorization_7702
       FROM users
-      WHERE wallet_address = ${address}
+      WHERE wallet_address = ${normalizedAddress}
     `;
 
     if (users.length === 0 || !users[0].authorization_7702) {
@@ -197,7 +201,7 @@ export async function PATCH(request: NextRequest) {
       UPDATE users
       SET auto_optimize_enabled = ${autoOptimizeEnabled},
           updated_at = NOW()
-      WHERE wallet_address = ${address}
+      WHERE wallet_address = ${normalizedAddress}
     `;
 
     return NextResponse.json({

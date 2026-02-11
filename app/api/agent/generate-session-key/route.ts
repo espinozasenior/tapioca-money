@@ -110,9 +110,10 @@ export async function POST(request: NextRequest) {
     const authJson = JSON.stringify(encryptedAuth);
 
     // 4. Store encrypted session key in database
+    const normalizedAddress = address.toLowerCase();
     await sql`
       INSERT INTO users (wallet_address, auto_optimize_enabled, agent_registered, authorization_7702)
-      VALUES (${address}, true, true, ${authJson}::jsonb)
+      VALUES (${normalizedAddress}, true, true, ${authJson}::jsonb)
       ON CONFLICT (wallet_address)
       DO UPDATE SET
         auto_optimize_enabled = true,
@@ -124,7 +125,7 @@ export async function POST(request: NextRequest) {
     // Ensure user has a strategy entry
     await sql`
       INSERT INTO user_strategies (user_id)
-      SELECT id FROM users WHERE wallet_address = ${address}
+      SELECT id FROM users WHERE wallet_address = ${normalizedAddress}
       ON CONFLICT (user_id) DO NOTHING
     `;
 
