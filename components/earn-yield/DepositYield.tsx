@@ -4,7 +4,7 @@ import { usePrivy } from "@privy-io/react-auth";
 import { AmountInput } from "../common/AmountInput";
 import { PrimaryButton } from "../common/PrimaryButton";
 import { useBalance } from "@/hooks/useBalance";
-import { YieldOpportunity } from "@/hooks/useOptimizer";
+import { YieldOpportunity, useAgent } from "@/hooks/useOptimizer";
 import { cn } from "@/lib/utils";
 import { VaultSafetyDetails } from "./VaultSafetyDetails";
 
@@ -23,6 +23,7 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
   const { wallet } = useWallet();
   const { getAccessToken } = usePrivy();
   const { displayableBalance, refetch: refetchBalance } = useBalance();
+  const { isRegistered, hasAuthorization, isLoading: isAgentLoading, register, isRegistering } = useAgent();
   const [amount, setAmount] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -93,7 +94,7 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
 
       let errorMessage = err.message || "Failed to deposit. Please try again.";
 
-      if (errorMessage.includes("Agent not registered")) {
+      if (errorMessage.includes("Agent not registered") || errorMessage.includes("User not found")) {
         errorMessage = "Please register your agent first to enable gasless deposits.";
       } else if (errorMessage.includes("Session key expired")) {
         errorMessage = "Your session has expired. Please re-register your agent.";
@@ -106,6 +107,32 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
       setTxHash(null);
     }
   };
+
+  if (isAgentLoading) {
+    return (
+      <div className="mt-4 flex w-full flex-col items-center justify-center py-12">
+        <p className="text-sm text-gray-500">Checking agent status...</p>
+      </div>
+    );
+  }
+
+  if (!isRegistered || !hasAuthorization) {
+    return (
+      <div className="mt-4 flex w-full flex-col items-center">
+        <div className="mb-6 w-full rounded-xl bg-yellow-50 p-6 text-center">
+          <p className="mb-2 text-lg font-semibold text-yellow-800">Agent Registration Required</p>
+          <p className="mb-4 text-sm text-yellow-700">
+            {!isRegistered
+              ? "You need to register your agent before making deposits. This enables gasless transactions on your behalf."
+              : "Your agent session has expired. Please re-register to continue making deposits."}
+          </p>
+          <PrimaryButton onClick={() => register()} disabled={isRegistering}>
+            {isRegistering ? "Registering..." : "Register Agent"}
+          </PrimaryButton>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-4 flex w-full flex-col">
