@@ -120,6 +120,15 @@ export async function POST(request: NextRequest) {
     }
 
     // 8. Execute gasless deposit (approve + deposit batched atomically)
+    console.log("[Vault Deposit] Calling executeGaslessDeposit with:", {
+      smartAccountAddress: decryptedAuth.smartAccountAddress,
+      vaultAddress,
+      amount: String(amount),
+      sessionPrivateKeyPrefix: decryptedAuth.sessionPrivateKey?.slice(0, 10) + '...',
+      approvedVaultsCount: approvedVaults.length,
+    });
+
+    const depositStartTime = Date.now();
     const result = await executeGaslessDeposit({
       smartAccountAddress: decryptedAuth.smartAccountAddress as `0x${string}`,
       vaultAddress: vaultAddress as `0x${string}`,
@@ -127,16 +136,17 @@ export async function POST(request: NextRequest) {
       sessionPrivateKey: decryptedAuth.sessionPrivateKey as `0x${string}`,
       approvedVaults: approvedVaults as `0x${string}`[],
     });
+    const depositDuration = Date.now() - depositStartTime;
 
     if (!result.success) {
-      console.error("[Vault Deposit] Execution failed:", result.error);
+      console.error("[Vault Deposit] Execution failed after", depositDuration, "ms:", result.error);
       return NextResponse.json(
         { error: result.error || "Vault deposit failed" },
         { status: 500 }
       );
     }
 
-    console.log("[Vault Deposit] Success:", result.txHash);
+    console.log("[Vault Deposit] Success after", depositDuration, "ms:", result.txHash);
 
     return NextResponse.json({
       success: true,
