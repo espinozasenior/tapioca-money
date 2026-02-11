@@ -74,9 +74,19 @@ export async function createSessionKernelClient(params: CreateSessionKernelClien
     kernelVersion: KERNEL_V3_1,
   });
 
+  // Verify the kernel account address matches what was stored
+  if (kernelAccount.address.toLowerCase() !== params.smartAccountAddress.toLowerCase()) {
+    console.error('[KernelClient] ⚠️ Address mismatch!', {
+      computed: kernelAccount.address,
+      stored: params.smartAccountAddress,
+    });
+  } else {
+    console.log('[KernelClient] ✓ Address verified:', kernelAccount.address);
+  }
+
   // 8. Create Kernel account client with bundler
   const bundlerUrl = process.env.ZERODEV_BUNDLER_URL ||
-    `https://rpc.zerodev.app/api/v2/bundler/${process.env.ZERODEV_PROJECT_ID}`;
+    `https://rpc.zerodev.app/api/v3/${process.env.ZERODEV_PROJECT_ID}/chain/8453`;
 
   const kernelClient = await createKernelAccountClient({
     account: kernelAccount,
