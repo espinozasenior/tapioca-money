@@ -11,14 +11,11 @@
  * 2. Client sends smart account address to server
  * 3. Server generates session key and stores encrypted
  * 4. Server returns session key PUBLIC address
- * 5. Client configures permissions using session key address
+ * 5. Permissions are enforced server-side via call policies at execution time
  */
 
-import type { Hex } from 'viem';
 import { base } from 'viem/chains';
 import { createPublicClient, createWalletClient, custom, http } from 'viem';
-
-const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' as const;
 
 // EntryPoint V0.7 object (required format for ZeroDev SDK v5)
 const ENTRYPOINT_V07 = {
@@ -102,16 +99,16 @@ export async function registerAgentSecure(
     const smartAccountAddress = kernelAccount.address;
     console.log('[ZeroDev Secure] ✓ Smart account created:', smartAccountAddress);
 
-    // 5. Fetch approved Morpho vaults
-    console.log('[ZeroDev Secure] Fetching approved Morpho vaults...');
-    const vaultsResponse = await fetch(
-      '/api/morpho/vaults?chain=8453&asset=USDC&limit=20'
-    );
-    if (!vaultsResponse.ok) {
-      throw new Error('Failed to fetch Morpho vaults');
+    // 5. Fetch approved vaults from the same source as the UI opportunities
+    console.log('[ZeroDev Secure] Fetching vault opportunities...');
+    const optimizeResponse = await fetch('/api/optimize');
+    if (!optimizeResponse.ok) {
+      throw new Error('Failed to fetch vault opportunities');
     }
-    const { vaults } = await vaultsResponse.json();
-    const approvedVaults = vaults.map((v: any) => v.address) as `0x${string}`[];
+    const { opportunities } = await optimizeResponse.json();
+    const approvedVaults = opportunities
+      .filter((o: any) => o.metadata?.vaultAddress)
+      .map((o: any) => o.metadata.vaultAddress) as `0x${string}`[];
 
     console.log('[ZeroDev Secure] ✓ Fetched', approvedVaults.length, 'vaults');
 
@@ -143,18 +140,11 @@ export async function registerAgentSecure(
     console.log('[ZeroDev Secure] ✓ Session key address:', sessionKeyAddress);
     console.log('[ZeroDev Secure] ✓ Expiry:', new Date(expiry * 1000).toISOString());
 
-    // 7. Configure permissions on-chain for the session key
-    // Note: The session key permissions are configured using the
-    // session key ADDRESS (not private key) on the smart account
-    await configureSessionKeyPermissions(
-      kernelAccount,
-      publicClient,
-      sessionKeyAddress as `0x${string}`,
-      approvedVaults,
-      expiry
-    );
-
-    console.log('[ZeroDev Secure] ✓ Session key permissions configured');
+    // Note: Session key permissions are enforced server-side via the permission
+    // validator in kernel-client.ts. No on-chain permission registration needed
+    // from the client — the session key's authority comes from the call policy
+    // attached to the kernel account at execution time.
+    console.log('[ZeroDev Secure] ✓ Session key registered (permissions enforced server-side)');
 
     return {
       smartAccountAddress,
@@ -168,62 +158,6 @@ export async function registerAgentSecure(
   }
 }
 
-/**
- * Configure session key permissions on the smart account
- *
- * This grants the session key address permission to call specific
- * vault operations on behalf of the smart account.
- */
-async function configureSessionKeyPermissions(
-  kernelAccount: any,
-  publicClient: any,
-  sessionKeyAddress: `0x${string}`,
-  approvedVaults: `0x${string}`[],
-  expiry: number
-): Promise<void> {
-  const { toPermissionValidator } = await import('@zerodev/permissions');
-  const { toCallPolicy } = await import('@zerodev/permissions/policies');
-  const { KERNEL_V3_1 } = await import('@zerodev/sdk/constants');
-
-  // Build scoped permissions for vault operations
-  const permissions = approvedVaults.flatMap((vaultAddress) => [
-    {
-      // redeem(uint256 shares, address receiver, address owner)
-      target: vaultAddress,
-      selector: '0xba087652' as `0x${string}`,
-    },
-    {
-      // deposit(uint256 assets, address receiver)
-      target: vaultAddress,
-      selector: '0x6e553f65' as `0x${string}`,
-    },
-    {
-      // withdraw(uint256 assets, address receiver, address owner)
-      target: vaultAddress,
-      selector: '0xb460af94' as `0x${string}`,
-    },
-  ]);
-
-  // Add USDC approve permission for all vaults
-  approvedVaults.forEach((vaultAddress) => {
-    permissions.push({
-      // approve(address spender, uint256 amount)
-      target: USDC_ADDRESS,
-      selector: '0x095ea7b3' as `0x${string}`,
-    });
-  });
-
-  console.log(
-    '[ZeroDev Secure] Configuring',
-    permissions.length,
-    'permissions for session key'
-  );
-
-  // Create permission validator with scoped policies
-  // Note: This requires the session key to sign a message to prove ownership
-  // In our case, since the server owns the key, we skip on-chain permission
-  // registration and rely on the stored encrypted key for execution
-}
 
 /**
  * Check if address has smart account bytecode deployed
