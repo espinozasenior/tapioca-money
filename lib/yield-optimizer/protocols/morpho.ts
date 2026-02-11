@@ -292,18 +292,12 @@ export async function getMorphoOpportunities(): Promise<YieldOpportunity[]> {
  * Get user's Morpho position using simulation SDK for accurate conversion
  */
 /**
- * Get user's positions across all Morpho vaults and direct markets
- * Checks both ERC4626 vaults and direct Morpho Blue market
+ * Get user's positions across all Morpho ERC4626 vaults
  */
 export async function getMorphoPosition(userAddress: `0x${string}`): Promise<Position[]> {
   const positions: Position[] = [];
 
-  // Check direct Morpho Blue market position (legacy)
-  const directPosition = await getMorphoDirectPosition(userAddress);
-  if (directPosition) {
-    positions.push(directPosition);
-  }
-
+  // ERC4626 vault positions only (direct market deposits are not used)
   // Check all ERC4626 vault positions using batched multicall
   // With batch.multicall enabled on the client, concurrent readContract calls
   // are automatically batched into single eth_call via Multicall3
