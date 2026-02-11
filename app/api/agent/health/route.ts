@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       if (projectId) {
         // Simple bundler availability check
         const bundlerUrl = process.env.ZERODEV_BUNDLER_URL ||
-          `https://rpc.zerodev.app/api/v2/bundler/${projectId}`;
+          `https://rpc.zerodev.app/api/v3/${projectId}/chain/8453`;
         const response = await fetch(bundlerUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
