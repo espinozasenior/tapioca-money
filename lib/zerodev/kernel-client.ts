@@ -73,7 +73,7 @@ export async function createSessionKernelClient(params: CreateSessionKernelClien
     isDeployed,
   });
 
-  // 7. Create Kernel account (conditionally pass address if deployed)
+  // 7. Create Kernel account (always using the stored address)
   const accountOptions: any = {
     plugins: {
       sudo: permissionValidator,
@@ -82,11 +82,11 @@ export async function createSessionKernelClient(params: CreateSessionKernelClien
     kernelVersion: KERNEL_V3_1,
   };
 
-  // Only pass address if account is already deployed on-chain
-  if (isDeployed) {
-    accountOptions.address = params.smartAccountAddress;
-    console.log('[KernelClient] Using existing deployed account');
-  } else {
+  // Always pass the stored address to prevent address mismatch
+  // (session key signer differs from registration signer, so letting the SDK
+  //  derive the address would produce a different one)
+  accountOptions.address = params.smartAccountAddress;
+  if (!isDeployed) {
     console.log('[KernelClient] Account not deployed yet - SDK will generate initCode');
   }
 
