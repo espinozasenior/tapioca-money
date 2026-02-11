@@ -6,6 +6,7 @@
 import { createPublicClient, http, type Hex } from 'viem';
 import { base } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
+import { checkSmartAccountActive } from './client-secure';
 
 // EntryPoint V0.7 object (required format for ZeroDev SDK v5)
 const ENTRYPOINT_V07 = {
@@ -64,15 +65,32 @@ export async function createSessionKernelClient(params: CreateSessionKernelClien
     kernelVersion: KERNEL_V3_1,
   });
 
-  // 7. Create Kernel account
-  const kernelAccount = await createKernelAccount(publicClient, {
+  // 6.5. Check if smart account is already deployed
+  const isDeployed = await checkSmartAccountActive(params.smartAccountAddress);
+
+  console.log('[KernelClient] Account deployment status:', {
     address: params.smartAccountAddress,
+    isDeployed,
+  });
+
+  // 7. Create Kernel account (conditionally pass address if deployed)
+  const accountOptions: any = {
     plugins: {
       sudo: permissionValidator,
     },
     entryPoint: ENTRYPOINT_V07,
     kernelVersion: KERNEL_V3_1,
-  });
+  };
+
+  // Only pass address if account is already deployed on-chain
+  if (isDeployed) {
+    accountOptions.address = params.smartAccountAddress;
+    console.log('[KernelClient] Using existing deployed account');
+  } else {
+    console.log('[KernelClient] Account not deployed yet - SDK will generate initCode');
+  }
+
+  const kernelAccount = await createKernelAccount(publicClient, accountOptions);
 
   // Verify the kernel account address matches what was stored
   if (kernelAccount.address.toLowerCase() !== params.smartAccountAddress.toLowerCase()) {
