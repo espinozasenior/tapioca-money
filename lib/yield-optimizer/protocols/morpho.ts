@@ -263,7 +263,7 @@ export async function getMorphoOpportunities(): Promise<YieldOpportunity[]> {
   );
 
   return safeVaults.map((vault) => ({
-    id: `morpho-vault-${vault.address.slice(0, 8)}`,
+    id: `morpho-vault-${vault.address}`,
     protocol: "morpho" as const,
     name: vault.name,
     asset: "USDC",
