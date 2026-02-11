@@ -78,7 +78,17 @@ export async function getRedisClient(): Promise<RedisType | null> {
       },
     };
 
-    redisClient = new Redis(redisUrl, options) as RedisType;
+    // Parse URL with modern API to avoid DEP0169 url.parse() deprecation in ioredis
+    const parsedUrl = new URL(redisUrl);
+    redisClient = new Redis({
+      host: parsedUrl.hostname,
+      port: parseInt(parsedUrl.port || '6379'),
+      password: parsedUrl.password || undefined,
+      username: parsedUrl.username || undefined,
+      db: parsedUrl.pathname ? parseInt(parsedUrl.pathname.slice(1)) || 0 : 0,
+      tls: parsedUrl.protocol === 'rediss:' ? {} : undefined,
+      ...options,
+    }) as RedisType;
 
     // Set up event handlers
     redisClient.on('connect', () => {
