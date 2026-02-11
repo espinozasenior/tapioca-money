@@ -78,19 +78,30 @@ export async function registerAgentSecure(
 
     const { createKernelAccount } = await import('@zerodev/sdk');
     const { KERNEL_V3_1 } = await import('@zerodev/sdk/constants');
-    const { signerToEcdsaValidator } = await import('@zerodev/ecdsa-validator');
+    const { toPermissionValidator } = await import('@zerodev/permissions');
+    const { toSudoPolicy } = await import('@zerodev/permissions/policies');
+    const { toECDSASigner } = await import('@zerodev/permissions/signers');
 
-    // Create ECDSA validator with wallet client as signer
-    const ecdsaValidator = await signerToEcdsaValidator(publicClient, {
-      signer: walletClient,
+    // Convert wallet client to ModularSigner for permission validator
+    const modularSigner = await toECDSASigner({ signer: walletClient });
+
+    // Create sudo policy (unrestricted access for main signer during registration)
+    const sudoPolicy = toSudoPolicy({});
+
+    // Create permission validator with sudo policy
+    const permissionValidator = await toPermissionValidator(publicClient, {
+      signer: modularSigner,
       entryPoint: ENTRYPOINT_V07,
+      policies: [sudoPolicy],
       kernelVersion: KERNEL_V3_1,
     });
+
+    console.log('[ZeroDev Secure] ✓ Permission validator created with sudo policy');
 
     // Create Kernel account (smart account)
     const kernelAccount = await createKernelAccount(publicClient, {
       plugins: {
-        sudo: ecdsaValidator,
+        sudo: permissionValidator,
       },
       entryPoint: ENTRYPOINT_V07,
       kernelVersion: KERNEL_V3_1,
