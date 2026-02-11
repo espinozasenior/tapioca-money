@@ -6,7 +6,7 @@
   "license": "proprietary",
   "scripts": {
     "dev": "next dev --turbopack --experimental-https",
-    "build": "next build",
+    "build": "NODE_OPTIONS='--max-old-space-size=4096' next build",
     "start": "next start",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
