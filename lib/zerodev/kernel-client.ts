@@ -1,6 +1,9 @@
 /**
- * Shared ZeroDev Kernel client factory
- * Eliminates duplicated session key → kernel client setup across executors
+ * Shared ZeroDev Kernel client factory (EIP-7702)
+ *
+ * Creates kernel clients for server-side execution using session keys.
+ * The EIP-7702 delegation is already on-chain (done during registration),
+ * so the kernel client just needs the EOA address to send UserOps.
  */
 
 import { createPublicClient, http, type Hex } from 'viem';
@@ -15,6 +18,7 @@ const ENTRYPOINT_V07 = {
 };
 
 export interface CreateSessionKernelClientParams {
+  /** The account address (EOA address with EIP-7702 delegation) */
   smartAccountAddress: `0x${string}`;
   sessionPrivateKey: `0x${string}`;
   permissions: Array<{ target: `0x${string}`; selector: Hex }>;
@@ -26,6 +30,10 @@ export interface CreateSessionKernelClientParams {
  * Handles the full setup chain:
  *   session private key → ECDSA signer → call policy → permission validator
  *   → kernel account → kernel client (with bundler transport)
+ *
+ * With EIP-7702, the EOA already has Kernel code delegated on-chain during
+ * registration. At execution time, we use the `address` parameter to tell
+ * the SDK where to send UserOps.
  *
  * @returns A kernel client ready to call sendUserOperation()
  */
@@ -41,7 +49,7 @@ export async function createSessionKernelClient(params: CreateSessionKernelClien
 
   // 3. Import ZeroDev SDK (dynamic to avoid bundling issues)
   const { createKernelAccount, createKernelAccountClient } = await import('@zerodev/sdk');
-  const { KERNEL_V3_1 } = await import('@zerodev/sdk/constants');
+  const { KERNEL_V3_3 } = await import('@zerodev/sdk/constants');
   const { toPermissionValidator } = await import('@zerodev/permissions');
   const { toCallPolicy, toSudoPolicy, CallPolicyVersion } = await import('@zerodev/permissions/policies');
   const { toECDSASigner } = await import('@zerodev/permissions/signers');
@@ -62,7 +70,7 @@ export async function createSessionKernelClient(params: CreateSessionKernelClien
     signer: sessionSigner,
     entryPoint: ENTRYPOINT_V07,
     policies: [policy],
-    kernelVersion: KERNEL_V3_1,
+    kernelVersion: KERNEL_V3_3,
   });
 
   // 6.5. Check if smart account is already deployed
@@ -73,19 +81,18 @@ export async function createSessionKernelClient(params: CreateSessionKernelClien
     isDeployed,
   });
 
-  // 7. Create Kernel account (always using the stored address)
+  // 7. Create Kernel account using the stored address
+  // EIP-7702: EOA already has Kernel code delegated on-chain
+  // We pass the address so the SDK knows where to send UserOps
   const accountOptions: any = {
     plugins: {
       sudo: permissionValidator,
     },
     entryPoint: ENTRYPOINT_V07,
-    kernelVersion: KERNEL_V3_1,
+    kernelVersion: KERNEL_V3_3,
+    address: params.smartAccountAddress,
   };
 
-  // Always pass the stored address to prevent address mismatch
-  // (session key signer differs from registration signer, so letting the SDK
-  //  derive the address would produce a different one)
-  accountOptions.address = params.smartAccountAddress;
   if (!isDeployed) {
     console.log('[KernelClient] Account not deployed yet - SDK will generate initCode');
   }

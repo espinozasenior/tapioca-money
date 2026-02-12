@@ -131,6 +131,10 @@ export async function executeRebalance(
       console.warn('[Rebalance] Using sudo policy (legacy) - consider re-registering');
     }
 
+    // For 7702: the EOA already has Kernel code delegated on-chain during registration.
+    // At execution time, smartAccountAddress IS the EOA address — the kernel client
+    // uses the address parameter to send UserOps to the correct account.
+    // No eip7702Account needed server-side since delegation is already active.
     const kernelClient = await createSessionKernelClient({
       smartAccountAddress,
       sessionPrivateKey,

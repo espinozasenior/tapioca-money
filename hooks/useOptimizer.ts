@@ -239,6 +239,8 @@ export function useAgent() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["agent-status", address] });
+      // Enable auto-optimize through the proper toggle workflow
+      toggleAutoOptimize.mutate(true);
     },
   });
 

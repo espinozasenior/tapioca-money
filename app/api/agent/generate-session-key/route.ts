@@ -36,13 +36,6 @@ interface GenerateSessionKeyRequest {
   approvedVaults: string[];
 }
 
-interface GenerateSessionKeyResponse {
-  success: boolean;
-  sessionKeyAddress: string;
-  expiry: number;
-  error?: string;
-}
-
 /**
  * POST /api/agent/generate-session-key
  * Generate session key on server and store encrypted
@@ -96,13 +89,14 @@ export async function POST(request: NextRequest) {
     const expiry = Math.floor(Date.now() / 1000) + SESSION_KEY_EXPIRY_DAYS * 24 * 60 * 60;
 
     // 3. Create authorization object and encrypt
+    // EIP-7702: eoaAddress === smartAccountAddress (single address model)
     const authorization = {
-      type: 'zerodev-session-key' as const,
-      smartAccountAddress: smartAccountAddress as `0x${string}`,
+      type: 'zerodev-7702-session' as const,
+      eoaAddress: address as `0x${string}`,
       sessionKeyAddress: sessionKeyAddress as `0x${string}`,
       sessionPrivateKey: sessionPrivateKey as `0x${string}`,
-      expiry,
       approvedVaults: approvedVaults as `0x${string}`[],
+      expiry,
       timestamp: Date.now(),
     };
 
@@ -112,11 +106,10 @@ export async function POST(request: NextRequest) {
     // 4. Store encrypted session key in database
     const normalizedAddress = address.toLowerCase();
     await sql`
-      INSERT INTO users (wallet_address, auto_optimize_enabled, agent_registered, authorization_7702)
-      VALUES (${normalizedAddress}, true, true, ${authJson}::jsonb)
+      INSERT INTO users (wallet_address, agent_registered, authorization_7702)
+      VALUES (${normalizedAddress}, true, ${authJson}::jsonb)
       ON CONFLICT (wallet_address)
       DO UPDATE SET
-        auto_optimize_enabled = true,
         agent_registered = true,
         authorization_7702 = ${authJson}::jsonb,
         updated_at = NOW()
