@@ -12,7 +12,7 @@ import {
   encryptAuthorization,
   decryptAuthorization,
   isAuthorizationEncrypted,
-  type SessionKeyAuthorization,
+  type SessionKey7702Authorization,
   type TransferSessionAuthorization,
 } from '../lib/security/session-encryption';
 
@@ -57,10 +57,10 @@ console.log(`Passthrough works: ${plaintextKey === decryptedPlaintext ? '✓' : 
 // Test 4: Agent session authorization
 console.log('Test 4: Agent Session Authorization Encryption');
 console.log('─────────────────────────────────────────────────');
-const agentAuth: SessionKeyAuthorization = {
-  type: 'zerodev-session-key',
-  smartAccountAddress: '0x1111111111111111111111111111111111111111',
-  sessionKeyAddress: '0x2222222222222222222222222222222222222222',
+const agentAuth: SessionKey7702Authorization = {
+  type: 'zerodev-7702-session',
+  eoaAddress: '0x1111111111111111111111111111111111111111' as `0x${string}`,
+  sessionKeyAddress: '0x2222222222222222222222222222222222222222' as `0x${string}`,
   sessionPrivateKey: '0x3333333333333333333333333333333333333333333333333333333333333333',
   expiry: Math.floor(Date.now() / 1000) + 86400 * 30,
   approvedVaults: ['0x4444444444444444444444444444444444444444'],
@@ -73,7 +73,7 @@ console.log(`Is Encrypted: ${isAuthorizationEncrypted(agentAuth)}`);
 const encryptedAuth = encryptAuthorization(agentAuth);
 console.log(`Encrypted sessionPrivateKey: ${encryptedAuth.sessionPrivateKey.substring(0, 50)}...`);
 console.log(`Is Encrypted: ${isAuthorizationEncrypted(encryptedAuth)}`);
-console.log(`Other fields unchanged: ${encryptedAuth.smartAccountAddress === agentAuth.smartAccountAddress ? '✓' : '✗'}`);
+console.log(`Other fields unchanged: ${encryptedAuth.eoaAddress === agentAuth.eoaAddress ? '✓' : '✗'}`);
 
 const decryptedAuth = decryptAuthorization(encryptedAuth);
 console.log(`Decrypted sessionPrivateKey: ${decryptedAuth.sessionPrivateKey}`);

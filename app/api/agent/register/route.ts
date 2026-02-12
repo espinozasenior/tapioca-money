@@ -46,22 +46,22 @@ export async function POST(request: NextRequest) {
     console.log("[Agent Register] Storing authorization for", address);
 
     // Validate authorization structure
-    if (authorization.type !== "zerodev-session-key") {
+    if (authorization.type !== "zerodev-7702-session") {
       return NextResponse.json({ error: "Invalid authorization type" }, { status: 400 });
     }
 
-    if (!authorization.smartAccountAddress || !authorization.sessionPrivateKey) {
+    if (!authorization.eoaAddress || !authorization.sessionPrivateKey) {
       return NextResponse.json({ error: "Invalid authorization data" }, { status: 400 });
     }
 
     // Store authorization in database (received from client-side ZeroDev setup)
     const authorizationData = encryptAuthorization({
-      type: "zerodev-session-key" as const,
-      smartAccountAddress: authorization.smartAccountAddress,
-      sessionKeyAddress: authorization.sessionKeyAddress,
+      type: "zerodev-7702-session" as const,
+      eoaAddress: authorization.eoaAddress as `0x${string}`,
+      sessionKeyAddress: authorization.sessionKeyAddress as `0x${string}`,
       sessionPrivateKey: authorization.sessionPrivateKey,
-      expiry: authorization.expiry,
       approvedVaults: authorization.approvedVaults,
+      expiry: authorization.expiry,
       timestamp: authorization.timestamp || Date.now(),
     });
 
@@ -69,11 +69,10 @@ export async function POST(request: NextRequest) {
     const normalizedAddress = address.toLowerCase();
 
     await sql`
-      INSERT INTO users (wallet_address, auto_optimize_enabled, agent_registered, authorization_7702)
-      VALUES (${normalizedAddress}, true, true, ${authJson}::jsonb)
+      INSERT INTO users (wallet_address, agent_registered, authorization_7702)
+      VALUES (${normalizedAddress}, true, ${authJson}::jsonb)
       ON CONFLICT (wallet_address)
       DO UPDATE SET
-        auto_optimize_enabled = true,
         agent_registered = true,
         authorization_7702 = ${authJson}::jsonb,
         updated_at = NOW()
@@ -89,8 +88,8 @@ export async function POST(request: NextRequest) {
     console.log("[Agent Register] ✓ Authorization stored successfully");
 
     return NextResponse.json({
-      message: "Agent registered with ZeroDev Kernel smart account and session keys",
-      smartAccountAddress: authorization.smartAccountAddress,
+      message: "Agent registered with EIP-7702 Kernel smart account and session keys",
+      eoaAddress: authorization.eoaAddress,
       sessionKeyAddress: authorization.sessionKeyAddress,
       approvedVaults: authorization.approvedVaults?.length || 0,
       status: "active"

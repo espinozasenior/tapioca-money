@@ -198,7 +198,7 @@ async function processUserRebalance(
   console.log(`[Cron] Processing ${userAddress}...`);
 
   // 1. Validate session key
-  if (!encryptedAuthorization || encryptedAuthorization.type !== 'zerodev-session-key') {
+  if (!encryptedAuthorization || encryptedAuthorization.type !== 'zerodev-7702-session') {
     summary.skipped++;
     summary.details.push({
       address: userAddress,
@@ -313,7 +313,8 @@ async function executeRebalanceTransaction(
 
     // 1. Get session key from stored authorization
     const sessionPrivateKey = authorization.sessionPrivateKey;
-    const smartAccountAddress = authorization.smartAccountAddress;
+    // EIP-7702: eoaAddress IS the smart account address (single address model)
+    const smartAccountAddress = authorization.eoaAddress;
 
     if (!sessionPrivateKey) {
       throw new Error('Session private key not found in authorization');

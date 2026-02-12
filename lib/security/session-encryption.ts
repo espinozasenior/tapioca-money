@@ -4,13 +4,13 @@ import { encrypt, decrypt, isEncrypted } from './encryption';
  * Session key authorization types
  * These mirror the types in the application
  */
-export interface SessionKeyAuthorization {
-  type: 'zerodev-session-key';
-  smartAccountAddress: string;
-  sessionKeyAddress: string;
-  sessionPrivateKey: string; // Will be encrypted
-  expiry: number;
+export interface SessionKey7702Authorization {
+  type: 'zerodev-7702-session';
+  eoaAddress: `0x${string}`;        // EOA = smart account (same address with EIP-7702)
+  sessionKeyAddress: `0x${string}`;
+  sessionPrivateKey: string;         // Will be encrypted
   approvedVaults: string[];
+  expiry: number;
   timestamp: number;
 }
 
@@ -23,7 +23,7 @@ export interface TransferSessionAuthorization {
   createdAt: number;
 }
 
-export type Authorization = SessionKeyAuthorization | TransferSessionAuthorization;
+export type Authorization = SessionKey7702Authorization | TransferSessionAuthorization;
 
 /**
  * Encrypt the sessionPrivateKey field in an authorization object
