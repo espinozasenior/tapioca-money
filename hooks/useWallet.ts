@@ -314,6 +314,32 @@ export function useWallet() {
         const rawProvider = await wallet.getEthereumProvider();
         return wrapProviderWithTracing(rawProvider, 'useWallet.getEthereumProvider');
       },
+
+      /**
+       * Sign EIP-7702 authorization to delegate EOA to a contract implementation.
+       * Used during agent registration to upgrade the EOA to a Kernel smart account.
+       *
+       * @param contractAddress - The Kernel implementation address to delegate to
+       * @returns The signed authorization object for use with createKernelAccount
+       */
+      async signAuthorization(contractAddress: `0x${string}`) {
+        if (!wallet) throw new Error("Wallet not ready");
+        if (!address) throw new Error("Wallet address not yet available");
+
+        const rawProvider = await wallet.getEthereumProvider();
+        const walletClient = createWalletClient({
+          account: address,
+          chain: base,
+          transport: custom(rawProvider),
+        });
+
+        const authorization = await walletClient.signAuthorization({
+          contractAddress,
+        });
+
+        console.log('[useWallet] EIP-7702 authorization signed for:', contractAddress);
+        return authorization;
+      },
     };
   }, [isReady, address, wallet, publicClient, getAccessToken]);
 

@@ -9,7 +9,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from '@neondatabase/serverless';
-import { decryptAuthorization, SessionKeyAuthorization } from '@/lib/security/session-encryption';
+import { decryptAuthorization, SessionKey7702Authorization } from '@/lib/security/session-encryption';
 import {
   authenticateRequest,
   unauthorizedResponse,
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const authorizationData = users[0].authorization_7702 as SessionKeyAuthorization | null;
+    const authorizationData = users[0].authorization_7702 as SessionKey7702Authorization | null;
 
     if (!authorizationData) {
       return NextResponse.json(
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Validate authorization type
-    if (authorizationData.type !== 'zerodev-session-key') {
+    if (authorizationData.type !== 'zerodev-7702-session') {
       return NextResponse.json(
         { error: "Invalid authorization type. Please re-register agent." },
         { status: 400 }
@@ -115,10 +115,10 @@ export async function POST(request: NextRequest) {
 
     // 8. Execute vault redeem
     const result = await executeVaultRedeem({
-      smartAccountAddress: decryptedAuth.smartAccountAddress as `0x${string}`,
+      smartAccountAddress: decryptedAuth.eoaAddress,
       vaultAddress: vaultAddress as `0x${string}`,
       shares: BigInt(shares),
-      receiver: decryptedAuth.smartAccountAddress as `0x${string}`,
+      receiver: decryptedAuth.eoaAddress,
       sessionPrivateKey: decryptedAuth.sessionPrivateKey as `0x${string}`,
       approvedVaults: approvedVaults as `0x${string}`[],
     });

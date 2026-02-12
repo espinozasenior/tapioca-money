@@ -9,7 +9,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from '@neondatabase/serverless';
-import { decryptAuthorization, SessionKeyAuthorization } from '@/lib/security/session-encryption';
+import { decryptAuthorization, SessionKey7702Authorization } from '@/lib/security/session-encryption';
 import {
   authenticateRequest,
   unauthorizedResponse,
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const authorizationData = users[0].authorization_7702 as SessionKeyAuthorization | null;
+    const authorizationData = users[0].authorization_7702 as SessionKey7702Authorization | null;
 
     if (!authorizationData) {
       return NextResponse.json(
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Validate authorization type
-    if (authorizationData.type !== 'zerodev-session-key') {
+    if (authorizationData.type !== 'zerodev-7702-session') {
       return NextResponse.json(
         { error: "Invalid authorization type. Please re-register agent." },
         { status: 400 }
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
 
     // 8. Execute gasless deposit (approve + deposit batched atomically)
     console.log("[Vault Deposit] Calling executeGaslessDeposit with:", {
-      smartAccountAddress: decryptedAuth.smartAccountAddress,
+      smartAccountAddress: decryptedAuth.eoaAddress,
       vaultAddress,
       amount: String(amount),
       sessionPrivateKeyPrefix: decryptedAuth.sessionPrivateKey?.slice(0, 10) + '...',
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
 
     const depositStartTime = Date.now();
     const result = await executeGaslessDeposit({
-      smartAccountAddress: decryptedAuth.smartAccountAddress as `0x${string}`,
+      smartAccountAddress: decryptedAuth.eoaAddress,
       vaultAddress: vaultAddress as `0x${string}`,
       amount: String(amount),
       sessionPrivateKey: decryptedAuth.sessionPrivateKey as `0x${string}`,
