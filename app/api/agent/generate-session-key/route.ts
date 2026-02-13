@@ -34,6 +34,7 @@ interface GenerateSessionKeyRequest {
   address: string;
   smartAccountAddress: string;
   approvedVaults: string[];
+  eip7702SignedAuth?: any; // Signed EIP-7702 authorization from Privy
 }
 
 /**
@@ -43,7 +44,7 @@ interface GenerateSessionKeyRequest {
 export async function POST(request: NextRequest) {
   try {
     const body: GenerateSessionKeyRequest = await request.json();
-    const { address, smartAccountAddress, approvedVaults } = body;
+    const { address, smartAccountAddress, approvedVaults, eip7702SignedAuth } = body;
 
     // Validate required fields
     if (!address) {
@@ -98,6 +99,7 @@ export async function POST(request: NextRequest) {
       approvedVaults: approvedVaults as `0x${string}`[],
       expiry,
       timestamp: Date.now(),
+      ...(eip7702SignedAuth ? { eip7702SignedAuth } : {}),
     };
 
     const encryptedAuth = encryptAuthorization(authorization);

@@ -12,6 +12,15 @@ export interface SessionKey7702Authorization {
   approvedVaults: string[];
   expiry: number;
   timestamp: number;
+  eip7702SignedAuth?: {              // Signed EIP-7702 authorization from client
+    r: string;
+    s: string;
+    yParity: number;
+    v?: string;                      // bigint serialized as string
+    address: string;                 // Implementation contract address
+    chainId: number;
+    nonce: number;
+  };
 }
 
 export interface TransferSessionAuthorization {
