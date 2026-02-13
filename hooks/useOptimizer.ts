@@ -3,7 +3,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "./useWallet";
-import { useWallets, usePrivy } from "@privy-io/react-auth";
+import { useWallets, usePrivy, useSign7702Authorization } from "@privy-io/react-auth";
 
 // Types matching what components expect (compatible with legacy Yield.xyz types)
 export interface YieldOpportunity {
@@ -183,6 +183,7 @@ export function useAgent() {
   // Access Privy wallets and auth for ZeroDev integration
   const { wallets } = useWallets();
   const { getAccessToken } = usePrivy();
+  const { signAuthorization } = useSign7702Authorization();
 
   const status = useQuery({
     queryKey: ["agent-status", address],
@@ -204,15 +205,7 @@ export function useAgent() {
       });
 
       try {
-        // SECURITY: Use secure client that generates session key server-side
-        // This prevents XSS attacks from accessing the private key
         const { registerAgentSecure } = await import("@/lib/zerodev/client-secure");
-
-        // Use Privy wallet from hook scope
-        const privyWallet = wallets?.[0];
-        if (!privyWallet) {
-          throw new Error("Privy wallet not found");
-        }
 
         // Get Privy access token for API authentication
         const accessToken = await getAccessToken();
@@ -220,12 +213,19 @@ export function useAgent() {
           throw new Error("Failed to get access token");
         }
 
-        // Execute secure registration flow:
-        // 1. Client creates smart account
-        // 2. Server generates session key (private key never leaves server)
-        // 3. Server returns only public session key address
-        console.log("[Agent Registration] Creating ZeroDev Kernel smart account (secure flow)...");
-        const result = await registerAgentSecure(privyWallet as any, accessToken);
+        // Sign EIP-7702 authorization via Privy's native hook
+        // This delegates the EOA's code slot to Kernel V3.3 implementation
+        console.log("[Agent Registration] Signing EIP-7702 authorization...");
+        const { KERNEL_V3_3, KernelVersionToAddressesMap } = await import("@zerodev/sdk/constants");
+        const implAddress = KernelVersionToAddressesMap[KERNEL_V3_3].accountImplementationAddress;
+
+        const signedAuth = await signAuthorization({
+          contractAddress: implAddress,
+          chainId: 8453,
+        });
+
+        console.log("[Agent Registration] EIP-7702 authorization signed, sending to server...");
+        const result = await registerAgentSecure(address as `0x${string}`, accessToken, signedAuth);
 
         console.log("[Agent Registration] ✅ Secure registration complete!");
         console.log("[Agent Registration] Session key address:", result.sessionKeyAddress);

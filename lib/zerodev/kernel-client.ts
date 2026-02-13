@@ -22,6 +22,19 @@ export interface CreateSessionKernelClientParams {
   smartAccountAddress: `0x${string}`;
   sessionPrivateKey: `0x${string}`;
   permissions: Array<{ target: `0x${string}`; selector: Hex }>;
+  /** Stored signed EIP-7702 authorization (serialized — bigints as strings) */
+  eip7702SignedAuth?: any;
+}
+
+/**
+ * Deserialize signed EIP-7702 authorization from JSON storage.
+ * Restores `v` from string back to bigint for the ZeroDev SDK.
+ */
+function deserializeSignedAuth(auth: any) {
+  return {
+    ...auth,
+    v: auth.v != null ? BigInt(auth.v) : undefined,
+  };
 }
 
 /**
@@ -93,8 +106,12 @@ export async function createSessionKernelClient(params: CreateSessionKernelClien
     address: params.smartAccountAddress,
   };
 
-  if (!isDeployed) {
-    console.log('[KernelClient] Account not deployed yet - SDK will generate initCode');
+  // Pass signed auth so SDK sets isEip7702=true → no factory initCode → no AA14
+  if (params.eip7702SignedAuth) {
+    accountOptions.eip7702Auth = deserializeSignedAuth(params.eip7702SignedAuth);
+    console.log('[KernelClient] Using stored EIP-7702 authorization (isEip7702=true)');
+  } else if (!isDeployed) {
+    console.log('[KernelClient] Account not deployed yet and no eip7702Auth - SDK will generate initCode');
   }
 
   const kernelAccount = await createKernelAccount(publicClient, accountOptions);

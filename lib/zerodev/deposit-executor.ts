@@ -26,6 +26,7 @@ export interface VaultDepositParams {
   amount: string; // Amount in USDC (e.g., "10.50")
   sessionPrivateKey: `0x${string}`;
   approvedVaults?: `0x${string}`[];
+  eip7702SignedAuth?: any; // Stored signed EIP-7702 authorization
 }
 
 export interface VaultDepositResult {
@@ -77,6 +78,7 @@ export async function executeGaslessDeposit(
       smartAccountAddress: params.smartAccountAddress,
       sessionPrivateKey: params.sessionPrivateKey,
       permissions,
+      eip7702SignedAuth: params.eip7702SignedAuth,
     });
 
     // Build approve + deposit calls (batched atomically)
