@@ -115,7 +115,8 @@ export async function executeRebalance(
   smartAccountAddress: `0x${string}`,
   params: RebalanceParams,
   sessionPrivateKey: `0x${string}`,
-  approvedVaults?: `0x${string}`[]
+  approvedVaults?: `0x${string}`[],
+  eip7702SignedAuth?: any,
 ): Promise<RebalanceResult> {
   try {
     console.log('[Rebalance] Starting ZeroDev execution with scoped permissions...');
@@ -139,6 +140,7 @@ export async function executeRebalance(
       smartAccountAddress,
       sessionPrivateKey,
       permissions,
+      eip7702SignedAuth,
     });
 
     // Build rebalance calls

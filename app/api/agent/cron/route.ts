@@ -333,11 +333,13 @@ async function executeRebalanceTransaction(
 
     // 3. Execute via ZeroDev using session key with scoped permissions
     const approvedVaults = authorization.approvedVaults as `0x${string}`[] | undefined;
+    const eip7702SignedAuth = authorization.eip7702SignedAuth;
     const executionResult = await executeRebalance(
       smartAccountAddress,
       rebalanceParams,
       sessionPrivateKey as `0x${string}`,
-      approvedVaults
+      approvedVaults,
+      eip7702SignedAuth,
     );
 
     const taskId = executionResult.taskId || `zerodev_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
