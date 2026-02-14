@@ -1,6 +1,7 @@
 // Moonwell Protocol Integration (Base Mainnet)
-import { createPublicClient, http, encodeFunctionData } from "viem";
-import { base } from "viem/chains";
+import { encodeFunctionData } from "viem";
+import { baseClient } from "@/lib/shared/rpc-client";
+import { getMoonwellUsdcPool } from "../defi-llama-api";
 import type { YieldOpportunity, Position } from "../types";
 import { PROTOCOLS } from "../config";
 
@@ -68,52 +69,65 @@ const ERC20_ABI = [
   },
 ] as const;
 
-const client = createPublicClient({
-  chain: base,
-  transport: http(),
-});
-
 export async function getMoonwellOpportunities(): Promise<YieldOpportunity[]> {
   if (!PROTOCOLS.moonwell.enabled) {
     return [];
   }
 
   try {
-    // Fetch supply rate per timestamp (Moonwell uses per-second rates)
-    const supplyRate = await client.readContract({
+    // Try DeFi Llama API first (no RPC needed, cached)
+    const llamaPool = await getMoonwellUsdcPool();
+    if (llamaPool) {
+      return [{
+        id: "moonwell-usdc-base",
+        protocol: "moonwell",
+        name: "Moonwell USDC",
+        asset: "USDC",
+        apy: llamaPool.apy,
+        tvl: BigInt(Math.round(llamaPool.tvlUsd * 1e6)), // Convert USD to USDC units (6 decimals)
+        address: MOONWELL_USDC,
+        riskScore: 0.3,
+        liquidityDepth: BigInt(Math.round(llamaPool.tvlUsd * 1e6)),
+        metadata: {
+          isVault: false,
+          source: "defillama",
+        },
+      }];
+    }
+
+    // Fallback to RPC if DeFi Llama unavailable
+    console.warn("[Moonwell] DeFi Llama unavailable, falling back to RPC");
+    const supplyRate = await baseClient.readContract({
       address: MOONWELL_USDC,
       abi: MOONWELL_ABI,
       functionName: "supplyRatePerTimestamp",
     }) as bigint;
 
-    // Fetch available liquidity
-    const liquidity = await client.readContract({
+    const liquidity = await baseClient.readContract({
       address: MOONWELL_USDC,
       abi: MOONWELL_ABI,
       functionName: "getCash",
     }) as bigint;
 
-    // Convert per-timestamp rate to APY: (1 + rate/1e18)^(365*24*3600) - 1
     const ratePerSecond = Number(supplyRate) / 1e18;
     const secondsPerYear = 365 * 24 * 3600;
     const apy = Math.pow(1 + ratePerSecond, secondsPerYear) - 1;
 
-    return [
-      {
-        id: "moonwell-usdc-base",
-        protocol: "moonwell",
-        name: "Moonwell USDC",
-        asset: "USDC",
-        apy,
-        tvl: liquidity,
-        address: MOONWELL_USDC,
-        riskScore: 0.3, // Compound V2 fork, established protocol
-        liquidityDepth: liquidity,
-        metadata: {
-          isVault: false,
-        },
+    return [{
+      id: "moonwell-usdc-base",
+      protocol: "moonwell",
+      name: "Moonwell USDC",
+      asset: "USDC",
+      apy,
+      tvl: liquidity,
+      address: MOONWELL_USDC,
+      riskScore: 0.3,
+      liquidityDepth: liquidity,
+      metadata: {
+        isVault: false,
+        source: "rpc",
       },
-    ];
+    }];
   } catch (error) {
     console.error("Error fetching Moonwell opportunities:", error);
     return [];
@@ -127,7 +141,7 @@ export async function getMoonwellPosition(userAddress: `0x${string}`): Promise<P
 
   try {
     // Check cToken balance
-    const cTokenBalance = await client.readContract({
+    const cTokenBalance = await baseClient.readContract({
       address: MOONWELL_USDC,
       abi: MOONWELL_ABI,
       functionName: "balanceOf",
@@ -139,7 +153,7 @@ export async function getMoonwellPosition(userAddress: `0x${string}`): Promise<P
     }
 
     // Get underlying USDC amount
-    const underlyingBalance = await client.readContract({
+    const underlyingBalance = await baseClient.readContract({
       address: MOONWELL_USDC,
       abi: MOONWELL_ABI,
       functionName: "balanceOfUnderlying",
@@ -147,7 +161,7 @@ export async function getMoonwellPosition(userAddress: `0x${string}`): Promise<P
     }) as bigint;
 
     // Fetch current APY
-    const supplyRate = await client.readContract({
+    const supplyRate = await baseClient.readContract({
       address: MOONWELL_USDC,
       abi: MOONWELL_ABI,
       functionName: "supplyRatePerTimestamp",
