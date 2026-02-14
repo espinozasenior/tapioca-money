@@ -1,6 +1,7 @@
 // Aave V3 Protocol Integration (Base Mainnet)
-import { createPublicClient, http, encodeFunctionData } from "viem";
-import { base } from "viem/chains";
+import { encodeFunctionData } from "viem";
+import { baseClient } from "@/lib/shared/rpc-client";
+import { getAaveUsdcPool } from "../defi-llama-api";
 import type { YieldOpportunity, Position } from "../types";
 import { USDC_BASE } from "../types";
 import { PROTOCOLS } from "../config";
@@ -83,14 +84,10 @@ const ERC20_ABI = [
   },
 ] as const;
 
-const client = createPublicClient({
-  chain: base,
-  transport: http(),
-});
-
 /**
  * Fetch Aave V3 USDC lending opportunities on Base mainnet
- * Returns current APY and TVL for Aave USDC market
+ * Uses DeFi Llama API for APY/TVL data (cached, no RPC needed).
+ * Falls back to RPC if DeFi Llama is unavailable.
  */
 export async function getAaveOpportunities(): Promise<YieldOpportunity[]> {
   if (!PROTOCOLS.aave.enabled) {
@@ -98,49 +95,63 @@ export async function getAaveOpportunities(): Promise<YieldOpportunity[]> {
   }
 
   try {
-    // Fetch reserve data to get current liquidity rate
-    const reserveData = await client.readContract({
+    // Try DeFi Llama API first (no RPC needed, cached)
+    const llamaPool = await getAaveUsdcPool();
+    if (llamaPool) {
+      return [{
+        id: "aave-usdc-base",
+        protocol: "aave",
+        name: "Aave V3 USDC",
+        asset: "USDC",
+        apy: llamaPool.apy,
+        tvl: BigInt(Math.round(llamaPool.tvlUsd * 1e6)), // Convert USD to USDC units (6 decimals)
+        address: AAVE_POOL,
+        riskScore: 0.2,
+        liquidityDepth: BigInt(Math.round(llamaPool.tvlUsd * 1e6)),
+        metadata: {
+          aTokenAddress: AAVE_AUSDC,
+          isVault: false,
+          source: "defillama",
+        },
+      }];
+    }
+
+    // Fallback to RPC if DeFi Llama unavailable
+    console.warn("[Aave] DeFi Llama unavailable, falling back to RPC");
+    const reserveData = await baseClient.readContract({
       address: AAVE_POOL,
       abi: AAVE_POOL_ABI,
       functionName: "getReserveData",
       args: [USDC],
     });
 
-    // currentLiquidityRate is at index 2 (RAY units: 1e27)
     const liquidityRate = (reserveData as readonly bigint[])[2];
-
-    // Convert from RAY (1e27) to APY decimal
-    // liquidityRate is per second, so we need to annualize it
-    // APY = liquidityRate / 1e27
     const apy = Number(liquidityRate) / 1e27;
 
-    // Get total supply of aUSDC as TVL
-    const tvl = await client.readContract({
+    const tvl = await baseClient.readContract({
       address: AAVE_AUSDC,
       abi: ERC20_ABI,
       functionName: "totalSupply",
     }) as bigint;
 
-    return [
-      {
-        id: "aave-usdc-base",
-        protocol: "aave",
-        name: "Aave V3 USDC",
-        asset: "USDC",
-        apy,
-        tvl,
-        address: AAVE_POOL,
-        riskScore: 0.2, // Aave V3 is battle-tested
-        liquidityDepth: tvl,
-        metadata: {
-          aTokenAddress: AAVE_AUSDC,
-          isVault: false,
-        },
+    return [{
+      id: "aave-usdc-base",
+      protocol: "aave",
+      name: "Aave V3 USDC",
+      asset: "USDC",
+      apy,
+      tvl,
+      address: AAVE_POOL,
+      riskScore: 0.2,
+      liquidityDepth: tvl,
+      metadata: {
+        aTokenAddress: AAVE_AUSDC,
+        isVault: false,
+        source: "rpc",
       },
-    ];
+    }];
   } catch (error) {
     console.error("Failed to fetch Aave opportunities:", error);
-    // Graceful degradation on RPC failure
     return [];
   }
 }
@@ -156,7 +167,7 @@ export async function getAavePosition(userAddress: `0x${string}`): Promise<Posit
 
   try {
     // Get user's aUSDC balance
-    const balance = await client.readContract({
+    const balance = await baseClient.readContract({
       address: AAVE_AUSDC,
       abi: ERC20_ABI,
       functionName: "balanceOf",
@@ -168,7 +179,7 @@ export async function getAavePosition(userAddress: `0x${string}`): Promise<Posit
     }
 
     // Fetch current APY
-    const reserveData = await client.readContract({
+    const reserveData = await baseClient.readContract({
       address: AAVE_POOL,
       abi: AAVE_POOL_ABI,
       functionName: "getReserveData",
