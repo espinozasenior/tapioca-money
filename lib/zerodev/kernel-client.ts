@@ -31,9 +31,11 @@ export interface CreateSessionKernelClientParams {
  * Restores `v` from string back to bigint for the ZeroDev SDK.
  */
 function deserializeSignedAuth(auth: any) {
+  const v = auth.v != null ? BigInt(auth.v) : undefined;
   return {
     ...auth,
-    v: auth.v != null ? BigInt(auth.v) : undefined,
+    v,
+    yParity: v != null ? Number(v) : undefined,
   };
 }
 
@@ -64,19 +66,24 @@ export async function createSessionKernelClient(params: CreateSessionKernelClien
   const { createKernelAccount, createKernelAccountClient } = await import('@zerodev/sdk');
   const { KERNEL_V3_3 } = await import('@zerodev/sdk/constants');
   const { toPermissionValidator } = await import('@zerodev/permissions');
-  const { toCallPolicy, toSudoPolicy, CallPolicyVersion, toGasPolicy, toRateLimitPolicy } = await import('@zerodev/permissions/policies');
+  const { toCallPolicy, CallPolicyVersion, toGasPolicy, toRateLimitPolicy } = await import('@zerodev/permissions/policies');
   const { toECDSASigner } = await import('@zerodev/permissions/signers');
 
   // 4. Convert session key to ModularSigner
   const sessionSigner = await toECDSASigner({ signer: sessionKeySigner });
 
-  // 5. Build policy — scoped if permissions provided, sudo fallback otherwise
-  const policy = params.permissions.length > 0
-    ? toCallPolicy({
-        policyVersion: CallPolicyVersion.V0_0_5,
-        permissions: params.permissions,
-      })
-    : toSudoPolicy({});
+  // 5. Build policy — requires explicit permissions
+  if (params.permissions.length === 0) {
+    throw new Error(
+      'Session key requires explicit permissions. No permissions provided — ' +
+      'user must re-register with approved vaults to generate scoped CallPolicy.'
+    );
+  }
+
+  const policy = toCallPolicy({
+    policyVersion: CallPolicyVersion.V0_0_5,
+    permissions: params.permissions,
+  });
 
   // Gas policy: cap gas spend per UserOp (500k gas in wei on Base ~0.1 gwei)
   const gasPolicy = toGasPolicy({
@@ -132,6 +139,9 @@ export async function createSessionKernelClient(params: CreateSessionKernelClien
   // Pass signed auth so SDK sets isEip7702=true → no factory initCode → no AA14
   if (params.eip7702SignedAuth) {
     accountOptions.eip7702Auth = deserializeSignedAuth(params.eip7702SignedAuth);
+    // eip7702Account tells the SDK this is an EIP-7702 delegated account.
+    // We use the session key signer since the EOA key is only available client-side.
+    accountOptions.eip7702Account = sessionKeySigner;
     console.log('[KernelClient] Using stored EIP-7702 authorization (isEip7702=true)');
   } else if (!delegationStatus.active) {
     console.log('[KernelClient] Account not deployed yet and no eip7702Auth - SDK will generate initCode');

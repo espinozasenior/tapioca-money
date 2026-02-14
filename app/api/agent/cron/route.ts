@@ -18,8 +18,9 @@ const CONCURRENCY = parseInt(process.env.CRON_CONCURRENCY || '10', 10);
  */
 async function processUsersInParallel(
   users: any[],
-  processFn: (user: any, summary: CronSummary) => Promise<void>,
-  summary: CronSummary
+  processFn: (user: any, summary: CronSummary, targetedVaults?: string[] | null) => Promise<void>,
+  summary: CronSummary,
+  targetedVaults?: string[] | null
 ): Promise<void> {
   console.log(`[Cron] Processing ${users.length} users in batches of ${BATCH_SIZE} with concurrency ${CONCURRENCY}`);
 
@@ -43,7 +44,7 @@ async function processUsersInParallel(
         chunk.map(async (user) => {
           summary.processed++;
           try {
-            await processFn(user, summary);
+            await processFn(user, summary, targetedVaults);
           } catch (error: any) {
             summary.errors++;
             summary.details.push({
@@ -135,6 +136,27 @@ export async function POST(request: NextRequest) {
   };
 
   try {
+    // Pre-flight safety check: verify USDC price feed is healthy
+    const { isRebalanceSafe } = await import('@/lib/oracles/chainlink');
+    const safetyCheck = await isRebalanceSafe();
+    if (!safetyCheck.safe) {
+      console.error('[Cron] Safety check FAILED:', safetyCheck.reason);
+      return NextResponse.json({
+        success: false,
+        error: `Rebalancing blocked by safety check: ${safetyCheck.reason}`,
+        summary,
+      }, { status: 503 });
+    }
+    console.log('[Cron] Safety check passed: USDC price feed healthy');
+
+    // Check for targeted rebalance mode (triggered by APY monitor)
+    const url = new URL(request.url);
+    const targetedVaultsParam = url.searchParams.get('targetedVaults');
+    const targetedVaults = targetedVaultsParam ? targetedVaultsParam.split(',') : null;
+    if (targetedVaults) {
+      console.log(`[Cron] Targeted rebalance mode: ${targetedVaults.length} vaults affected`);
+    }
+
     // 2. Query active users with valid session keys
     const activeUsers = await sql`
       SELECT
@@ -157,7 +179,8 @@ export async function POST(request: NextRequest) {
     await processUsersInParallel(
       activeUsers,
       processUserRebalance,
-      summary
+      summary,
+      targetedVaults
     );
 
     const duration = Date.now() - startTime;
@@ -189,7 +212,8 @@ export async function POST(request: NextRequest) {
  */
 async function processUserRebalance(
   user: any,
-  summary: CronSummary
+  summary: CronSummary,
+  targetedVaults?: string[] | null
 ): Promise<void> {
   const userAddress = user.wallet_address as `0x${string}`;
   const userId = user.id;
@@ -226,7 +250,7 @@ async function processUserRebalance(
 
   // 2. Evaluate rebalancing decision via Morpho API
   const decisionEngine = new YieldDecisionEngine();
-  const decision = await decisionEngine.evaluateRebalancing(userAddress);
+  const decision = await decisionEngine.evaluateRebalancing(userAddress, targetedVaults);
 
   // 3. Check if should rebalance
   if (!decision.shouldRebalance) {
