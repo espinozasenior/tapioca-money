@@ -42,9 +42,13 @@ export class YieldDecisionEngine {
    * Evaluate if user should rebalance and where
    *
    * @param userAddress - User wallet address
+   * @param targetedVaults - Optional list of vault addresses that should use lower threshold (APY monitor detected drops)
    * @returns Rebalancing decision with reasoning
    */
-  async evaluateRebalancing(userAddress: `0x${string}`): Promise<RebalanceDecision> {
+  async evaluateRebalancing(
+    userAddress: `0x${string}`,
+    targetedVaults?: string[] | null,
+  ): Promise<RebalanceDecision> {
     try {
       // 1. Fetch user's current positions
       const positions = await this.morphoClient.fetchUserPositions(userAddress, CHAIN_ID);
@@ -126,14 +130,20 @@ export class YieldDecisionEngine {
       const breakEvenDays = estimatedAnnualGain > 0 ? (GAS_COST_USD / estimatedAnnualGain) * 365 : Infinity;
 
       // 8. Make decision
+      // Use lower threshold for targeted rebalances (APY monitor detected drops)
+      const isTargeted = targetedVaults?.some(
+        v => v.toLowerCase() === currentVaultDetails.address.toLowerCase()
+      );
+      const effectiveThreshold = isTargeted ? 0.001 : MIN_APY_IMPROVEMENT; // 0.1% vs 0.5%
+
       const shouldRebalance =
-        apyImprovement >= MIN_APY_IMPROVEMENT && // Significant improvement
-        breakEvenDays <= 30; // Recovers gas cost within 30 days
+        apyImprovement >= effectiveThreshold &&
+        breakEvenDays <= 30;
 
       const reason = shouldRebalance
-        ? `Found ${(apyImprovement * 100).toFixed(2)}% APY improvement (${currentApy * 100}% → ${bestApy * 100}%). Estimated gain: $${estimatedAnnualGain.toFixed(2)}/year. Break-even: ${breakEvenDays.toFixed(1)} days.`
-        : apyImprovement < MIN_APY_IMPROVEMENT
-        ? `APY improvement too small (${(apyImprovement * 100).toFixed(2)}% < ${MIN_APY_IMPROVEMENT * 100}% threshold)`
+        ? `${isTargeted ? '[TARGETED] ' : ''}Found ${(apyImprovement * 100).toFixed(2)}% APY improvement (${currentApy * 100}% → ${bestApy * 100}%). Estimated gain: $${estimatedAnnualGain.toFixed(2)}/year. Break-even: ${breakEvenDays.toFixed(1)} days.`
+        : apyImprovement < effectiveThreshold
+        ? `APY improvement too small (${(apyImprovement * 100).toFixed(2)}% < ${effectiveThreshold * 100}% threshold)`
         : `Break-even time too long (${breakEvenDays.toFixed(1)} days > 30 days threshold)`;
 
       return {
