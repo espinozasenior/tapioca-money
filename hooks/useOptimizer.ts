@@ -4,6 +4,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "./useWallet";
 import { useWallets, usePrivy, useSign7702Authorization } from "@privy-io/react-auth";
+import { createWalletClient, custom } from "viem";
+import { base } from "viem/chains";
 
 // Types matching what components expect (compatible with legacy Yield.xyz types)
 export interface YieldOpportunity {
@@ -277,6 +279,37 @@ export function useAgent() {
     },
   });
 
+  const undelegate = useMutation({
+    mutationFn: async () => {
+      if (!address) throw new Error("No wallet connected");
+
+      // Get access token for API authentication
+      const accessToken = await getAccessToken();
+      if (!accessToken) {
+        throw new Error("Failed to get access token");
+      }
+
+      // Get embedded wallet's Ethereum provider
+      const provider = await wallets[0].getEthereumProvider();
+
+      // Create Viem wallet client
+      const walletClient = createWalletClient({
+        chain: base,
+        transport: custom(provider),
+      });
+
+      // Import ZeroDev client functions
+      const { undelegateEoa, revokeSessionKey } = await import("@/lib/zerodev/client-secure");
+
+      // Undelegate EOA and revoke session key
+      await undelegateEoa(address as `0x${string}`, walletClient);
+      await revokeSessionKey(address as `0x${string}`, accessToken);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["agent-status", address] });
+    },
+  });
+
   return {
     isRegistered: status.data?.isRegistered ?? false,
     autoOptimizeEnabled: status.data?.autoOptimizeEnabled ?? false,
@@ -288,6 +321,9 @@ export function useAgent() {
     toggleAutoOptimize: toggleAutoOptimize.mutate,
     isTogglingAutoOptimize: toggleAutoOptimize.isPending,
     toggleError: toggleAutoOptimize.error,
+    undelegate: undelegate.mutate,
+    isUndelegating: undelegate.isPending,
+    undelegateError: undelegate.error,
   };
 }
 

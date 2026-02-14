@@ -71,14 +71,14 @@ export async function createTransferSessionKey(
     console.log('[TransferSession] Creating Kernel V3 smart account...');
 
     const { createKernelAccount } = await import('@zerodev/sdk');
-    const { KERNEL_V3_1 } = await import('@zerodev/sdk/constants');
+    const { KERNEL_V3_3 } = await import('@zerodev/sdk/constants');
     const { signerToEcdsaValidator } = await import('@zerodev/ecdsa-validator');
 
     // Create ECDSA validator with wallet client as signer
     const ecdsaValidator = await signerToEcdsaValidator(publicClient, {
       signer: walletClient,
       entryPoint: ENTRYPOINT_V07,
-      kernelVersion: KERNEL_V3_1,
+      kernelVersion: KERNEL_V3_3,
     });
 
     // Create Kernel account (smart account)
@@ -87,7 +87,7 @@ export async function createTransferSessionKey(
         sudo: ecdsaValidator,
       },
       entryPoint: ENTRYPOINT_V07,
-      kernelVersion: KERNEL_V3_1,
+      kernelVersion: KERNEL_V3_3,
     });
 
     const smartAccountAddress = kernelAccount.address;
@@ -135,7 +135,7 @@ export async function createTransferSessionKey(
           ],
         }),
       ],
-      kernelVersion: KERNEL_V3_1,
+      kernelVersion: KERNEL_V3_3,
     });
 
     console.log('[TransferSession] ✓ Session key configured with transfer-only permissions');

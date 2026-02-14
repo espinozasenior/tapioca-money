@@ -30,6 +30,17 @@ const sql = neon(process.env.DATABASE_URL!);
 // Session key expiry: 7 days (reduced from 30 days for security)
 const SESSION_KEY_EXPIRY_DAYS = 7;
 
+// Policy configuration for session keys
+const POLICY_CONFIG = {
+  gasPolicy: {
+    allowed: '50000000000000', // 500k gas * 0.1 gwei (as string for JSON serialization)
+  },
+  rateLimitPolicy: {
+    count: 10,
+    interval: 86400, // 24 hours in seconds
+  },
+};
+
 interface GenerateSessionKeyRequest {
   address: string;
   smartAccountAddress: string;
@@ -99,6 +110,7 @@ export async function POST(request: NextRequest) {
       approvedVaults: approvedVaults as `0x${string}`[],
       expiry,
       timestamp: Date.now(),
+      policyConfig: POLICY_CONFIG,
       ...(eip7702SignedAuth ? { eip7702SignedAuth } : {}),
     };
 

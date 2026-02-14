@@ -135,6 +135,7 @@ export async function POST(request: NextRequest) {
       amount: String(amount),
       sessionPrivateKey: decryptedAuth.sessionPrivateKey as `0x${string}`,
       approvedVaults: approvedVaults as `0x${string}`[],
+      eip7702SignedAuth: decryptedAuth.eip7702SignedAuth,
     });
     const depositDuration = Date.now() - depositStartTime;
 

@@ -131,6 +131,37 @@ export async function GET(request: NextRequest) {
         `;
         const lastCronRun = lastCronResult[0]?.last_run || null;
 
+        // Delegation metrics
+        const delegationResult = await sql`
+          SELECT
+            COUNT(*) FILTER (WHERE authorization_7702 IS NOT NULL) as delegated,
+            COUNT(*) FILTER (WHERE authorization_7702 IS NULL AND agent_registered = true) as expired
+          FROM users
+          WHERE auto_optimize_enabled = true
+        `;
+        const delegationMetrics = {
+          activeDelegations: parseInt(delegationResult[0]?.delegated ?? '0'),
+          expiredDelegations: parseInt(delegationResult[0]?.expired ?? '0'),
+        };
+
+        // Persisted error metrics (survives cold starts)
+        const errorMetricsResult = await sql`
+          SELECT
+            COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '1 hour') as errors_1h,
+            COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '24 hours') as errors_24h,
+            COUNT(*) FILTER (
+              WHERE created_at >= NOW() - INTERVAL '24 hours'
+              AND metadata->>'severity' = 'critical'
+            ) as critical_24h
+          FROM agent_actions
+          WHERE action_type LIKE 'error_%'
+        `;
+        const errorMetrics = {
+          errorsLastHour: parseInt(errorMetricsResult[0]?.errors_1h ?? '0'),
+          errorsLast24h: parseInt(errorMetricsResult[0]?.errors_24h ?? '0'),
+          criticalLast24h: parseInt(errorMetricsResult[0]?.critical_24h ?? '0'),
+        };
+
         // Average latency (mock for now)
         metrics.averageLatency = Date.now() - startTime;
 
@@ -144,6 +175,8 @@ export async function GET(request: NextRequest) {
           metrics: {
             ...metrics,
             errorRate: errorRate.toFixed(2),
+            delegation: delegationMetrics,
+            errors: errorMetrics,
           },
           services: checks,
           timestamp: new Date().toISOString(),
