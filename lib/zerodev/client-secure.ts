@@ -103,12 +103,18 @@ export async function registerAgentSecure(
   }
 }
 
+export interface DelegationStatus {
+  active: boolean;
+  isDelegation: boolean;
+  implementationAddress?: string;
+}
+
 /**
  * Check if address has smart account bytecode deployed
  */
 export async function checkSmartAccountActive(
   address: `0x${string}`
-): Promise<boolean> {
+): Promise<DelegationStatus> {
   try {
     const publicClient = createPublicClient({
       chain: base,
@@ -116,10 +122,23 @@ export async function checkSmartAccountActive(
     });
 
     const code = await publicClient.getBytecode({ address });
-    return code !== undefined && code !== '0x';
+
+    if (!code || code === '0x') {
+      return { active: false, isDelegation: false };
+    }
+
+    // EIP-7702 delegation designator: 0xef0100 + 20-byte implementation address
+    // Total length: '0x' + 'ef0100' (6 chars) + address (40 chars) = 48 chars
+    if (code.startsWith('0xef0100') && code.length === 48) {
+      const implementationAddress = ('0x' + code.slice(8)) as `0x${string}`;
+      return { active: true, isDelegation: true, implementationAddress };
+    }
+
+    // Has bytecode but not an EIP-7702 delegation (e.g. regular contract)
+    return { active: true, isDelegation: false };
   } catch (error) {
     console.error('[ZeroDev Secure] Failed to check smart account status:', error);
-    return false;
+    return { active: false, isDelegation: false };
   }
 }
 
@@ -146,4 +165,38 @@ export async function revokeSessionKey(
   }
 
   console.log('[ZeroDev 7702] Session key revoked (soft)');
+}
+
+/**
+ * Undelegate EOA from Kernel (remove EIP-7702 delegation on-chain).
+ *
+ * Requires the user's wallet to sign a new Type 4 transaction with
+ * contractAddress = address(0) (null delegation) to remove the code slot.
+ *
+ * This must be called from the CLIENT because only the EOA owner (via Privy)
+ * can sign the undelegation authorization.
+ *
+ * @param userAddress - User's EOA address
+ * @param walletClient - Viem WalletClient from Privy provider
+ * @returns Transaction hash of the undelegation Type 4 transaction
+ */
+export async function undelegateEoa(
+  userAddress: `0x${string}`,
+  walletClient: any,
+): Promise<`0x${string}`> {
+  console.log('[ZeroDev 7702] Starting on-chain undelegation for:', userAddress);
+
+  // Sign authorization to delegate to address(0) — effectively removes delegation
+  const authorization = await walletClient.signAuthorization({
+    contractAddress: '0x0000000000000000000000000000000000000000' as `0x${string}`,
+  });
+
+  // Submit Type 4 transaction to remove delegation
+  const txHash = await walletClient.sendTransaction({
+    to: userAddress,
+    authorizationList: [authorization],
+  });
+
+  console.log('[ZeroDev 7702] Undelegation tx submitted:', txHash);
+  return txHash;
 }
