@@ -1,5 +1,7 @@
-import { encodeFunctionData, parseAbi, type Hex } from 'viem';
+import { encodeFunctionData, parseAbi, createPublicClient, http, type Hex } from 'viem';
+import { base } from 'viem/chains';
 import { createSessionKernelClient } from '../zerodev/kernel-client';
+import { checkSmartAccountActive } from '../zerodev/client-secure';
 
 const VAULT_ABI = parseAbi([
   'function redeem(uint256 shares, address receiver, address owner) returns (uint256 assets)',
@@ -49,8 +51,26 @@ export interface RebalanceResult {
  * 1. Redeem shares from source vault → receive USDC
  * 2. Approve destination vault to spend USDC
  * 3. Deposit USDC into destination vault
+ *
+ * Uses previewRedeem to calculate expected USDC output for accurate deposit amount.
  */
-export function buildRebalanceCalls(params: RebalanceParams): RebalanceCall[] {
+export async function buildRebalanceCalls(params: RebalanceParams): Promise<RebalanceCall[]> {
+  // Calculate expected USDC output from redeem via on-chain preview
+  const publicClient = createPublicClient({ chain: base, transport: http() });
+  const expectedAssets = await publicClient.readContract({
+    address: params.fromVault,
+    abi: parseAbi(['function previewRedeem(uint256 shares) view returns (uint256)']),
+    functionName: 'previewRedeem',
+    args: [params.shares],
+  });
+
+  // Apply 0.5% slippage buffer to account for rounding and timing differences
+  const depositAmount = expectedAssets * 995n / 1000n;
+
+  if (depositAmount === 0n) {
+    throw new Error(`previewRedeem returned 0 for ${params.shares} shares on vault ${params.fromVault}`);
+  }
+
   return [
     // Step 1: Redeem from source vault
     {
@@ -62,23 +82,23 @@ export function buildRebalanceCalls(params: RebalanceParams): RebalanceCall[] {
       }),
       value: BigInt(0)
     },
-    // Step 2: Approve destination vault (max approval for efficiency)
+    // Step 2: Approve destination vault with exact amount (not MAX_UINT256)
     {
       to: USDC_ADDRESS,
       data: encodeFunctionData({
         abi: ERC20_ABI,
         functionName: 'approve',
-        args: [params.toVault, MAX_UINT256]
+        args: [params.toVault, depositAmount]
       }),
       value: BigInt(0)
     },
-    // Step 3: Deposit to destination vault (max amount to deposit all received USDC)
+    // Step 3: Deposit calculated amount into destination vault
     {
       to: params.toVault,
       data: encodeFunctionData({
         abi: VAULT_ABI,
         functionName: 'deposit',
-        args: [MAX_UINT256, params.userAddress] // MAX_UINT256 = deposit all
+        args: [depositAmount, params.userAddress]
       }),
       value: BigInt(0)
     }
@@ -121,6 +141,29 @@ export async function executeRebalance(
   try {
     console.log('[Rebalance] Starting ZeroDev execution with scoped permissions...');
 
+    // PRE-EXECUTION: Verify EIP-7702 delegation is active on-chain
+    const delegationStatus = await checkSmartAccountActive(smartAccountAddress);
+    if (!delegationStatus.active) {
+      console.error('[Rebalance] Delegation not active for:', smartAccountAddress);
+      return {
+        taskId: '',
+        success: false,
+        error: 'EIP-7702 delegation not active on-chain. User must re-register.',
+      };
+    }
+    if (delegationStatus.isDelegation) {
+      const { KernelVersionToAddressesMap, KERNEL_V3_3 } = await import('@zerodev/sdk/constants');
+      const expectedImpl = KernelVersionToAddressesMap[KERNEL_V3_3].accountImplementationAddress;
+      if (delegationStatus.implementationAddress?.toLowerCase() !== expectedImpl.toLowerCase()) {
+        console.error('[Rebalance] Delegation target mismatch:', delegationStatus.implementationAddress);
+        return {
+          taskId: '',
+          success: false,
+          error: `EIP-7702 delegated to wrong implementation: ${delegationStatus.implementationAddress}`,
+        };
+      }
+    }
+
     // Build permissions
     const permissions = (approvedVaults && approvedVaults.length > 0)
       ? buildScopedPermissions(approvedVaults)
@@ -144,22 +187,33 @@ export async function executeRebalance(
     });
 
     // Build rebalance calls
-    const calls = buildRebalanceCalls(params);
+    const calls = await buildRebalanceCalls(params);
 
     console.log('[Rebalance] Executing batch transaction...');
 
-    const userOpHash = await kernelClient.sendUserOperation({
-      calls: calls.map(call => ({
-        to: call.to,
-        value: call.value,
-        data: call.data,
-      })),
-    });
+    let userOpHash: string;
+    try {
+      userOpHash = await kernelClient.sendUserOperation({
+        calls: calls.map(call => ({
+          to: call.to,
+          value: call.value,
+          data: call.data,
+        })),
+      });
+    } catch (sendError: any) {
+      if (sendError.message?.includes('paymaster')) {
+        return { taskId: '', success: false, error: 'Gas sponsorship failed. Paymaster may be out of funds.' };
+      }
+      if (sendError.message?.includes('nonce')) {
+        return { taskId: '', success: false, error: 'UserOp nonce error. Retry may be needed.' };
+      }
+      throw sendError;
+    }
 
     console.log('[Rebalance] UserOp submitted:', userOpHash);
 
     const receipt = await kernelClient.waitForUserOperationReceipt({
-      hash: userOpHash,
+      hash: userOpHash as `0x${string}`,
     });
 
     console.log('[Rebalance] Transaction confirmed:', receipt.receipt.transactionHash);
@@ -187,7 +241,7 @@ export async function simulateRebalance(
   sessionPrivateKey: `0x${string}`
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const calls = buildRebalanceCalls(params);
+    const calls = await buildRebalanceCalls(params);
 
     // TODO: Add simulation via Tenderly or similar
     console.log('[Rebalance] Simulation would execute:', calls.length, 'calls');

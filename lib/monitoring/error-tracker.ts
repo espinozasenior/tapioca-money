@@ -3,6 +3,8 @@
  * Logs errors with severity levels and provides metrics
  */
 
+import { neon } from '@neondatabase/serverless';
+
 export enum ErrorSeverity {
   LOW = 'low',
   MEDIUM = 'medium',
@@ -90,6 +92,52 @@ class ErrorStore {
   }
 }
 
+/**
+ * Persist CRITICAL and HIGH severity errors to agent_actions table.
+ * Best-effort — DB failures are caught and logged, never thrown.
+ */
+async function persistErrorToDatabase(error: ErrorLog): Promise<void> {
+  if (error.severity !== ErrorSeverity.CRITICAL && error.severity !== ErrorSeverity.HIGH) {
+    return;
+  }
+
+  try {
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) return;
+
+    const sql = neon(databaseUrl);
+
+    // Look up user_id if userAddress is provided
+    let userId: string | null = null;
+    if (error.userAddress) {
+      const userResult = await sql`
+        SELECT id FROM users WHERE LOWER(wallet_address) = LOWER(${error.userAddress})
+      `;
+      userId = userResult[0]?.id ?? null;
+    }
+
+    await sql`
+      INSERT INTO agent_actions (user_id, action_type, status, error_message, metadata)
+      VALUES (
+        ${userId},
+        ${`error_${error.category}`},
+        ${'failed'},
+        ${error.message},
+        ${JSON.stringify({
+          severity: error.severity,
+          category: error.category,
+          errorId: error.id,
+          stack: error.stack,
+          ...error.metadata,
+        })}::jsonb
+      )
+    `;
+  } catch (dbError) {
+    // Best-effort persistence — never let DB failures break error tracking
+    console.error('[ErrorTracker] Failed to persist error to database:', dbError);
+  }
+}
+
 const errorStore = new ErrorStore();
 
 /**
@@ -107,6 +155,9 @@ export class ErrorTracker {
     };
 
     errorStore.add(errorLog);
+
+    // Persist CRITICAL and HIGH errors to database (best-effort, non-blocking)
+    persistErrorToDatabase(errorLog).catch(() => {});
 
     // In production, send to external monitoring service
     // await sendToSentry(errorLog);
@@ -180,6 +231,49 @@ export class ErrorTracker {
    */
   static async getErrorCount(): Promise<number> {
     return errorStore.count;
+  }
+
+  /**
+   * Get recent errors from database (persisted CRITICAL/HIGH errors)
+   */
+  static async getPersistedErrors(limit: number = 50): Promise<any[]> {
+    try {
+      const databaseUrl = process.env.DATABASE_URL;
+      if (!databaseUrl) return [];
+
+      const sql = neon(databaseUrl);
+      const results = await sql`
+        SELECT id, action_type, status, error_message, metadata, created_at
+        FROM agent_actions
+        WHERE action_type LIKE 'error_%'
+        ORDER BY created_at DESC
+        LIMIT ${limit}
+      `;
+      return results;
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Get error rate from database for a time window
+   */
+  static async getPersistedErrorRate(windowMinutes: number = 60): Promise<number> {
+    try {
+      const databaseUrl = process.env.DATABASE_URL;
+      if (!databaseUrl) return 0;
+
+      const sql = neon(databaseUrl);
+      const result = await sql`
+        SELECT COUNT(*) as count
+        FROM agent_actions
+        WHERE action_type LIKE 'error_%'
+          AND created_at >= NOW() - INTERVAL '1 minute' * ${windowMinutes}
+      `;
+      return parseInt(result[0]?.count ?? '0') / windowMinutes;
+    } catch {
+      return 0;
+    }
   }
 }
 

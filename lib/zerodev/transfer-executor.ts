@@ -14,6 +14,7 @@ export interface GaslessTransferParams {
   recipient: `0x${string}`;
   amount: string; // Amount in USDC (e.g., "10.50")
   sessionPrivateKey: `0x${string}`;
+  eip7702SignedAuth?: any;
 }
 
 export interface GaslessTransferResult {
@@ -58,6 +59,7 @@ export async function executeGaslessTransfer(
     const kernelClient = await createSessionKernelClient({
       smartAccountAddress: params.smartAccountAddress,
       sessionPrivateKey: params.sessionPrivateKey,
+      eip7702SignedAuth: params.eip7702SignedAuth,
       permissions: [
         { target: USDC_ADDRESS, selector: transferSelector },
       ],
