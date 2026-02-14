@@ -218,6 +218,16 @@ export async function executeRebalance(
 
     console.log('[Rebalance] Transaction confirmed:', receipt.receipt.transactionHash);
 
+    // POST-EXECUTION: Verify delegation is still active on-chain
+    const { verifyDelegationAfterExecution } = await import('../zerodev/kernel-client');
+    const delegationConfirmed = await verifyDelegationAfterExecution(
+      smartAccountAddress,
+      receipt.receipt.transactionHash,
+    );
+    if (!delegationConfirmed) {
+      console.error('[Rebalance] WARNING: Delegation not confirmed after execution');
+    }
+
     return {
       taskId: receipt.receipt.transactionHash,
       success: true
@@ -243,9 +253,26 @@ export async function simulateRebalance(
   try {
     const calls = await buildRebalanceCalls(params);
 
-    // TODO: Add simulation via Tenderly or similar
-    console.log('[Rebalance] Simulation would execute:', calls.length, 'calls');
+    // Simulate each call using eth_call to detect reverts before execution
+    const publicClient = createPublicClient({ chain: base, transport: http() });
 
+    for (let i = 0; i < calls.length; i++) {
+      try {
+        await publicClient.call({
+          to: calls[i].to,
+          data: calls[i].data,
+          account: smartAccountAddress,
+        });
+      } catch (simError: any) {
+        const stepNames = ['redeem', 'approve', 'deposit'];
+        return {
+          success: false,
+          error: `Simulation failed at step ${i + 1} (${stepNames[i] || 'unknown'}): ${simError.message}`,
+        };
+      }
+    }
+
+    console.log('[Rebalance] Simulation passed:', calls.length, 'calls');
     return { success: true };
   } catch (error: any) {
     return {

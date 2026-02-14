@@ -23,9 +23,12 @@ export interface SecureSessionKeyResult {
  * `bigint` fields (like `v`) are not JSON-serializable — convert to string.
  */
 export function serializeSignedAuth(auth: any) {
+  // Normalize v/yParity: Privy returns yParity, ZeroDev SDK may expect v (BigInt)
+  const yParity = auth.yParity ?? auth.v;
   return {
     ...auth,
-    v: auth.v != null ? auth.v.toString() : undefined,
+    v: yParity != null ? yParity.toString() : undefined,
+    yParity: yParity != null ? Number(yParity) : undefined,
     chainId: Number(auth.chainId),
     nonce: Number(auth.nonce),
   };

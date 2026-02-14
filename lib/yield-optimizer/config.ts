@@ -35,16 +35,16 @@ export const PROTOCOLS = {
     rewardsDistributor: "0x330eefa8a787552DC5cAd3C3cA644844B1E61DDB" as `0x${string}`,
   },
   aave: {
-    enabled: false, // Not officially published for Base Sepolia - disable until verified
+    enabled: true, // Aave V3 deployed on Base Mainnet
     name: "Aave",
-    pool: null as `0x${string}` | null,
-    aUsdc: null as `0x${string}` | null,
+    pool: "0xA238Dd80C259a72e81d7e4664a9801593F98d1c5" as `0x${string}`,
+    aUsdc: "0x4e65fE4DbA92790696d040ac24Aa414708F5c0AB" as `0x${string}`,
   },
   moonwell: {
-    enabled: false, // No Base Sepolia deployment - mainnet only
+    enabled: true,
     name: "Moonwell",
-    comptroller: null as `0x${string}` | null,
-    mUsdc: null as `0x${string}` | null,
+    comptroller: "0xfBb21d0380beE3312B33c4353c8936a0F13EF26C" as `0x${string}`,
+    mUsdc: "0xEdc817A28E8B93B03976FBd4a3dDBc9f7D176c22" as `0x${string}`,
   },
 } as const;
 

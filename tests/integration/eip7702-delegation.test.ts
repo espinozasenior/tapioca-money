@@ -118,17 +118,19 @@ describe('Kernel Client — Permission Validator Slot', () => {
     expect(depositSelector).toBe(EXPECTED_SELECTORS.DEPOSIT);
   });
 
-  test('7. Sudo fallback only used when no permissions provided', async () => {
+  test('7. No sudo policy - error thrown when no permissions provided', async () => {
     const fs = await import('fs');
     const kernelClientSource = fs.readFileSync(
       'lib/zerodev/kernel-client.ts',
       'utf-8'
     );
 
-    // Verify the conditional pattern exists:
-    // toCallPolicy when permissions.length > 0, toSudoPolicy otherwise
-    expect(kernelClientSource).toContain('params.permissions.length > 0');
-    expect(kernelClientSource).toContain('toSudoPolicy');
+    // Verify that toSudoPolicy is NOT used (security fix)
+    expect(kernelClientSource).not.toContain('toSudoPolicy');
+
+    // Verify that we throw an error when no permissions provided
+    expect(kernelClientSource).toContain('params.permissions.length === 0');
+    expect(kernelClientSource).toContain('Session key requires explicit permissions');
     expect(kernelClientSource).toContain('toCallPolicy');
   });
 });

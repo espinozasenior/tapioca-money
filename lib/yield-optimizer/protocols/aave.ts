@@ -1,11 +1,14 @@
-// Aave V3 Protocol Integration (Base Sepolia)
+// Aave V3 Protocol Integration (Base Mainnet)
 import { createPublicClient, http, encodeFunctionData } from "viem";
-import { baseSepolia } from "viem/chains";
+import { base } from "viem/chains";
 import type { YieldOpportunity, Position } from "../types";
-import { USDC_BASE_SEPOLIA } from "../types";
-import { PROTOCOLS, ESTIMATED_APYS } from "../config";
+import { USDC_BASE } from "../types";
+import { PROTOCOLS } from "../config";
 
-const AAVE_POOL = PROTOCOLS.aave.pool || ("0x0000000000000000000000000000000000000000" as `0x${string}`);
+// Aave V3 Base Mainnet addresses
+const AAVE_POOL = "0xA238Dd80C259a72e81d7e4664a9801593F98d1c5" as const;
+const AAVE_AUSDC = "0x4e65fE4DbA92790696d040ac24Aa414708F5c0AB" as const;
+const USDC = USDC_BASE;
 
 const AAVE_POOL_ABI = [
   {
@@ -71,49 +74,152 @@ const ERC20_ABI = [
     ],
     outputs: [{ name: "", type: "bool" }],
   },
+  {
+    name: "totalSupply",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
 ] as const;
 
 const client = createPublicClient({
-  chain: baseSepolia,
+  chain: base,
   transport: http(),
 });
 
+/**
+ * Fetch Aave V3 USDC lending opportunities on Base mainnet
+ * Returns current APY and TVL for Aave USDC market
+ */
 export async function getAaveOpportunities(): Promise<YieldOpportunity[]> {
-  // Aave not deployed on Base Sepolia
   if (!PROTOCOLS.aave.enabled) {
     return [];
   }
-  return [];
+
+  try {
+    // Fetch reserve data to get current liquidity rate
+    const reserveData = await client.readContract({
+      address: AAVE_POOL,
+      abi: AAVE_POOL_ABI,
+      functionName: "getReserveData",
+      args: [USDC],
+    });
+
+    // currentLiquidityRate is at index 2 (RAY units: 1e27)
+    const liquidityRate = (reserveData as readonly bigint[])[2];
+
+    // Convert from RAY (1e27) to APY decimal
+    // liquidityRate is per second, so we need to annualize it
+    // APY = liquidityRate / 1e27
+    const apy = Number(liquidityRate) / 1e27;
+
+    // Get total supply of aUSDC as TVL
+    const tvl = await client.readContract({
+      address: AAVE_AUSDC,
+      abi: ERC20_ABI,
+      functionName: "totalSupply",
+    }) as bigint;
+
+    return [
+      {
+        id: "aave-usdc-base",
+        protocol: "aave",
+        name: "Aave V3 USDC",
+        asset: "USDC",
+        apy,
+        tvl,
+        address: AAVE_POOL,
+        riskScore: 0.2, // Aave V3 is battle-tested
+        liquidityDepth: tvl,
+        metadata: {
+          aTokenAddress: AAVE_AUSDC,
+          isVault: false,
+        },
+      },
+    ];
+  } catch (error) {
+    console.error("Failed to fetch Aave opportunities:", error);
+    // Graceful degradation on RPC failure
+    return [];
+  }
 }
 
-export async function getAavePosition(_userAddress: `0x${string}`): Promise<Position | null> {
-  // Aave not deployed on Base Sepolia
+/**
+ * Fetch user's Aave V3 position on Base mainnet
+ * Returns position if user has aUSDC balance, null otherwise
+ */
+export async function getAavePosition(userAddress: `0x${string}`): Promise<Position | null> {
   if (!PROTOCOLS.aave.enabled) {
     return null;
   }
-  return null;
+
+  try {
+    // Get user's aUSDC balance
+    const balance = await client.readContract({
+      address: AAVE_AUSDC,
+      abi: ERC20_ABI,
+      functionName: "balanceOf",
+      args: [userAddress],
+    });
+
+    if (balance === 0n) {
+      return null;
+    }
+
+    // Fetch current APY
+    const reserveData = await client.readContract({
+      address: AAVE_POOL,
+      abi: AAVE_POOL_ABI,
+      functionName: "getReserveData",
+      args: [USDC],
+    });
+
+    const liquidityRate = (reserveData as readonly bigint[])[2];
+    const apy = Number(liquidityRate) / 1e27;
+
+    return {
+      protocol: "aave",
+      vaultAddress: AAVE_POOL,
+      shares: balance as bigint, // aTokens are 1:1 with underlying
+      assets: balance as bigint, // aTokens represent the underlying amount
+      apy,
+      enteredAt: Date.now(), // We don't have historical data, use current timestamp
+    };
+  } catch (error) {
+    console.error("Failed to fetch Aave position:", error);
+    return null;
+  }
 }
 
+/**
+ * Build deposit transaction data for Aave V3
+ * Returns approve + supply transaction objects
+ */
 export function buildAaveDepositTx(amount: bigint, userAddress: `0x${string}`) {
   return {
     approve: {
-      to: USDC_BASE_SEPOLIA,
+      to: USDC,
       value: 0n,
       data: encodeApprove(AAVE_POOL, amount),
     },
     supply: {
       to: AAVE_POOL,
       value: 0n,
-      data: encodeSupply(USDC_BASE_SEPOLIA, amount, userAddress),
+      data: encodeSupply(USDC, amount, userAddress),
     },
   };
 }
 
+/**
+ * Build withdraw transaction data for Aave V3
+ * Returns withdraw transaction object
+ */
 export function buildAaveWithdrawTx(amount: bigint, userAddress: `0x${string}`) {
   return {
     to: AAVE_POOL,
     value: 0n,
-    data: encodeWithdraw(USDC_BASE_SEPOLIA, amount, userAddress),
+    data: encodeWithdraw(USDC, amount, userAddress),
   };
 }
 
