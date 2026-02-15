@@ -2,6 +2,20 @@ import type { NextConfig } from "next";
 const { IgnorePlugin } = require("webpack");
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: [
+    "@morpho-org/simulation-sdk",
+    "@morpho-org/blue-sdk",
+    "@morpho-org/morpho-ts",
+    "@zerodev/sdk",
+    "@zerodev/permissions",
+    "@zerodev/ecdsa-validator",
+    "@zerodev/session-key",
+    "ioredis",
+    "@privy-io/node",
+    "@neondatabase/serverless",
+    "drizzle-orm",
+    "libsodium-wrappers",
+  ],
   webpack: (config) => {
     // Exclude React Native transitive dependencies (completely unused in this EVM project)
     config.plugins.push(
