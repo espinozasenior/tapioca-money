@@ -4,7 +4,7 @@
  */
 
 import { encodeFunctionData, parseAbi, parseUnits, type Hex } from 'viem';
-import { createSessionKernelClient } from './kernel-client';
+import { createDeserializedKernelClient, createSessionKernelClient } from './kernel-client';
 
 const VAULT_ABI = parseAbi([
   'function deposit(uint256 assets, address receiver) returns (uint256 shares)',
@@ -24,9 +24,11 @@ export interface VaultDepositParams {
   smartAccountAddress: `0x${string}`;
   vaultAddress: `0x${string}`;
   amount: string; // Amount in USDC (e.g., "10.50")
-  sessionPrivateKey: `0x${string}`;
+  serializedAccount?: string; // Serialized kernel account (new pattern)
+  // Legacy fields (pre-serialize/deserialize)
+  sessionPrivateKey?: `0x${string}`;
   approvedVaults?: `0x${string}`[];
-  eip7702SignedAuth?: any; // Stored signed EIP-7702 authorization
+  eip7702SignedAuth?: any;
 }
 
 export interface VaultDepositResult {
@@ -62,24 +64,30 @@ export async function executeGaslessDeposit(
       };
     }
 
-    // Build scoped permissions: approve on USDC + deposit on each approved vault
-    const permissions: Array<{ target: `0x${string}`; selector: Hex }> = [];
-    if (params.approvedVaults && params.approvedVaults.length > 0) {
-      permissions.push({ target: USDC_ADDRESS, selector: APPROVE_SELECTOR });
-      for (const vaultAddress of params.approvedVaults) {
-        permissions.push({ target: vaultAddress, selector: DEPOSIT_SELECTOR });
+    // Create kernel client — prefer deserialized account (new pattern)
+    let kernelClient;
+    if (params.serializedAccount) {
+      console.log('[VaultDeposit] Using deserialized kernel client');
+      kernelClient = await createDeserializedKernelClient(params.serializedAccount);
+    } else if (params.sessionPrivateKey) {
+      // Legacy path — will fail with "sudo validator not set" for first UserOp
+      console.warn('[VaultDeposit] Using legacy session key path — user should re-register');
+      const permissions: Array<{ target: `0x${string}`; selector: Hex }> = [];
+      if (params.approvedVaults && params.approvedVaults.length > 0) {
+        permissions.push({ target: USDC_ADDRESS, selector: APPROVE_SELECTOR });
+        for (const vaultAddress of params.approvedVaults) {
+          permissions.push({ target: vaultAddress, selector: DEPOSIT_SELECTOR });
+        }
       }
-      console.log('[VaultDeposit] Using scoped policy with', permissions.length, 'permissions');
+      kernelClient = await createSessionKernelClient({
+        smartAccountAddress: params.smartAccountAddress,
+        sessionPrivateKey: params.sessionPrivateKey,
+        permissions,
+        eip7702SignedAuth: params.eip7702SignedAuth,
+      });
     } else {
-      console.warn('[VaultDeposit] Using sudo policy (legacy) - consider re-registering');
+      throw new Error('No serializedAccount or sessionPrivateKey provided. User must register.');
     }
-
-    const kernelClient = await createSessionKernelClient({
-      smartAccountAddress: params.smartAccountAddress,
-      sessionPrivateKey: params.sessionPrivateKey,
-      permissions,
-      eip7702SignedAuth: params.eip7702SignedAuth,
-    });
 
     // Build approve + deposit calls (batched atomically)
     const amountInUSDC = parseUnits(params.amount, 6);

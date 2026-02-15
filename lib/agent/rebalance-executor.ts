@@ -1,6 +1,6 @@
 import { encodeFunctionData, parseAbi, createPublicClient, http, type Hex } from 'viem';
 import { base } from 'viem/chains';
-import { createSessionKernelClient } from '../zerodev/kernel-client';
+import { createDeserializedKernelClient, createSessionKernelClient } from '../zerodev/kernel-client';
 import { checkSmartAccountActive } from '../zerodev/client-secure';
 
 const VAULT_ABI = parseAbi([
@@ -137,6 +137,7 @@ export async function executeRebalance(
   sessionPrivateKey: `0x${string}`,
   approvedVaults?: `0x${string}`[],
   eip7702SignedAuth?: any,
+  serializedAccount?: string,
 ): Promise<RebalanceResult> {
   try {
     console.log('[Rebalance] Starting ZeroDev execution with scoped permissions...');
@@ -164,27 +165,24 @@ export async function executeRebalance(
       }
     }
 
-    // Build permissions
-    const permissions = (approvedVaults && approvedVaults.length > 0)
-      ? buildScopedPermissions(approvedVaults)
-      : [];
-
-    if (permissions.length > 0) {
-      console.log('[Rebalance] Using scoped policy with', permissions.length, 'permissions');
+    // Create kernel client — prefer deserialized account (new pattern)
+    let kernelClient;
+    if (serializedAccount) {
+      console.log('[Rebalance] Using deserialized kernel client');
+      kernelClient = await createDeserializedKernelClient(serializedAccount);
     } else {
-      console.warn('[Rebalance] Using sudo policy (legacy) - consider re-registering');
+      // Legacy path
+      console.warn('[Rebalance] Using legacy session key path — user should re-register');
+      const permissions = (approvedVaults && approvedVaults.length > 0)
+        ? buildScopedPermissions(approvedVaults)
+        : [];
+      kernelClient = await createSessionKernelClient({
+        smartAccountAddress,
+        sessionPrivateKey,
+        permissions,
+        eip7702SignedAuth,
+      });
     }
-
-    // For 7702: the EOA already has Kernel code delegated on-chain during registration.
-    // At execution time, smartAccountAddress IS the EOA address — the kernel client
-    // uses the address parameter to send UserOps to the correct account.
-    // No eip7702Account needed server-side since delegation is already active.
-    const kernelClient = await createSessionKernelClient({
-      smartAccountAddress,
-      sessionPrivateKey,
-      permissions,
-      eip7702SignedAuth,
-    });
 
     // Build rebalance calls
     const calls = await buildRebalanceCalls(params);

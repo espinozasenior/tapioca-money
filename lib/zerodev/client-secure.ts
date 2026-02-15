@@ -1,16 +1,35 @@
 /**
  * Secure Frontend Registration with EIP-7702
  *
- * Client's only job: sign the EIP-7702 authorization via Privy, then send it
- * to the server along with approved vaults. The server stores everything and
- * deploys the delegation on-chain via the first UserOp (gasless via paymaster).
+ * Uses ZeroDev's serialize/deserialize pattern for two-party execution:
+ * 1. Client creates kernel account (EOA as sudo, session key as regular)
+ * 2. Client serializes account (capturing enable signature from EOA)
+ * 3. Server deserializes and executes — no EOA private key needed
  *
  * With EIP-7702, smartAccountAddress === userAddress (single address model).
  */
 
-import { createPublicClient, http } from 'viem';
+import { createPublicClient, http, type Hex } from 'viem';
 import { base } from 'viem/chains';
+import { toAccount } from 'viem/accounts';
 import { CHAIN_CONFIG } from '@/lib/yield-optimizer/config';
+
+// Session key expiry: 7 days
+const SESSION_KEY_EXPIRY_DAYS = 7;
+
+// Function selectors for scoped permissions
+const APPROVE_SELECTOR = "0x095ea7b3" as Hex; // approve(address,uint256)
+const DEPOSIT_SELECTOR = "0x6e553f65" as Hex; // deposit(uint256,address)
+const REDEEM_SELECTOR = "0xba087652" as Hex;  // redeem(uint256,address,address)
+const WITHDRAW_SELECTOR = "0xb460af94" as Hex; // withdraw(uint256,address,address)
+const TRANSFER_SELECTOR = "0xa9059cbb" as Hex; // transfer(address,uint256)
+const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as `0x${string}`;
+
+// EntryPoint V0.7 object (required format for ZeroDev SDK v5)
+const ENTRYPOINT_V07 = {
+  address: "0x0000000071727De22E5E9d8BAf0edAc6f37da032" as `0x${string}`,
+  version: "0.7" as const,
+};
 
 export interface SecureSessionKeyResult {
   smartAccountAddress: `0x${string}`;
@@ -36,23 +55,150 @@ export function serializeSignedAuth(auth: any) {
 }
 
 /**
- * Register agent with secure server-side session key.
+ * Create and serialize a kernel account client-side.
+ *
+ * Uses ZeroDev's official serialize/deserialize pattern for two-party execution.
+ * The client (with EOA access) creates the full kernel account, which captures
+ * the enable signature from the sudo validator. The serialized data is then
+ * sent to the server, which can deserialize and execute UserOps without the EOA.
+ *
+ * This will prompt the user to sign the enable typed data via Privy (1 extra signature).
+ *
+ * @param userAddress - User's EOA address
+ * @param signedEip7702Auth - Raw signed EIP-7702 authorization from Privy
+ * @param walletClient - Viem WalletClient from Privy provider
+ * @param approvedVaults - List of approved vault addresses for scoped permissions
+ */
+async function createAndSerializeAccount(
+  userAddress: `0x${string}`,
+  signedEip7702Auth: any,
+  walletClient: any,
+  approvedVaults: `0x${string}`[],
+): Promise<{ serializedAccount: string; sessionKeyAddress: `0x${string}`; expiry: number }> {
+  console.log('[ZeroDev 7702] Creating serialized account client-side...');
+
+  // Dynamic imports to minimize client bundle (tree-shaken)
+  const { generatePrivateKey, privateKeyToAccount } = await import('viem/accounts');
+  const { createKernelAccount } = await import('@zerodev/sdk');
+  const { KERNEL_V3_3 } = await import('@zerodev/sdk/constants');
+  const { toPermissionValidator, serializePermissionAccount } = await import('@zerodev/permissions');
+  const { toCallPolicy, CallPolicyVersion, toGasPolicy, toRateLimitPolicy } = await import('@zerodev/permissions/policies');
+  const { toECDSASigner } = await import('@zerodev/permissions/signers');
+
+  // 1. Generate session key pair (client-side)
+  const sessionPrivateKey = generatePrivateKey();
+  const sessionKeyAccount = privateKeyToAccount(sessionPrivateKey);
+  console.log('[ZeroDev 7702] Session key address:', sessionKeyAccount.address);
+
+  // 2. Create public client
+  const publicClient = createPublicClient({
+    chain: base,
+    transport: http(CHAIN_CONFIG.rpcUrl),
+  });
+
+  // 3. Create session key signer
+  const sessionSigner = await toECDSASigner({ signer: sessionKeyAccount });
+
+  // 4. Build scoped permissions for all approved vaults
+  const permissions: Array<{ target: `0x${string}`; selector: Hex }> = [];
+  permissions.push({ target: USDC_ADDRESS, selector: APPROVE_SELECTOR });
+  permissions.push({ target: USDC_ADDRESS, selector: TRANSFER_SELECTOR });
+  for (const vault of approvedVaults) {
+    permissions.push({ target: vault, selector: DEPOSIT_SELECTOR });
+    permissions.push({ target: vault, selector: REDEEM_SELECTOR });
+    permissions.push({ target: vault, selector: WITHDRAW_SELECTOR });
+  }
+
+  const callPolicy = toCallPolicy({
+    policyVersion: CallPolicyVersion.V0_0_5,
+    permissions,
+  });
+
+  const gasPolicy = toGasPolicy({
+    allowed: BigInt(500_000) * BigInt(100_000_000), // 500k gas * 0.1 gwei
+  });
+
+  const rateLimitPolicy = toRateLimitPolicy({
+    count: 10,
+    interval: 86400, // 24 hours
+  });
+
+  // 5. Create permission validator
+  const permissionValidator = await toPermissionValidator(publicClient, {
+    signer: sessionSigner,
+    entryPoint: ENTRYPOINT_V07,
+    policies: [callPolicy, gasPolicy, rateLimitPolicy],
+    kernelVersion: KERNEL_V3_3,
+  });
+
+  // 6. Wrap Privy wallet as a LocalAccount (type: "local") for the SDK
+  // The SDK's createKernelAccount checks eip7702Account.type === "local"
+  // to create the sudo validator. toAccount() produces the right type.
+  const eoaLocalAccount = toAccount({
+    address: userAddress,
+    signMessage: async ({ message }) => walletClient.signMessage({ message }),
+    signTransaction: async () => { throw new Error('signTransaction not needed for registration'); },
+    signTypedData: async (typedData) => walletClient.signTypedData(typedData),
+  });
+
+  // 7. Create kernel account with EOA as sudo + session key as regular
+  console.log('[ZeroDev 7702] Creating kernel account (EOA=sudo, sessionKey=regular)...');
+  const kernelAccount = await createKernelAccount(publicClient, {
+    plugins: {
+      regular: permissionValidator,
+    },
+    entryPoint: ENTRYPOINT_V07,
+    kernelVersion: KERNEL_V3_3,
+    address: userAddress,
+    eip7702Auth: signedEip7702Auth,
+    eip7702Account: eoaLocalAccount,
+  });
+
+  console.log('[ZeroDev 7702] Kernel account created:', kernelAccount.address);
+
+  // 8. Serialize the account (captures enable signature via sudo/EOA signing)
+  // This triggers a Privy signing popup for the enable typed data
+  console.log('[ZeroDev 7702] Serializing account (user signs enable data)...');
+  const serialized = await serializePermissionAccount(
+    kernelAccount,
+    sessionPrivateKey,      // Embedded for server-side deserialization
+    undefined,              // Auto-generate enable signature (sudo signs)
+    signedEip7702Auth,      // Embed EIP-7702 auth
+  );
+
+  const expiry = Math.floor(Date.now() / 1000) + SESSION_KEY_EXPIRY_DAYS * 24 * 60 * 60;
+
+  console.log('[ZeroDev 7702] Account serialized successfully');
+  return {
+    serializedAccount: serialized,
+    sessionKeyAddress: sessionKeyAccount.address as `0x${string}`,
+    expiry,
+  };
+}
+
+/**
+ * Register agent with secure server-side execution.
  *
  * The caller (useOptimizer hook) signs the EIP-7702 authorization using Privy's
- * native `useSign7702Authorization` hook and passes the signed auth here.
+ * native `useSign7702Authorization` hook, then creates and serializes the kernel
+ * account client-side (which captures the enable signature from the EOA).
+ *
+ * The serialized account is sent to the server for storage and later execution.
  *
  * @param userAddress - User's EOA address
  * @param accessToken - Privy access token for API authentication
  * @param signedEip7702Auth - Signed EIP-7702 authorization from Privy
+ * @param walletClient - Viem WalletClient from Privy provider (for signing enable data)
  * @returns Session key info (public address only)
  */
 export async function registerAgentSecure(
   userAddress: `0x${string}`,
   accessToken: string,
   signedEip7702Auth: any,
+  walletClient: any,
 ): Promise<SecureSessionKeyResult> {
   try {
-    console.log('[ZeroDev 7702] Starting registration (client signs, server deploys)...');
+    console.log('[ZeroDev 7702] Starting registration (serialize/deserialize pattern)...');
     console.log('[ZeroDev 7702] User EOA:', userAddress);
 
     // 1. Fetch approved vaults from the optimizer API
@@ -68,8 +214,17 @@ export async function registerAgentSecure(
 
     console.log('[ZeroDev 7702] Fetched', approvedVaults.length, 'vaults');
 
-    // 2. Send signed auth + vaults to server for session key generation
-    console.log('[ZeroDev 7702] Sending signed auth to server...');
+    // 2. Create and serialize the kernel account client-side
+    // This captures the enable signature from the EOA (sudo)
+    const { serializedAccount, sessionKeyAddress, expiry } = await createAndSerializeAccount(
+      userAddress,
+      signedEip7702Auth,
+      walletClient,
+      approvedVaults,
+    );
+
+    // 3. Send serialized account to server for encrypted storage
+    console.log('[ZeroDev 7702] Sending serialized account to server...');
     const sessionKeyResponse = await fetch('/api/agent/generate-session-key', {
       method: 'POST',
       headers: {
@@ -79,21 +234,21 @@ export async function registerAgentSecure(
       body: JSON.stringify({
         address: userAddress,
         smartAccountAddress: userAddress, // EIP-7702: same address
+        sessionKeyAddress,
+        serializedAccount,
         approvedVaults,
-        eip7702SignedAuth: serializeSignedAuth(signedEip7702Auth),
+        expiry,
       }),
     });
 
     if (!sessionKeyResponse.ok) {
       const error = await sessionKeyResponse.json();
-      throw new Error(error.error || 'Failed to generate session key');
+      throw new Error(error.error || 'Failed to store session data');
     }
-
-    const { sessionKeyAddress, expiry } = await sessionKeyResponse.json();
 
     console.log('[ZeroDev 7702] Session key address:', sessionKeyAddress);
     console.log('[ZeroDev 7702] Expiry:', new Date(expiry * 1000).toISOString());
-    console.log('[ZeroDev 7702] Registration complete (delegation deploys on first server-side UserOp)');
+    console.log('[ZeroDev 7702] Registration complete');
 
     return {
       smartAccountAddress: userAddress,

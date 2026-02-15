@@ -4,7 +4,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "./useWallet";
 import { useWallets, usePrivy, useSign7702Authorization } from "@privy-io/react-auth";
-import { createWalletClient, custom } from "viem";
+import { createWalletClient, custom, type WalletClient } from "viem";
 import { base } from "viem/chains";
 
 // Types matching what components expect (compatible with legacy Yield.xyz types)
@@ -226,8 +226,17 @@ export function useAgent() {
           chainId: 8453,
         });
 
-        console.log("[Agent Registration] EIP-7702 authorization signed, sending to server...");
-        const result = await registerAgentSecure(address as `0x${string}`, accessToken, signedAuth);
+        // Create Viem WalletClient from Privy provider for signing enable data
+        console.log("[Agent Registration] Creating wallet client for account serialization...");
+        const provider = await wallets[0].getEthereumProvider();
+        const privyWalletClient = createWalletClient({
+          account: address as `0x${string}`,
+          chain: base,
+          transport: custom(provider),
+        });
+
+        console.log("[Agent Registration] EIP-7702 authorization signed, creating serialized account...");
+        const result = await registerAgentSecure(address as `0x${string}`, accessToken, signedAuth, privyWalletClient);
 
         console.log("[Agent Registration] ✅ Secure registration complete!");
         console.log("[Agent Registration] Session key address:", result.sessionKeyAddress);

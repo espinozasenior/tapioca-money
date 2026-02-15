@@ -119,7 +119,8 @@ export async function POST(request: NextRequest) {
       vaultAddress: vaultAddress as `0x${string}`,
       shares: BigInt(shares),
       receiver: decryptedAuth.eoaAddress,
-      sessionPrivateKey: decryptedAuth.sessionPrivateKey as `0x${string}`,
+      serializedAccount: decryptedAuth.serializedAccount,
+      sessionPrivateKey: decryptedAuth.sessionPrivateKey as `0x${string}` | undefined,
       approvedVaults: approvedVaults as `0x${string}`[],
     });
 

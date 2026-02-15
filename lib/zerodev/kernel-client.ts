@@ -1,9 +1,11 @@
 /**
  * Shared ZeroDev Kernel client factory (EIP-7702)
  *
- * Creates kernel clients for server-side execution using session keys.
- * The EIP-7702 delegation is already on-chain (done during registration),
- * so the kernel client just needs the EOA address to send UserOps.
+ * Two execution paths:
+ * 1. createDeserializedKernelClient() — RECOMMENDED: Uses serialized account from
+ *    client-side registration (includes enable signature, no sudo needed)
+ * 2. createSessionKernelClient() — LEGACY: Builds account from raw session key
+ *    (will fail with "sudo validator not set" for first UserOp)
  */
 
 import { createPublicClient, http, type Hex } from 'viem';
@@ -17,6 +19,55 @@ const ENTRYPOINT_V07 = {
   address: "0x0000000071727De22E5E9d8BAf0edAc6f37da032" as `0x${string}`,
   version: "0.7" as const,
 };
+
+/**
+ * Create a ZeroDev Kernel client from a serialized permission account.
+ *
+ * This is the RECOMMENDED path for server-side execution. The serialized account
+ * was created client-side during registration using serializePermissionAccount(),
+ * which captures the enable signature from the EOA (sudo). The server deserializes
+ * it and gets a fully configured kernel account — no EOA private key needed.
+ *
+ * @param serializedAccount - Base64 serialized permission account from registration
+ * @returns A kernel client ready to call sendUserOperation()
+ */
+export async function createDeserializedKernelClient(serializedAccount: string) {
+  console.log('[KernelClient] Creating kernel client from serialized account...');
+
+  // 1. Create public client
+  const publicClient = createPublicClient({
+    chain: base,
+    transport: http(CHAIN_CONFIG.rpcUrl),
+  });
+
+  // 2. Import ZeroDev SDK
+  const { createKernelAccountClient } = await import('@zerodev/sdk');
+  const { KERNEL_V3_3 } = await import('@zerodev/sdk/constants');
+  const { deserializePermissionAccount } = await import('@zerodev/permissions');
+
+  // 3. Deserialize the account (restores enable signature, session key, policies, eip7702Auth)
+  const kernelAccount = await deserializePermissionAccount(
+    publicClient,
+    ENTRYPOINT_V07,
+    KERNEL_V3_3,
+    serializedAccount,
+  );
+
+  console.log('[KernelClient] Account deserialized:', kernelAccount.address);
+
+  // 4. Create Kernel account client with bundler
+  const bundlerUrl = process.env.ZERODEV_BUNDLER_URL ||
+    `https://rpc.zerodev.app/api/v3/${process.env.ZERODEV_PROJECT_ID}/chain/8453`;
+
+  const kernelClient = await createKernelAccountClient({
+    account: kernelAccount,
+    chain: base,
+    bundlerTransport: http(bundlerUrl),
+  });
+
+  console.log('[KernelClient] Kernel client created from deserialized account');
+  return kernelClient;
+}
 
 export interface CreateSessionKernelClientParams {
   /** The account address (EOA address with EIP-7702 delegation) */
@@ -41,17 +92,11 @@ function deserializeSignedAuth(auth: any) {
 }
 
 /**
- * Create a ZeroDev Kernel client from a session key with scoped permissions.
+ * @deprecated Use createDeserializedKernelClient() instead.
+ * This legacy function will fail with "sudo validator not set" for first UserOp
+ * because it creates the kernel account without the EOA sudo validator.
  *
- * Handles the full setup chain:
- *   session private key → ECDSA signer → call policy → permission validator
- *   → kernel account → kernel client (with bundler transport)
- *
- * With EIP-7702, the EOA already has Kernel code delegated on-chain during
- * registration. At execution time, we use the `address` parameter to tell
- * the SDK where to send UserOps.
- *
- * @returns A kernel client ready to call sendUserOperation()
+ * Kept for backward compatibility with old registrations.
  */
 export async function createSessionKernelClient(params: CreateSessionKernelClientParams) {
   // 1. Create session key signer from private key

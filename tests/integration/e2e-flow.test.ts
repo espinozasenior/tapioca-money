@@ -27,7 +27,7 @@ describe('End-to-End Workflows', () => {
     resetUserRateLimit(testAddress);
   });
 
-  test('Full gasless transfer flow', async () => {
+  test('Full gasless transfer flow (legacy sessionPrivateKey)', async () => {
     // Step 1: User enables gasless transfers (creates transfer session)
     const transferSession = await createTestTransferSession(testAddress);
     expect(transferSession).toBeDefined();
@@ -53,10 +53,33 @@ describe('End-to-End Workflows', () => {
     // Step 5: Recipient balance increased (would be verified on-chain)
   });
 
+  test('Full gasless transfer flow (serializedAccount)', async () => {
+    // Step 1: User enables gasless transfers with serialized kernel account
+    const transferSession = await createTestTransferSession(testAddress);
+    expect(transferSession).toBeDefined();
+
+    // Step 2: User sends $50 USDC via serialized account path
+    const transferParams = {
+      userAddress: testAddress,
+      smartAccountAddress: transferSession.smartAccountAddress,
+      recipient: recipientAddress,
+      amount: '50.00',
+      serializedAccount: 'base64_test_serialized_account_data',
+    };
+
+    const result = await executeGaslessTransfer(transferParams);
+
+    // Step 3: Transfer executes in simulation mode (serializedAccount path)
+    expect(result.success).toBe(true);
+    expect(result.hash).toBeDefined();
+    expect(result.hash).toMatch(/^0x[a-fA-F0-9]+$/);
+  });
+
   test('Full autonomous rebalancing flow', async () => {
-    // Step 1: User enables auto-optimize (creates agent session)
+    // Step 1: User enables auto-optimize (creates agent session with serialized account)
     const agentSession = await createTestAgentSession(testAddress);
     expect(agentSession).toBeDefined();
+    expect(agentSession.serializedAccount).toBeDefined(); // New pattern
     expect(agentSession.approvedVaults).toBeDefined();
     expect(agentSession.approvedVaults.length).toBeGreaterThan(0);
 

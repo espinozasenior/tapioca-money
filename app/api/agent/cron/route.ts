@@ -335,13 +335,14 @@ async function executeRebalanceTransaction(
     console.log(`[Rebalance] Executing: ${decision.currentVault.name} → ${decision.targetVault.name}`);
     console.log(`[Rebalance] APY: ${(decision.currentVault.apy * 100).toFixed(2)}% → ${(decision.targetVault.apy * 100).toFixed(2)}%`);
 
-    // 1. Get session key from stored authorization
+    // 1. Get session data from stored authorization
+    const serializedAccount = authorization.serializedAccount;
     const sessionPrivateKey = authorization.sessionPrivateKey;
     // EIP-7702: eoaAddress IS the smart account address (single address model)
     const smartAccountAddress = authorization.eoaAddress;
 
-    if (!sessionPrivateKey) {
-      throw new Error('Session private key not found in authorization');
+    if (!serializedAccount && !sessionPrivateKey) {
+      throw new Error('No serializedAccount or sessionPrivateKey in authorization. User must re-register.');
     }
 
     // 2. Build rebalance parameters
@@ -352,10 +353,10 @@ async function executeRebalanceTransaction(
       userAddress,
     };
 
-    console.log(`[Rebalance] Executing with session key for account: ${smartAccountAddress}`);
+    console.log(`[Rebalance] Executing for account: ${smartAccountAddress}`);
     console.log(`[Rebalance] Params:`, rebalanceParams);
 
-    // 3. Execute via ZeroDev using session key with scoped permissions
+    // 3. Execute via ZeroDev — prefer serialized account (new pattern)
     const approvedVaults = authorization.approvedVaults as `0x${string}`[] | undefined;
     const eip7702SignedAuth = authorization.eip7702SignedAuth;
     const executionResult = await executeRebalance(
@@ -364,6 +365,7 @@ async function executeRebalanceTransaction(
       sessionPrivateKey as `0x${string}`,
       approvedVaults,
       eip7702SignedAuth,
+      serializedAccount,
     );
 
     const taskId = executionResult.taskId || `zerodev_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
