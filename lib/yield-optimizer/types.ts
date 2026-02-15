@@ -47,13 +47,11 @@ export interface OptimizationResult {
   amount?: bigint;
 }
 
-import { getAddress } from "viem";
-
 export const TEST_WALLET = "0x77a54c02B48fBEF00f7576D66DE2459f102e7543" as const;
 
-// Base Mainnet addresses (production) - checksummed via getAddress()
-export const USDC_BASE = getAddress("0x833589fCD6eDb6E08f4c7C32d4f71b54bdA02913");
-export const MORPHO_BLUE_BASE = getAddress("0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb");
+// Base Mainnet addresses (production) - pre-checksummed
+export const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as `0x${string}`;
+export const MORPHO_BLUE_BASE = "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb" as `0x${string}`;
 
 // Legacy alias for backwards compatibility
 export const USDC_BASE_SEPOLIA = USDC_BASE;
