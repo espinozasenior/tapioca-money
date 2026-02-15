@@ -4,5 +4,11 @@
       "path": "/api/agent/cron",
       "schedule": "0 12 * * *"
     }
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "*": false
+    }
+  }
 }
