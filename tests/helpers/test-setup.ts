@@ -309,7 +309,8 @@ export async function createTestAgentSession(
     type: 'zerodev-agent-session',
     smartAccountAddress: `0x${'e'.repeat(40)}` as `0x${string}`,
     sessionKeyAddress: `0x${'f'.repeat(40)}` as `0x${string}`,
-    sessionPrivateKey: `0x${'fedcba0987654321'.repeat(4)}` as `0x${string}`,
+    serializedAccount: `base64_test_serialized_${'a'.repeat(100)}`, // Serialized kernel account (new pattern)
+    sessionPrivateKey: `0x${'fedcba0987654321'.repeat(4)}` as `0x${string}`, // Legacy field
     expiry: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60, // 30 days
     approvedVaults: [vault1, vault2],
     timestamp: Date.now(),

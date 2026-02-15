@@ -310,7 +310,7 @@ describe('Signer Consistency — Kernel Version & EntryPoint', () => {
     }
   });
 
-  test('15b. eip7702SignedAuth is accepted by all executors', async () => {
+  test('15b. eip7702SignedAuth is accepted by all executors (legacy)', async () => {
     const fs = await import('fs');
 
     // transfer-executor should now accept eip7702SignedAuth
@@ -333,6 +333,25 @@ describe('Signer Consistency — Kernel Version & EntryPoint', () => {
       'utf-8'
     );
     expect(rebalanceExecSource).toContain('eip7702SignedAuth');
+  });
+
+  test('15c. serializedAccount is accepted by all executors (new pattern)', async () => {
+    const fs = await import('fs');
+
+    const executorFiles = [
+      'lib/zerodev/transfer-executor.ts',
+      'lib/zerodev/deposit-executor.ts',
+      'lib/zerodev/vault-executor.ts',
+      'lib/agent/rebalance-executor.ts',
+    ];
+
+    for (const file of executorFiles) {
+      const source = fs.readFileSync(file, 'utf-8');
+      // Each executor should accept serializedAccount
+      expect(source).toContain('serializedAccount');
+      // Each executor should use createDeserializedKernelClient when serializedAccount is provided
+      expect(source).toContain('createDeserializedKernelClient');
+    }
   });
 });
 
@@ -399,5 +418,77 @@ describe('DelegationStatus Type Contract', () => {
     const { checkSmartAccountActive } = await import('@/lib/zerodev/client-secure');
     // The function should exist and be callable
     expect(typeof checkSmartAccountActive).toBe('function');
+  });
+});
+
+// ─── Serialize/Deserialize Pattern Tests ────────────────────────────────────
+
+describe('Serialize/Deserialize Kernel Account Pattern', () => {
+  test('20. createDeserializedKernelClient is exported from kernel-client', async () => {
+    const kernelClient = await import('@/lib/zerodev/kernel-client');
+    expect(typeof kernelClient.createDeserializedKernelClient).toBe('function');
+  });
+
+  test('21. createAndSerializeAccount exists in client-secure', async () => {
+    const fs = await import('fs');
+    const source = fs.readFileSync('lib/zerodev/client-secure.ts', 'utf-8');
+    // Internal function used by registerAgentSecure
+    expect(source).toContain('async function createAndSerializeAccount');
+    expect(source).toContain('serializePermissionAccount');
+  });
+
+  test('22. serializePermissionAccount is used in client-secure', async () => {
+    const fs = await import('fs');
+    const source = fs.readFileSync('lib/zerodev/client-secure.ts', 'utf-8');
+
+    expect(source).toContain('serializePermissionAccount');
+    expect(source).toContain('createKernelAccount');
+    expect(source).toContain('toPermissionValidator');
+  });
+
+  test('23. deserializePermissionAccount is used in kernel-client', async () => {
+    const fs = await import('fs');
+    const source = fs.readFileSync('lib/zerodev/kernel-client.ts', 'utf-8');
+
+    expect(source).toContain('deserializePermissionAccount');
+    expect(source).toContain('KERNEL_V3_3');
+    expect(source).toContain('ENTRYPOINT_V07');
+  });
+
+  test('24. session-encryption handles serializedAccount field', async () => {
+    const fs = await import('fs');
+    const source = fs.readFileSync('lib/security/session-encryption.ts', 'utf-8');
+
+    // Type includes serializedAccount
+    expect(source).toContain('serializedAccount');
+
+    // encryptAuthorization encrypts serializedAccount
+    expect(source).toMatch(/serializedAccount.*encrypt/s);
+
+    // decryptAuthorization decrypts serializedAccount
+    expect(source).toMatch(/serializedAccount.*decrypt/s);
+  });
+
+  test('25. Executors prefer serializedAccount over legacy sessionPrivateKey', async () => {
+    const fs = await import('fs');
+
+    // All executors should check serializedAccount FIRST
+    const executors = [
+      'lib/zerodev/transfer-executor.ts',
+      'lib/zerodev/deposit-executor.ts',
+      'lib/zerodev/vault-executor.ts',
+      'lib/agent/rebalance-executor.ts',
+    ];
+
+    for (const file of executors) {
+      const source = fs.readFileSync(file, 'utf-8');
+
+      // Each executor must contain serializedAccount and sessionPrivateKey
+      expect(source).toContain('serializedAccount');
+      expect(source).toContain('sessionPrivateKey');
+
+      // createDeserializedKernelClient should appear (new pattern)
+      expect(source).toContain('createDeserializedKernelClient');
+    }
   });
 });

@@ -142,6 +142,35 @@ describe('Gasless Transfer Execution', () => {
     expect(validation.error).toBe('Session authorization required');
   });
 
+  test('Validate transfer parameters - serializedAccount as alternative to sessionPrivateKey', () => {
+    // With serializedAccount, sessionPrivateKey is not required
+    const params = {
+      userAddress: testAddress as `0x${string}`,
+      smartAccountAddress: transferSession.smartAccountAddress,
+      recipient: recipientAddress as `0x${string}`,
+      amount: '25.00',
+      serializedAccount: 'base64_test_serialized_account',
+    };
+
+    const validation = validateTransferParams(params);
+    expect(validation.valid).toBe(true);
+    expect(validation.error).toBeUndefined();
+  });
+
+  test('Validate transfer parameters - neither serializedAccount nor sessionPrivateKey', () => {
+    const params = {
+      userAddress: testAddress as `0x${string}`,
+      smartAccountAddress: transferSession.smartAccountAddress,
+      recipient: recipientAddress as `0x${string}`,
+      amount: '25.00',
+      // No serializedAccount and no sessionPrivateKey
+    };
+
+    const validation = validateTransferParams(params);
+    expect(validation.valid).toBe(false);
+    expect(validation.error).toBe('Session authorization required');
+  });
+
   test('Transfer amounts are correctly converted to USDC decimals', async () => {
     // USDC has 6 decimals
     // "10.50" should become 10500000

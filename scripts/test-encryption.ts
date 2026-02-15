@@ -71,7 +71,7 @@ console.log(`Original sessionPrivateKey: ${agentAuth.sessionPrivateKey}`);
 console.log(`Is Encrypted: ${isAuthorizationEncrypted(agentAuth)}`);
 
 const encryptedAuth = encryptAuthorization(agentAuth);
-console.log(`Encrypted sessionPrivateKey: ${encryptedAuth.sessionPrivateKey.substring(0, 50)}...`);
+console.log(`Encrypted sessionPrivateKey: ${encryptedAuth.sessionPrivateKey?.substring(0, 50)}...`);
 console.log(`Is Encrypted: ${isAuthorizationEncrypted(encryptedAuth)}`);
 console.log(`Other fields unchanged: ${encryptedAuth.eoaAddress === agentAuth.eoaAddress ? '✓' : '✗'}`);
 

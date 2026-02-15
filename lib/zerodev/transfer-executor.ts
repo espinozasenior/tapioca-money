@@ -4,7 +4,7 @@
  */
 
 import { encodeFunctionData, erc20Abi, parseUnits } from 'viem';
-import { createSessionKernelClient } from './kernel-client';
+import { createDeserializedKernelClient, createSessionKernelClient } from './kernel-client';
 
 const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
 
@@ -13,7 +13,9 @@ export interface GaslessTransferParams {
   smartAccountAddress: `0x${string}`;
   recipient: `0x${string}`;
   amount: string; // Amount in USDC (e.g., "10.50")
-  sessionPrivateKey: `0x${string}`;
+  serializedAccount?: string; // Serialized kernel account (new pattern)
+  // Legacy fields
+  sessionPrivateKey?: `0x${string}`;
   eip7702SignedAuth?: any;
 }
 
@@ -49,21 +51,29 @@ export async function executeGaslessTransfer(
       };
     }
 
-    // Build transfer-only permission on USDC
-    const transferSelector = encodeFunctionData({
-      abi: erc20Abi,
-      functionName: 'transfer',
-      args: ['0x0000000000000000000000000000000000000000', BigInt(0)],
-    }).slice(0, 10) as `0x${string}`;
-
-    const kernelClient = await createSessionKernelClient({
-      smartAccountAddress: params.smartAccountAddress,
-      sessionPrivateKey: params.sessionPrivateKey,
-      eip7702SignedAuth: params.eip7702SignedAuth,
-      permissions: [
-        { target: USDC_ADDRESS, selector: transferSelector },
-      ],
-    });
+    // Create kernel client — prefer deserialized account (new pattern)
+    let kernelClient;
+    if (params.serializedAccount) {
+      console.log('[GaslessTransfer] Using deserialized kernel client');
+      kernelClient = await createDeserializedKernelClient(params.serializedAccount);
+    } else if (params.sessionPrivateKey) {
+      console.warn('[GaslessTransfer] Using legacy session key path — user should re-register');
+      const transferSelector = encodeFunctionData({
+        abi: erc20Abi,
+        functionName: 'transfer',
+        args: ['0x0000000000000000000000000000000000000000', BigInt(0)],
+      }).slice(0, 10) as `0x${string}`;
+      kernelClient = await createSessionKernelClient({
+        smartAccountAddress: params.smartAccountAddress,
+        sessionPrivateKey: params.sessionPrivateKey,
+        eip7702SignedAuth: params.eip7702SignedAuth,
+        permissions: [
+          { target: USDC_ADDRESS, selector: transferSelector },
+        ],
+      });
+    } else {
+      throw new Error('No serializedAccount or sessionPrivateKey provided. User must register.');
+    }
 
     // Build USDC transfer call
     const amountInUSDC = parseUnits(params.amount, 6);
@@ -133,7 +143,7 @@ export function validateTransferParams(
     return { valid: false, error: 'Amount exceeds $500 limit per transfer' };
   }
 
-  if (!params.smartAccountAddress || !params.sessionPrivateKey) {
+  if (!params.smartAccountAddress || (!params.serializedAccount && !params.sessionPrivateKey)) {
     return { valid: false, error: 'Session authorization required' };
   }
 

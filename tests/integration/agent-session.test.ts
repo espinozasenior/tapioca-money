@@ -24,13 +24,14 @@ describe('Agent Session Key for Rebalancing', () => {
     await cleanupTestData([testAddress]);
   });
 
-  test('Create agent session key with sudo policy', async () => {
+  test('Create agent session key with serialized account', async () => {
     const agentAuth = await createTestAgentSession(testAddress);
 
     expect(agentAuth).toHaveProperty('type', 'zerodev-agent-session');
     expect(agentAuth).toHaveProperty('smartAccountAddress');
     expect(agentAuth).toHaveProperty('sessionKeyAddress');
-    expect(agentAuth).toHaveProperty('sessionPrivateKey');
+    expect(agentAuth).toHaveProperty('serializedAccount'); // New pattern
+    expect(agentAuth).toHaveProperty('sessionPrivateKey'); // Legacy field
     expect(agentAuth).toHaveProperty('expiry');
     expect(agentAuth).toHaveProperty('approvedVaults');
     expect(agentAuth.approvedVaults).toBeInstanceOf(Array);
