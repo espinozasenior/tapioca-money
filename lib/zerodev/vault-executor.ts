@@ -4,7 +4,7 @@
  */
 
 import { encodeFunctionData, parseAbi, type Hex } from 'viem';
-import { createSessionKernelClient } from './kernel-client';
+import { createDeserializedKernelClient, createSessionKernelClient } from './kernel-client';
 
 const VAULT_ABI = parseAbi([
   'function redeem(uint256 shares, address receiver, address owner) returns (uint256 assets)',
@@ -18,7 +18,9 @@ export interface VaultRedeemParams {
   vaultAddress: `0x${string}`;
   shares: bigint;
   receiver: `0x${string}`; // Usually same as smartAccountAddress
-  sessionPrivateKey: `0x${string}`;
+  serializedAccount?: string; // Serialized kernel account (new pattern)
+  // Legacy fields
+  sessionPrivateKey?: `0x${string}`;
   approvedVaults?: `0x${string}`[];
 }
 
@@ -54,22 +56,27 @@ export async function executeVaultRedeem(
       };
     }
 
-    // Build scoped permissions for approved vaults
-    const permissions: Array<{ target: `0x${string}`; selector: Hex }> = [];
-    if (params.approvedVaults && params.approvedVaults.length > 0) {
-      for (const vaultAddress of params.approvedVaults) {
-        permissions.push({ target: vaultAddress, selector: REDEEM_SELECTOR });
+    // Create kernel client — prefer deserialized account (new pattern)
+    let kernelClient;
+    if (params.serializedAccount) {
+      console.log('[VaultRedeem] Using deserialized kernel client');
+      kernelClient = await createDeserializedKernelClient(params.serializedAccount);
+    } else if (params.sessionPrivateKey) {
+      console.warn('[VaultRedeem] Using legacy session key path — user should re-register');
+      const permissions: Array<{ target: `0x${string}`; selector: Hex }> = [];
+      if (params.approvedVaults && params.approvedVaults.length > 0) {
+        for (const vaultAddress of params.approvedVaults) {
+          permissions.push({ target: vaultAddress, selector: REDEEM_SELECTOR });
+        }
       }
-      console.log('[VaultRedeem] Using scoped policy with', permissions.length, 'permissions');
+      kernelClient = await createSessionKernelClient({
+        smartAccountAddress: params.smartAccountAddress,
+        sessionPrivateKey: params.sessionPrivateKey,
+        permissions,
+      });
     } else {
-      console.warn('[VaultRedeem] Using sudo policy (legacy) - consider re-registering');
+      throw new Error('No serializedAccount or sessionPrivateKey provided. User must register.');
     }
-
-    const kernelClient = await createSessionKernelClient({
-      smartAccountAddress: params.smartAccountAddress,
-      sessionPrivateKey: params.sessionPrivateKey,
-      permissions,
-    });
 
     // Build redeem call
     const redeemCallData = encodeFunctionData({

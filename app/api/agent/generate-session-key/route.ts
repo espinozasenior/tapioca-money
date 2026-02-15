@@ -1,23 +1,18 @@
 /**
- * Server-Side Session Key Generation API
+ * Server-Side Session Key Storage API
  *
  * POST /api/agent/generate-session-key
  *
- * SECURITY: Generates session key private key on the server side to prevent
- * XSS attacks from accessing the key. The private key is encrypted before
- * being stored in the database.
+ * Accepts a serialized kernel account from the client (created using
+ * ZeroDev's serializePermissionAccount pattern). The serialized data
+ * includes the session key, enable signature, policies, and EIP-7702 auth.
  *
- * Flow:
- * 1. Client creates Kernel V3 smart account with Privy signer
- * 2. Client sends smart account address to this endpoint
- * 3. Server generates session key, encrypts, and stores it
- * 4. Server returns session key PUBLIC address for client to configure permissions
- * 5. Client never sees the private key
+ * The server encrypts and stores the serialized account for later
+ * deserialization during execution.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
-import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { encryptAuthorization } from '@/lib/security/session-encryption';
 import {
   requireAuthForAddress,
@@ -27,35 +22,23 @@ import {
 
 const sql = neon(process.env.DATABASE_URL!);
 
-// Session key expiry: 7 days (reduced from 30 days for security)
-const SESSION_KEY_EXPIRY_DAYS = 7;
-
-// Policy configuration for session keys
-const POLICY_CONFIG = {
-  gasPolicy: {
-    allowed: '50000000000000', // 500k gas * 0.1 gwei (as string for JSON serialization)
-  },
-  rateLimitPolicy: {
-    count: 10,
-    interval: 86400, // 24 hours in seconds
-  },
-};
-
-interface GenerateSessionKeyRequest {
+interface StoreSessionRequest {
   address: string;
   smartAccountAddress: string;
+  sessionKeyAddress: string;
+  serializedAccount: string; // Base64 serialized kernel account from client
   approvedVaults: string[];
-  eip7702SignedAuth?: any; // Signed EIP-7702 authorization from Privy
+  expiry: number;
 }
 
 /**
  * POST /api/agent/generate-session-key
- * Generate session key on server and store encrypted
+ * Store serialized kernel account from client-side registration
  */
 export async function POST(request: NextRequest) {
   try {
-    const body: GenerateSessionKeyRequest = await request.json();
-    const { address, smartAccountAddress, approvedVaults, eip7702SignedAuth } = body;
+    const body: StoreSessionRequest = await request.json();
+    const { address, sessionKeyAddress, serializedAccount, approvedVaults, expiry } = body;
 
     // Validate required fields
     if (!address) {
@@ -65,9 +48,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!smartAccountAddress) {
+    if (!serializedAccount) {
       return NextResponse.json(
-        { error: 'Missing smart account address' },
+        { error: 'Missing serialized account data' },
+        { status: 400 }
+      );
+    }
+
+    if (!sessionKeyAddress) {
+      return NextResponse.json(
+        { error: 'Missing session key address' },
         { status: 400 }
       );
     }
@@ -88,36 +78,23 @@ export async function POST(request: NextRequest) {
       return unauthorizedResponse(authResult.error);
     }
 
-    console.log('[Session Key] Generating server-side session key for:', address);
+    console.log('[Session Key] Storing serialized account for:', address);
 
-    // 1. Generate session key on server (NEVER sent to client)
-    const sessionPrivateKey = generatePrivateKey();
-    const sessionKeyAccount = privateKeyToAccount(sessionPrivateKey);
-    const sessionKeyAddress = sessionKeyAccount.address;
-
-    console.log('[Session Key] Generated session key address:', sessionKeyAddress);
-
-    // 2. Calculate expiry (7 days from now)
-    const expiry = Math.floor(Date.now() / 1000) + SESSION_KEY_EXPIRY_DAYS * 24 * 60 * 60;
-
-    // 3. Create authorization object and encrypt
-    // EIP-7702: eoaAddress === smartAccountAddress (single address model)
+    // Create authorization object and encrypt
     const authorization = {
       type: 'zerodev-7702-session' as const,
       eoaAddress: address as `0x${string}`,
       sessionKeyAddress: sessionKeyAddress as `0x${string}`,
-      sessionPrivateKey: sessionPrivateKey as `0x${string}`,
+      serializedAccount, // Will be encrypted
       approvedVaults: approvedVaults as `0x${string}`[],
       expiry,
       timestamp: Date.now(),
-      policyConfig: POLICY_CONFIG,
-      ...(eip7702SignedAuth ? { eip7702SignedAuth } : {}),
     };
 
     const encryptedAuth = encryptAuthorization(authorization);
     const authJson = JSON.stringify(encryptedAuth);
 
-    // 4. Store encrypted session key in database
+    // Store encrypted session data in database
     const normalizedAddress = address.toLowerCase();
     await sql`
       INSERT INTO users (wallet_address, agent_registered, authorization_7702)
@@ -136,20 +113,19 @@ export async function POST(request: NextRequest) {
       ON CONFLICT (user_id) DO NOTHING
     `;
 
-    console.log('[Session Key] ✓ Session key stored successfully');
+    console.log('[Session Key] Serialized account stored successfully');
 
-    // 5. Return ONLY the public session key address
-    // CRITICAL: Never return sessionPrivateKey to the client
+    // Return ONLY the public session key address
     return NextResponse.json({
       success: true,
       sessionKeyAddress,
       expiry,
     });
   } catch (error: any) {
-    console.error('[Session Key] Generation error:', error);
+    console.error('[Session Key] Storage error:', error);
     return NextResponse.json(
       {
-        error: error.message || 'Failed to generate session key',
+        error: error.message || 'Failed to store session data',
       },
       { status: 500 }
     );
@@ -193,7 +169,7 @@ export async function DELETE(request: NextRequest) {
       WHERE LOWER(wallet_address) = LOWER(${address})
     `;
 
-    console.log('[Session Key] ✓ Session key revoked');
+    console.log('[Session Key] Session key revoked');
 
     return NextResponse.json({
       success: true,

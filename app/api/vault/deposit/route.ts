@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
       smartAccountAddress: decryptedAuth.eoaAddress,
       vaultAddress,
       amount: String(amount),
-      sessionPrivateKeyPrefix: decryptedAuth.sessionPrivateKey?.slice(0, 10) + '...',
+      hasSerialized: !!decryptedAuth.serializedAccount,
       approvedVaultsCount: approvedVaults.length,
     });
 
@@ -133,7 +133,9 @@ export async function POST(request: NextRequest) {
       smartAccountAddress: decryptedAuth.eoaAddress,
       vaultAddress: vaultAddress as `0x${string}`,
       amount: String(amount),
-      sessionPrivateKey: decryptedAuth.sessionPrivateKey as `0x${string}`,
+      serializedAccount: decryptedAuth.serializedAccount,
+      // Legacy fallback fields
+      sessionPrivateKey: decryptedAuth.sessionPrivateKey as `0x${string}` | undefined,
       approvedVaults: approvedVaults as `0x${string}`[],
       eip7702SignedAuth: decryptedAuth.eip7702SignedAuth,
     });

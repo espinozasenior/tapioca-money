@@ -8,16 +8,22 @@ export interface SessionKey7702Authorization {
   type: 'zerodev-7702-session';
   eoaAddress: `0x${string}`;        // EOA = smart account (same address with EIP-7702)
   sessionKeyAddress: `0x${string}`;
-  sessionPrivateKey: string;         // Will be encrypted
+  serializedAccount?: string;        // Base64 serialized kernel account (will be encrypted)
   approvedVaults: string[];
   expiry: number;
   timestamp: number;
-  eip7702SignedAuth?: {              // Signed EIP-7702 authorization from client
+  policyConfig?: {
+    gasPolicy: { allowed: string };
+    rateLimitPolicy: { count: number; interval: number };
+  };
+  // Legacy fields (pre-serialize/deserialize pattern) — kept for backward compat
+  sessionPrivateKey?: string;
+  eip7702SignedAuth?: {
     r: string;
     s: string;
     yParity: number;
-    v?: string;                      // bigint serialized as string
-    address: string;                 // Implementation contract address
+    v?: string;
+    address: string;
     chainId: number;
     nonce: number;
   };
@@ -45,7 +51,10 @@ export function encryptAuthorization<T extends Authorization>(auth: T): T {
   // Deep clone to avoid mutating input
   const cloned = { ...auth };
 
-  // Encrypt only the sessionPrivateKey field
+  // Encrypt serializedAccount (new pattern) or sessionPrivateKey (legacy)
+  if ('serializedAccount' in cloned && cloned.serializedAccount && !isEncrypted(cloned.serializedAccount)) {
+    (cloned as any).serializedAccount = encrypt((cloned as any).serializedAccount);
+  }
   if (cloned.sessionPrivateKey && !isEncrypted(cloned.sessionPrivateKey)) {
     cloned.sessionPrivateKey = encrypt(cloned.sessionPrivateKey);
   }
@@ -65,7 +74,10 @@ export function decryptAuthorization<T extends Authorization>(auth: T): T {
   // Deep clone to avoid mutating input
   const cloned = { ...auth };
 
-  // Decrypt only the sessionPrivateKey field
+  // Decrypt serializedAccount (new pattern) or sessionPrivateKey (legacy)
+  if ('serializedAccount' in cloned && (cloned as any).serializedAccount) {
+    (cloned as any).serializedAccount = decrypt((cloned as any).serializedAccount);
+  }
   if (cloned.sessionPrivateKey) {
     cloned.sessionPrivateKey = decrypt(cloned.sessionPrivateKey);
   }
