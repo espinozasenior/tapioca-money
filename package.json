@@ -5,8 +5,8 @@
   "description": "Tapioca Finance — smart yield optimization on Base with autonomous DeFi agent",
   "license": "proprietary",
   "scripts": {
-    "dev": "next dev --turbopack --experimental-https",
-    "build": "NODE_OPTIONS='--max-old-space-size=4096' next build",
+    "dev": "next dev --turbopack",
+    "build": "NODE_OPTIONS='--max-old-space-size=8192' next build",
     "start": "next start",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
