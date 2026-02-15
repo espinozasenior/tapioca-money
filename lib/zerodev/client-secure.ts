@@ -10,6 +10,7 @@
 
 import { createPublicClient, http } from 'viem';
 import { base } from 'viem/chains';
+import { CHAIN_CONFIG } from '@/lib/yield-optimizer/config';
 
 export interface SecureSessionKeyResult {
   smartAccountAddress: `0x${string}`;
@@ -121,7 +122,7 @@ export async function checkSmartAccountActive(
   try {
     const publicClient = createPublicClient({
       chain: base,
-      transport: http(),
+      transport: http(CHAIN_CONFIG.rpcUrl),
     });
 
     const code = await publicClient.getBytecode({ address });

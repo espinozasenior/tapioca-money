@@ -10,6 +10,7 @@ import { createPublicClient, http, type Hex } from 'viem';
 import { base } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 import { checkSmartAccountActive, type DelegationStatus } from './client-secure';
+import { CHAIN_CONFIG } from '@/lib/yield-optimizer/config';
 
 // EntryPoint V0.7 object (required format for ZeroDev SDK v5)
 const ENTRYPOINT_V07 = {
@@ -56,10 +57,10 @@ export async function createSessionKernelClient(params: CreateSessionKernelClien
   // 1. Create session key signer from private key
   const sessionKeySigner = privateKeyToAccount(params.sessionPrivateKey);
 
-  // 2. Create public client
+  // 2. Create public client (use configured RPC URL, not rate-limited public endpoint)
   const publicClient = createPublicClient({
     chain: base,
-    transport: http(),
+    transport: http(CHAIN_CONFIG.rpcUrl),
   });
 
   // 3. Import ZeroDev SDK (dynamic to avoid bundling issues)
@@ -112,21 +113,7 @@ export async function createSessionKernelClient(params: CreateSessionKernelClien
     ...delegationStatus,
   });
 
-  // Validate delegation target matches Kernel V3.3
-  if (delegationStatus.active && delegationStatus.isDelegation) {
-    const { KernelVersionToAddressesMap } = await import('@zerodev/sdk/constants');
-    const expectedImpl = KernelVersionToAddressesMap[KERNEL_V3_3].accountImplementationAddress;
-    if (delegationStatus.implementationAddress?.toLowerCase() !== expectedImpl.toLowerCase()) {
-      throw new Error(
-        `EIP-7702 delegation mismatch: delegated to ${delegationStatus.implementationAddress}, expected ${expectedImpl}`
-      );
-    }
-    console.log('[KernelClient] ✓ Delegation target verified:', delegationStatus.implementationAddress);
-  }
-
   // 7. Create Kernel account using the stored address
-  // EIP-7702: EOA already has Kernel code delegated on-chain
-  // We pass the address so the SDK knows where to send UserOps
   const accountOptions: any = {
     plugins: {
       regular: permissionValidator,
@@ -136,15 +123,35 @@ export async function createSessionKernelClient(params: CreateSessionKernelClien
     address: params.smartAccountAddress,
   };
 
-  // Pass signed auth so SDK sets isEip7702=true → no factory initCode → no AA14
-  if (params.eip7702SignedAuth) {
+  if (delegationStatus.active && delegationStatus.isDelegation) {
+    // Delegation IS on-chain — verify it points to the correct Kernel V3.3 implementation
+    const { KernelVersionToAddressesMap } = await import('@zerodev/sdk/constants');
+    const expectedImpl = KernelVersionToAddressesMap[KERNEL_V3_3].accountImplementationAddress;
+    if (delegationStatus.implementationAddress?.toLowerCase() !== expectedImpl.toLowerCase()) {
+      throw new Error(
+        `EIP-7702 delegation mismatch: delegated to ${delegationStatus.implementationAddress}, expected ${expectedImpl}`
+      );
+    }
+    // Still pass eip7702Auth to keep isEip7702=true in the SDK.
+    // The SDK's signAuthorization detects active delegation and skips redundant auth,
+    // but isEip7702=true ensures correct signing paths (ERC-1271, typed data).
+    // Pattern matches ZeroDev's deserializePermissionAccount: eip7702Auth without eip7702Account.
+    if (params.eip7702SignedAuth) {
+      accountOptions.eip7702Auth = deserializeSignedAuth(params.eip7702SignedAuth);
+    }
+    console.log('[KernelClient] ✓ Delegation active & verified, isEip7702=' + !!params.eip7702SignedAuth);
+  } else if (params.eip7702SignedAuth) {
+    // Delegation NOT on-chain — first UserOp must include Type 4 auth via bundler.
+    // We intentionally omit eip7702Account: the SDK falls back to addressToEmptyAccount()
+    // which is correct since the EOA private key is only available client-side (Privy).
+    // This matches ZeroDev's deserializePermissionAccount pattern exactly.
+    // The session key signs through plugins.regular (permissionValidator), not sudo.
     accountOptions.eip7702Auth = deserializeSignedAuth(params.eip7702SignedAuth);
-    // eip7702Account tells the SDK this is an EIP-7702 delegated account.
-    // We use the session key signer since the EOA key is only available client-side.
-    accountOptions.eip7702Account = sessionKeySigner;
-    console.log('[KernelClient] Using stored EIP-7702 authorization (isEip7702=true)');
-  } else if (!delegationStatus.active) {
-    console.log('[KernelClient] Account not deployed yet and no eip7702Auth - SDK will generate initCode');
+    console.log('[KernelClient] Delegation not on-chain, passing eip7702Auth (no eip7702Account)');
+  } else {
+    throw new Error(
+      'Delegation not active on-chain and no eip7702Auth stored. User must re-register.'
+    );
   }
 
   const kernelAccount = await createKernelAccount(publicClient, accountOptions);
@@ -182,13 +189,13 @@ export async function verifyDelegationAfterExecution(
   address: `0x${string}`,
   txHash: string
 ): Promise<boolean> {
-  const publicClient = createPublicClient({
+  const verifyClient = createPublicClient({
     chain: base,
-    transport: http(),
+    transport: http(CHAIN_CONFIG.rpcUrl),
   });
 
   // Wait for receipt to ensure tx is confirmed
-  await publicClient.waitForTransactionReceipt({ hash: txHash as `0x${string}` });
+  await verifyClient.waitForTransactionReceipt({ hash: txHash as `0x${string}` });
 
   // Verify delegation bytecode
   const status = await checkSmartAccountActive(address);
