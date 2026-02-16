@@ -3,7 +3,7 @@
 
 import { CHAIN_CONFIG, USDC_ADDRESS } from "./config";
 
-const MORPHO_API_URL = "https://blue-api.morpho.org/graphql";
+const MORPHO_API_URL = "https://api.morpho.org/graphql";
 
 export interface MorphoVault {
   address: `0x${string}`;

@@ -1,6 +1,6 @@
 /**
  * Morpho Blue API Client
- * Official GraphQL API: https://blue-api.morpho.org/graphql
+ * Official GraphQL API: https://api.morpho.org/graphql
  * Documentation: https://docs.morpho.org/tools/offchain/api/
  *
  * Rate Limits: 5000 requests per 5 minutes
@@ -20,7 +20,7 @@ import {
   setCachedBestVault,
 } from '@/lib/redis/morpho-cache';
 
-const MORPHO_API_URL = 'https://blue-api.morpho.org/graphql';
+const MORPHO_API_URL = 'https://api.morpho.org/graphql';
 
 export interface MorphoVault {
   address: `0x${string}`;
@@ -200,59 +200,52 @@ export class MorphoClient {
   ): Promise<MorphoVault | null> {
     const query = `
       query GetVault($address: String!, $chainId: Int!) {
-        vaultV2s(
-          where: {
-            address_in: [$address]
-            chainId_in: [$chainId]
-          }
-        ) {
-          items {
+        vaultV2ByAddress(address: $address, chainId: $chainId) {
+          address
+          name
+          symbol
+          asset {
             address
-            name
             symbol
-            asset {
-              address
-              symbol
-              decimals
-            }
-            totalAssets
-            totalAssetsUsd
-            totalSupply
-            avgNetApy
-            netApy
-            apy
-            whitelisted
-            performanceFee
-            managementFee
-            liquidity
-            liquidityUsd
-            idleAssetsUsd
-            warnings {
-              type
-              level
-            }
-            curators {
-              items {
-                name
-                addresses {
-                  address
-                }
+            decimals
+          }
+          totalAssets
+          totalAssetsUsd
+          totalSupply
+          avgNetApy
+          netApy
+          apy
+          whitelisted
+          performanceFee
+          managementFee
+          liquidity
+          liquidityUsd
+          idleAssetsUsd
+          warnings {
+            type
+            level
+          }
+          curators {
+            items {
+              name
+              addresses {
+                address
               }
             }
-            owner {
-              address
-            }
+          }
+          owner {
+            address
           }
         }
       }
     `;
 
-    const data = await this.query<{ vaultV2s: { items: MorphoVault[] } }>(query, {
+    const data = await this.query<{ vaultV2ByAddress: MorphoVault | null }>(query, {
       address: vaultAddress.toLowerCase(),
       chainId,
     });
 
-    return data.vaultV2s.items[0] || null;
+    return data.vaultV2ByAddress || null;
   }
 
   /**
@@ -279,32 +272,28 @@ export class MorphoClient {
 
     const query = `
       query GetUserPositions($userAddress: String!, $chainId: Int!) {
-        vaultAccountV2s(
-          where: {
-            address_in: [$userAddress]
-            vault_: { chainId_in: [$chainId] }
-          }
-        ) {
-          items {
+        userByAddress(address: $userAddress, chainId: $chainId) {
+          vaultV2Positions {
+            shares
+            assets
+            assetsUsd
             vault {
               address
               name
               symbol
             }
-            shares
-            assets
-            assetsUsd
           }
         }
       }
     `;
 
-    const data = await this.query<{ vaultAccountV2s: { items: MorphoUserPosition[] } }>(query, {
+    const data = await this.query<{ userByAddress: { vaultV2Positions: MorphoUserPosition[] } | null }>(query, {
       userAddress: userAddress.toLowerCase(),
       chainId,
     });
 
-    const positions = data.vaultAccountV2s.items.filter(
+    const allPositions = data.userByAddress?.vaultV2Positions ?? [];
+    const positions = allPositions.filter(
       (pos) => BigInt(pos.shares) > 0n // Only return positions with shares
     );
 
