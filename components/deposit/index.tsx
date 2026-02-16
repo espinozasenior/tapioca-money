@@ -1,22 +1,17 @@
-import React, { useCallback, useState } from "react";
-import {
-  CrossmintCheckoutProvider,
-  CrossmintProvider,
-} from "@crossmint/client-sdk-react-ui";
+import React, { useCallback, useState, lazy, Suspense } from "react";
 import { useAuth } from "@/hooks/useWallet";
-import { Checkout } from "./Checkout";
 import { AmountInput } from "../common/AmountInput";
 import { Dialog, DialogContent, DialogTitle, DialogClose } from "../common/Dialog";
 import { useActivityFeed } from "../../hooks/useActivityFeed";
 import { useBalance } from "@/hooks/useBalance";
+
+const CrossmintWrapper = lazy(() => import("./CrossmintWrapper"));
 
 interface DepositModalProps {
   open: boolean;
   onClose: () => void;
   walletAddress: string;
 }
-
-const CLIENT_API_KEY_CONSOLE_FUND = process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY;
 
 const MIN_AMOUNT = 1; // Min amount in USD
 const MAX_AMOUNT = 50; // Max amount in USD allowed in staging
@@ -72,20 +67,24 @@ export function DepositModal({ open, onClose, walletAddress }: DepositModalProps
           </div>
         )}
         <div className="flex w-full flex-grow flex-col">
-          <CrossmintProvider apiKey={CLIENT_API_KEY_CONSOLE_FUND as string}>
-            <CrossmintCheckoutProvider>
-              <Checkout
-                amount={amount}
-                isAmountValid={Number(amount) >= MIN_AMOUNT && Number(amount) <= MAX_AMOUNT}
-                walletAddress={walletAddress}
-                onPaymentCompleted={handlePaymentCompleted}
-                receiptEmail={receiptEmail || ""}
-                onProcessingPayment={handleProcessingPayment}
-                step={step}
-                goBack={restartFlow}
-              />
-            </CrossmintCheckoutProvider>
-          </CrossmintProvider>
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center py-8">
+                <div className="border-primary mx-auto h-8 w-8 animate-spin rounded-full border-b-2" />
+              </div>
+            }
+          >
+            <CrossmintWrapper
+              amount={amount}
+              isAmountValid={Number(amount) >= MIN_AMOUNT && Number(amount) <= MAX_AMOUNT}
+              walletAddress={walletAddress}
+              onPaymentCompleted={handlePaymentCompleted}
+              receiptEmail={receiptEmail || ""}
+              onProcessingPayment={handleProcessingPayment}
+              step={step}
+              goBack={restartFlow}
+            />
+          </Suspense>
         </div>
       </DialogContent>
     </Dialog>
