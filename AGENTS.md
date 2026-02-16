@@ -433,6 +433,11 @@ export const server = setupServer(
 **Why**: Logs may be exposed; sensitive data is at risk.  
 **Do instead**: Log only non-sensitive identifiers (userId, vaultId, operation type). Mask amounts.
 
+### ❌ Don't use `http()` without an explicit RPC URL
+
+**Why**: `http()` without a URL defaults to a rate-limited public RPC endpoint, causing 429 errors and unreliable behavior. It also bypasses the project's Alchemy RPC.
+**Do instead**: Always pass the configured RPC URL: `http(CHAIN_CONFIG.rpcUrl)`. Never use bare `http()` or interact with public RPCs when an Alchemy endpoint is available.
+
 ### ❌ Don't deploy without running tests
 
 **Why**: Tests catch breaking changes and security issues.  
