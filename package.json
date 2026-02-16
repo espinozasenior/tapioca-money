@@ -80,7 +80,9 @@
     "overrides": {
       "use-sync-external-store": ">=1.2.0",
       "@privy-io/react-auth>permissionless": "^0.3.4",
-      "viem": "$viem"
+      "viem": "$viem",
+      "zod": ">=3.22.4",
+      "ox": ">=0.11.3"
     }
   }
 }

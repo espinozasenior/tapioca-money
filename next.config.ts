@@ -15,8 +15,24 @@ const nextConfig: NextConfig = {
     "@neondatabase/serverless",
     "drizzle-orm",
     "libsodium-wrappers",
+    "permissionless",
   ],
-  webpack: (config) => {
+  experimental: {
+    webpackBuildWorker: true,
+    optimizePackageImports: [
+      "@radix-ui/react-dialog",
+      "@radix-ui/react-dropdown-menu",
+      "@radix-ui/react-collapsible",
+      "@radix-ui/react-scroll-area",
+      "@heroicons/react",
+      "lucide-react",
+    ],
+  },
+  webpack: (config, { dev }) => {
+    // Disable webpack cache in production (useless on Vercel's ephemeral builders)
+    if (!dev) {
+      config.cache = false;
+    }
     // Exclude React Native transitive dependencies (completely unused in this EVM project)
     config.plugins.push(
       new IgnorePlugin({ resourceRegExp: /^react-native$/ }),
