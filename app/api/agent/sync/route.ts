@@ -16,18 +16,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing wallet address" }, { status: 400 });
     }
 
+    const normalizedAddress = address.toLowerCase();
+
     // 1. Ensure user record exists
     // We use ON CONFLICT DO NOTHING to avoid overwriting existing data (like 7702 authorizations)
     await sql`
       INSERT INTO users (wallet_address)
-      VALUES (${address})
+      VALUES (${normalizedAddress})
       ON CONFLICT (wallet_address) DO NOTHING
     `;
 
     // 2. Ensure user has a strategy entry
     await sql`
       INSERT INTO user_strategies (user_id)
-      SELECT id FROM users WHERE wallet_address = ${address}
+      SELECT id FROM users WHERE wallet_address = ${normalizedAddress}
       ON CONFLICT (user_id) DO NOTHING
     `;
 
