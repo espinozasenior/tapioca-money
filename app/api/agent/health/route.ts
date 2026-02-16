@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
 
     // 3. Check Morpho API
     try {
-      const response = await fetch('https://blue-api.morpho.org/graphql', {
+      const response = await fetch('https://api.morpho.org/graphql', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
