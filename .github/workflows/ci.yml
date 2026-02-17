@@ -51,12 +51,6 @@ jobs:
           DATABASE_ENCRYPTION_KEY: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
           AGENT_SIMULATION_MODE: 'true'
 
-      - name: Build
-        run: pnpm build
-        env:
-          NEXT_PUBLIC_PRIVY_APP_ID: ci_placeholder
-          NEXT_PUBLIC_BASE_RPC_URL: https://mainnet.base.org
-          NEXT_PUBLIC_CHAIN_ID: '8453'
-          NEXT_PUBLIC_USDC_MINT: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'
-          NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY: ci_placeholder
-          NEXT_PUBLIC_COINBASE_APP_ID: ci_placeholder
+      # Build is validated by Vercel on deploy.
+      # Skipped in CI because Privy SDK validates appId against their API
+      # at static page generation time, requiring a real app ID.
