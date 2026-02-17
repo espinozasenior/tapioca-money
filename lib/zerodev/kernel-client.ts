@@ -45,6 +45,12 @@ export async function createDeserializedKernelClient(serializedAccount: string) 
   const { KERNEL_V3_3 } = await import('@zerodev/sdk/constants');
   const { deserializePermissionAccount } = await import('@zerodev/permissions');
 
+  // NOTE: EIP-7702 authorization nonce replay protection is handled by the protocol.
+  // The authorization nonce is the EOA's transaction nonce at signing time.
+  // Once the delegation tx is mined, that nonce is consumed and cannot be replayed.
+  // The EntryPoint contract also manages UserOp nonces independently via 2D nonces.
+  // No explicit nonce validation is needed here.
+
   // 3. Deserialize the account (restores enable signature, session key, policies, eip7702Auth)
   const kernelAccount = await deserializePermissionAccount(
     publicClient,

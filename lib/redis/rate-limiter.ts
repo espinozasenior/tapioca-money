@@ -20,6 +20,7 @@ export interface RateLimitConfig {
   maxRequests: number; // Maximum requests in window
   windowMs: number; // Window size in milliseconds
   keyPrefix?: string; // Redis key prefix
+  failClosed?: boolean; // If true, deny requests when Redis is unavailable (default: false)
 }
 
 export interface RateLimitResult {
@@ -90,7 +91,18 @@ export async function checkRateLimit(
     };
   } catch (error: any) {
     console.error('[RateLimit] Error checking rate limit:', error.message);
-    // Fail open on Redis errors (allow request)
+
+    if (cfg.failClosed) {
+      // Fail closed: deny request when Redis is unavailable
+      return {
+        allowed: false,
+        remaining: 0,
+        resetTime: now + 60_000, // Retry in 1 minute
+        reason: 'Rate limiter unavailable. Request denied for safety.',
+      };
+    }
+
+    // Fail open on Redis errors (allow request — default for backward compatibility)
     return {
       allowed: true,
       remaining: cfg.maxRequests,

@@ -221,6 +221,16 @@ export function useAgent() {
         const { KERNEL_V3_3, KernelVersionToAddressesMap } = await import("@zerodev/sdk/constants");
         const implAddress = KernelVersionToAddressesMap[KERNEL_V3_3].accountImplementationAddress;
 
+        // Phishing guard: verify delegation target matches expected Kernel V3.3
+        const { verifyDelegationTarget } = await import("@/lib/zerodev/delegation-verification");
+        if (!verifyDelegationTarget(implAddress)) {
+          throw new Error(
+            `Delegation target mismatch! Expected Kernel V3.3 but got ${implAddress}. ` +
+            `This may indicate a compromised SDK. Aborting registration.`
+          );
+        }
+        console.log("[Agent Registration] Delegation target verified:", implAddress);
+
         const signedAuth = await signAuthorization({
           contractAddress: implAddress,
           chainId: 8453,

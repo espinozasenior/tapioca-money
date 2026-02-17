@@ -19,6 +19,7 @@ import {
   unauthorizedResponse,
   forbiddenResponse,
 } from '@/lib/auth/middleware';
+import { revokeSession } from '@/lib/security/session-revocation';
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -106,6 +107,23 @@ export async function POST(request: NextRequest) {
         updated_at = NOW()
     `;
 
+    // Log delegation event for audit trail
+    await sql`
+      INSERT INTO agent_actions (
+        user_id,
+        action_type,
+        status,
+        metadata
+      )
+      SELECT id, 'delegation_set', 'success', ${JSON.stringify({
+        sessionKeyAddress,
+        approvedVaults,
+        expiry,
+        timestamp: Date.now(),
+      })}::jsonb
+      FROM users WHERE wallet_address = ${normalizedAddress}
+    `;
+
     // Ensure user has a strategy entry
     await sql`
       INSERT INTO user_strategies (user_id)
@@ -159,6 +177,15 @@ export async function DELETE(request: NextRequest) {
 
     console.log('[Session Key] Revoking session key for:', address);
 
+    // Read existing session key address for revocation blacklist
+    const existing = await sql`
+      SELECT authorization_7702->>'sessionKeyAddress' as session_key
+      FROM users WHERE LOWER(wallet_address) = LOWER(${address})
+    `;
+    if (existing[0]?.session_key) {
+      await revokeSession(existing[0].session_key);
+    }
+
     // Remove session key from database
     await sql`
       UPDATE users
@@ -167,6 +194,22 @@ export async function DELETE(request: NextRequest) {
           auto_optimize_enabled = false,
           updated_at = NOW()
       WHERE LOWER(wallet_address) = LOWER(${address})
+    `;
+
+    // Log delegation cleared event
+    const normalizedAddress = address.toLowerCase();
+    await sql`
+      INSERT INTO agent_actions (
+        user_id,
+        action_type,
+        status,
+        metadata
+      )
+      SELECT id, 'delegation_cleared', 'success', ${JSON.stringify({
+        timestamp: Date.now(),
+        revokedBy: 'user',
+      })}::jsonb
+      FROM users WHERE wallet_address = ${normalizedAddress}
     `;
 
     console.log('[Session Key] Session key revoked');
