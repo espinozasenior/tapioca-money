@@ -214,6 +214,20 @@ export async function executeRebalance(
       hash: userOpHash as `0x${string}`,
     });
 
+    // Check UserOp execution status
+    if (!receipt.success) {
+      console.error('[Rebalance] UserOp REVERTED:', {
+        hash: userOpHash,
+        reason: receipt.reason,
+        txHash: receipt.receipt.transactionHash,
+      });
+      return {
+        taskId: receipt.receipt.transactionHash,
+        success: false,
+        error: `UserOp reverted on-chain: ${receipt.reason || 'unknown reason'}`,
+      };
+    }
+
     console.log('[Rebalance] Transaction confirmed:', receipt.receipt.transactionHash);
 
     // POST-EXECUTION: Verify delegation is still active on-chain

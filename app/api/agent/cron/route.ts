@@ -5,6 +5,8 @@ import { executeRebalance } from "@/lib/agent/rebalance-executor";
 import { formatUnits } from "viem";
 import { decryptAuthorization } from '@/lib/security/session-encryption';
 import { timingSafeEqual } from 'crypto';
+import { isSessionRevoked } from '@/lib/security/session-revocation';
+import { acquireUserLock, releaseUserLock } from '@/lib/redis/distributed-lock';
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -39,11 +41,23 @@ async function processUsersInParallel(
     }
 
     for (const chunk of chunks) {
-      // Process chunk in parallel
+      // Process chunk in parallel with distributed locking
       await Promise.all(
         chunk.map(async (user) => {
-          summary.processed++;
+          // Acquire per-user lock to prevent concurrent rebalances
+          const lock = await acquireUserLock(user.wallet_address);
+          if (!lock.acquired) {
+            summary.skipped++;
+            summary.details.push({
+              address: user.wallet_address,
+              action: 'skipped',
+              reason: 'Rebalance already in progress (locked)',
+            });
+            return;
+          }
+
           try {
+            summary.processed++;
             await processFn(user, summary, targetedVaults);
           } catch (error: any) {
             summary.errors++;
@@ -53,6 +67,8 @@ async function processUsersInParallel(
               reason: error.message || 'Unknown error during processing',
             });
             console.error(`[Cron] Error processing user ${user.wallet_address}:`, error.message);
+          } finally {
+            await releaseUserLock(user.wallet_address, lock.lockId!);
           }
         })
       );
@@ -245,6 +261,18 @@ async function processUserRebalance(
       reason: 'Session key expired',
     });
     console.log(`[Cron] Skipped ${userAddress}: Session expired`);
+    return;
+  }
+
+  // Check if session key has been explicitly revoked
+  if (await isSessionRevoked(authorization.sessionKeyAddress)) {
+    summary.skipped++;
+    summary.details.push({
+      address: userAddress,
+      action: 'skipped',
+      reason: 'Session key has been revoked',
+    });
+    console.log(`[Cron] Skipped ${userAddress}: Session revoked`);
     return;
   }
 

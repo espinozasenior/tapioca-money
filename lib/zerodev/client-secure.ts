@@ -9,7 +9,7 @@
  * With EIP-7702, smartAccountAddress === userAddress (single address model).
  */
 
-import { createPublicClient, http, type Hex } from 'viem';
+import { createPublicClient, http, parseAbi, type Hex } from 'viem';
 import { base } from 'viem/chains';
 import { toAccount } from 'viem/accounts';
 import { CHAIN_CONFIG } from '@/lib/yield-optimizer/config';
@@ -24,6 +24,9 @@ const REDEEM_SELECTOR = "0xba087652" as Hex;  // redeem(uint256,address,address)
 const WITHDRAW_SELECTOR = "0xb460af94" as Hex; // withdraw(uint256,address,address)
 const TRANSFER_SELECTOR = "0xa9059cbb" as Hex; // transfer(address,uint256)
 const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as `0x${string}`;
+
+// Maximum USDC amount per session key call (10,000 USDC with 6 decimals)
+const MAX_USDC_PER_CALL = BigInt(10_000) * BigInt(1e6);
 
 // EntryPoint V0.7 object (required format for ZeroDev SDK v5)
 const ENTRYPOINT_V07 = {
@@ -82,7 +85,7 @@ async function createAndSerializeAccount(
   const { createKernelAccount } = await import('@zerodev/sdk');
   const { KERNEL_V3_3 } = await import('@zerodev/sdk/constants');
   const { toPermissionValidator, serializePermissionAccount } = await import('@zerodev/permissions');
-  const { toCallPolicy, CallPolicyVersion, toGasPolicy, toRateLimitPolicy } = await import('@zerodev/permissions/policies');
+  const { toCallPolicy, CallPolicyVersion, toGasPolicy, toRateLimitPolicy, toTimestampPolicy, ParamCondition } = await import('@zerodev/permissions/policies');
   const { toECDSASigner } = await import('@zerodev/permissions/signers');
 
   // 1. Generate session key pair (client-side)
@@ -99,14 +102,42 @@ async function createAndSerializeAccount(
   // 3. Create session key signer
   const sessionSigner = await toECDSASigner({ signer: sessionKeyAccount });
 
-  // 4. Build scoped permissions for all approved vaults
-  const permissions: Array<{ target: `0x${string}`; selector: Hex }> = [];
-  permissions.push({ target: USDC_ADDRESS, selector: APPROVE_SELECTOR });
-  permissions.push({ target: USDC_ADDRESS, selector: TRANSFER_SELECTOR });
+  // Calculate expiry timestamp (reused for both on-chain policy and return value)
+  const expiryTimestamp = Math.floor(Date.now() / 1000) + SESSION_KEY_EXPIRY_DAYS * 24 * 60 * 60;
+
+  // 4. Build scoped permissions with value limits and amount caps
+  const permissions: any[] = [];
+
+  // USDC approve — cap amount parameter
+  permissions.push({
+    target: USDC_ADDRESS,
+    abi: parseAbi(['function approve(address spender, uint256 amount) returns (bool)']),
+    functionName: 'approve',
+    args: [null, { condition: ParamCondition.LESS_THAN_OR_EQUAL, value: MAX_USDC_PER_CALL }],
+    valueLimit: 0n,
+  });
+
+  // USDC transfer — cap amount parameter
+  permissions.push({
+    target: USDC_ADDRESS,
+    abi: parseAbi(['function transfer(address to, uint256 amount) returns (bool)']),
+    functionName: 'transfer',
+    args: [null, { condition: ParamCondition.LESS_THAN_OR_EQUAL, value: MAX_USDC_PER_CALL }],
+    valueLimit: 0n,
+  });
+
+  // Vault operations — cap deposit amounts, allow redeem/withdraw (funds return to user)
   for (const vault of approvedVaults) {
-    permissions.push({ target: vault, selector: DEPOSIT_SELECTOR });
-    permissions.push({ target: vault, selector: REDEEM_SELECTOR });
-    permissions.push({ target: vault, selector: WITHDRAW_SELECTOR });
+    permissions.push({
+      target: vault,
+      abi: parseAbi(['function deposit(uint256 assets, address receiver) returns (uint256)']),
+      functionName: 'deposit',
+      args: [{ condition: ParamCondition.LESS_THAN_OR_EQUAL, value: MAX_USDC_PER_CALL }, null],
+      valueLimit: 0n,
+    });
+    // Redeem/withdraw move funds back to user — no amount cap needed
+    permissions.push({ target: vault, selector: REDEEM_SELECTOR, valueLimit: 0n });
+    permissions.push({ target: vault, selector: WITHDRAW_SELECTOR, valueLimit: 0n });
   }
 
   const callPolicy = toCallPolicy({
@@ -123,11 +154,17 @@ async function createAndSerializeAccount(
     interval: 86400, // 24 hours
   });
 
+  // On-chain session key expiry — enforced by the validator, not just server-side
+  const timestampPolicy = toTimestampPolicy({
+    validAfter: Math.floor(Date.now() / 1000),
+    validUntil: expiryTimestamp,
+  });
+
   // 5. Create permission validator
   const permissionValidator = await toPermissionValidator(publicClient, {
     signer: sessionSigner,
     entryPoint: ENTRYPOINT_V07,
-    policies: [callPolicy, gasPolicy, rateLimitPolicy],
+    policies: [callPolicy, gasPolicy, rateLimitPolicy, timestampPolicy],
     kernelVersion: KERNEL_V3_3,
   });
 
@@ -166,7 +203,7 @@ async function createAndSerializeAccount(
     signedEip7702Auth,      // Embed EIP-7702 auth
   );
 
-  const expiry = Math.floor(Date.now() / 1000) + SESSION_KEY_EXPIRY_DAYS * 24 * 60 * 60;
+  const expiry = expiryTimestamp;
 
   console.log('[ZeroDev 7702] Account serialized successfully');
   return {
