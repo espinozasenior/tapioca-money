@@ -81,7 +81,7 @@ describe('Gasless Transfer Execution', () => {
       sessionPrivateKey: transferSession.sessionPrivateKey,
     };
 
-    const validation = validateTransferParams(params);
+    const validation = validateTransferParams(params as any);
     expect(validation.valid).toBe(false);
     expect(validation.error).toBe('Invalid recipient address format');
   });
@@ -123,7 +123,7 @@ describe('Gasless Transfer Execution', () => {
       sessionPrivateKey: transferSession.sessionPrivateKey,
     };
 
-    const validation = validateTransferParams(params);
+    const validation = validateTransferParams(params as any);
     expect(validation.valid).toBe(false);
     expect(validation.error).toBe('Recipient address required');
   });
@@ -137,7 +137,7 @@ describe('Gasless Transfer Execution', () => {
       sessionPrivateKey: '',
     };
 
-    const validation = validateTransferParams(params);
+    const validation = validateTransferParams(params as any);
     expect(validation.valid).toBe(false);
     expect(validation.error).toBe('Session authorization required');
   });
