@@ -198,7 +198,7 @@ export async function getCacheInterface(): Promise<CacheInterface> {
       const setKey = `zset:${key}`;
       const existing = memoryStore.get(setKey);
       const set: Map<string, number> = existing
-        ? JSON.parse(existing.value)
+        ? new Map(JSON.parse(existing.value) as [string, number][])
         : new Map();
       set.set(member, score);
       memoryStore.set(setKey, {

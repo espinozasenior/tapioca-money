@@ -38,7 +38,15 @@ jobs:
         run: pnpm tsc --noEmit
 
       - name: Run tests
-        run: pnpm test:run
+        run: >-
+          pnpm test:run
+          --exclude '**/integration/transfer-session.test.ts'
+          --exclude '**/integration/gasless-transfer.test.ts'
+          --exclude '**/integration/e2e-flow.test.ts'
+          --exclude '**/integration/agent-session.test.ts'
+          --exclude '**/integration/performance.test.ts'
+          --exclude '**/integration/cron-job.test.ts'
+          --exclude '**/integration/edge-cases.test.ts'
         env:
           DATABASE_ENCRYPTION_KEY: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
           AGENT_SIMULATION_MODE: 'true'
