@@ -14,6 +14,11 @@ beforeAll(() => {
   process.env.NEXT_PUBLIC_PRIVY_APP_ID = 'test_privy_app_id';
   process.env.CRON_SECRET = 'test_secret_12345678901234567890';
 
+  // Encryption key for session key encryption tests (any valid 32-byte hex)
+  if (!process.env.DATABASE_ENCRYPTION_KEY) {
+    process.env.DATABASE_ENCRYPTION_KEY = 'a'.repeat(64);
+  }
+
   console.log('[Test Setup] Environment configured for testing');
 });
 
