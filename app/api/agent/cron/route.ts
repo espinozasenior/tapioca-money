@@ -7,12 +7,15 @@ import { decryptAuthorization } from '@/lib/security/session-encryption';
 import { timingSafeEqual } from 'crypto';
 import { isSessionRevoked } from '@/lib/security/session-revocation';
 import { acquireUserLock, releaseUserLock } from '@/lib/redis/distributed-lock';
+import { getUserOpCount, incrementUserOpCount } from '@/lib/redis/rate-limiter';
 
 const sql = neon(process.env.DATABASE_URL!);
 
 // Parallel processing configuration
 const BATCH_SIZE = parseInt(process.env.CRON_BATCH_SIZE || '50', 10);
 const CONCURRENCY = parseInt(process.env.CRON_CONCURRENCY || '10', 10);
+const USEROP_DAILY_LIMIT = 90;
+const CRON_USEROP_RESERVE = 3;
 
 /**
  * Process users in parallel batches
@@ -316,6 +319,18 @@ async function processUserRebalance(
     return;
   }
 
+  const opsUsed = await getUserOpCount(userAddress);
+  if (opsUsed >= USEROP_DAILY_LIMIT - CRON_USEROP_RESERVE) {
+    summary.skipped++;
+    summary.details.push({
+      address: userAddress,
+      action: 'skipped',
+      reason: `UserOp budget low (${opsUsed}/${USEROP_DAILY_LIMIT} used)`,
+    });
+    console.log(`[Cron] Skipping rebalance for ${userAddress}: budget low (${opsUsed}/${USEROP_DAILY_LIMIT} used)`);
+    return;
+  }
+
   // 5. Real execution via ZeroDev (using session key - no agent wallet needed!)
   const result = await executeRebalanceTransaction(
     userId,
@@ -334,6 +349,7 @@ async function processUserRebalance(
       taskId: result.taskId,
     });
     console.log(`[Cron] ✓ Rebalanced ${userAddress}: Task ${result.taskId}`);
+    await incrementUserOpCount(userAddress);
   } else {
     summary.errors++;
     summary.details.push({

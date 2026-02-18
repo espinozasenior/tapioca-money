@@ -218,6 +218,29 @@ export async function getRateLimitUsage(
   }
 }
 
+const USEROP_BUDGET_KEY = (wallet: string) => `userop_budget:${wallet.toLowerCase()}`;
+
+export async function getUserOpCount(walletAddress: string): Promise<number> {
+  try {
+    const cache = await getCacheInterface();
+    const val = await cache.get(USEROP_BUDGET_KEY(walletAddress));
+    return val ? parseInt(val, 10) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export async function incrementUserOpCount(walletAddress: string): Promise<void> {
+  try {
+    const cache = await getCacheInterface();
+    const key = USEROP_BUDGET_KEY(walletAddress);
+    const current = await cache.get(key);
+    const next = current ? parseInt(current, 10) + 1 : 1;
+    await cache.set(key, String(next), 86400);
+  } catch {
+  }
+}
+
 // ============================================
 // Transfer-specific rate limiting
 // ============================================

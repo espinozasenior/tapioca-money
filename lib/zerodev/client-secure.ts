@@ -150,7 +150,7 @@ async function createAndSerializeAccount(
   });
 
   const rateLimitPolicy = toRateLimitPolicy({
-    count: 10,
+    count: 90,
     interval: 86400, // 24 hours
   });
 
