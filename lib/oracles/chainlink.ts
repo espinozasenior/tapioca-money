@@ -1,25 +1,25 @@
-import { createPublicClient, http, parseAbi } from 'viem';
-import { base } from 'viem/chains';
-import { CHAIN_CONFIG } from '@/lib/yield-optimizer/config';
+import { createPublicClient, http, parseAbi } from "viem";
+import { base } from "viem/chains";
+import { CHAIN_CONFIG } from "@/lib/yield-optimizer/config";
 
-const CHAINLINK_USDC_USD = '0x7e860098F58bBFC8648a4311b374B1D669a2bc6B' as const;
-const BASE_SEQUENCER_UPTIME_FEED = '0xBCF85224fc0756B9Fa45aA7892530B47e10b6433' as const;
+const CHAINLINK_USDC_USD = "0x7e860098F58bBFC8648a4311b374B1D669a2bc6B" as const;
+const BASE_SEQUENCER_UPTIME_FEED = "0xBCF85224fc0756B9Fa45aA7892530B47e10b6433" as const;
 
 const AGGREGATOR_ABI = parseAbi([
-  'function latestRoundData() view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)',
-  'function decimals() view returns (uint8)',
+  "function latestRoundData() view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)",
+  "function decimals() view returns (uint8)",
 ]);
 
 export interface PriceFeedResult {
-  price: number;       // USD price (e.g., 1.0001)
-  updatedAt: number;   // Unix timestamp of last update
-  isStale: boolean;    // True if data is older than staleness threshold
+  price: number; // USD price (e.g., 1.0001)
+  updatedAt: number; // Unix timestamp of last update
+  isStale: boolean; // True if data is older than staleness threshold
   isDepegged: boolean; // True if price deviates >0.5% from $1.00
   roundId: bigint;
 }
 
 const STALENESS_THRESHOLD = 86400; // 24 hours (matches Chainlink USDC/USD heartbeat on Base)
-const DEPEG_THRESHOLD = 0.005;     // 0.5% deviation from $1.00
+const DEPEG_THRESHOLD = 0.005; // 0.5% deviation from $1.00
 const SEQUENCER_GRACE_PERIOD = 3600; // 1 hour grace period after sequencer comes back up
 
 const publicClient = createPublicClient({
@@ -36,11 +36,11 @@ async function isSequencerUp(): Promise<{ up: boolean; reason?: string }> {
   const [, answer, startedAt] = await publicClient.readContract({
     address: BASE_SEQUENCER_UPTIME_FEED,
     abi: AGGREGATOR_ABI,
-    functionName: 'latestRoundData',
+    functionName: "latestRoundData",
   });
 
   if (answer !== 0n) {
-    return { up: false, reason: 'Base L2 sequencer is down' };
+    return { up: false, reason: "Base L2 sequencer is down" };
   }
 
   const now = Math.floor(Date.now() / 1000);
@@ -62,13 +62,13 @@ export async function getUsdcPrice(): Promise<PriceFeedResult> {
   const [roundId, answer, , updatedAt] = await publicClient.readContract({
     address: CHAINLINK_USDC_USD,
     abi: AGGREGATOR_ABI,
-    functionName: 'latestRoundData',
+    functionName: "latestRoundData",
   });
 
   const decimals = await publicClient.readContract({
     address: CHAINLINK_USDC_USD,
     abi: AGGREGATOR_ABI,
-    functionName: 'decimals',
+    functionName: "decimals",
   });
 
   const price = Number(answer) / 10 ** Number(decimals);

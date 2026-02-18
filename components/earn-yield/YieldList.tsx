@@ -3,10 +3,7 @@ import { Info, Shield, ChevronDown } from "lucide-react";
 import Image from "next/image";
 import { YieldOpportunity } from "@/hooks/useOptimizer";
 import { cn } from "@/lib/utils";
-import {
-  getRiskLevel,
-  getRiskColor,
-} from "@/lib/morpho/risk-scoring";
+import { getRiskLevel, getRiskColor } from "@/lib/morpho/risk-scoring";
 import {
   Collapsible,
   CollapsibleTrigger,
@@ -99,10 +96,14 @@ export function YieldList({ yields, isLoading, error, onSelectYield }: YieldList
 
         return (
           <Collapsible key={yieldOpp.id} asChild>
-            <div className={cn(
-              "rounded-xl border border-gray-200 bg-white transition",
-              canEnter && !isPending ? "hover:border-primary/30 hover:shadow-md" : "cursor-not-allowed opacity-60"
-            )}>
+            <div
+              className={cn(
+                "rounded-xl border border-gray-200 bg-white transition",
+                canEnter && !isPending
+                  ? "hover:border-primary/30 hover:shadow-md"
+                  : "cursor-not-allowed opacity-60"
+              )}
+            >
               {/* Main button */}
               <button
                 onClick={() => canEnter && !isPending && onSelectYield(yieldOpp)}
@@ -110,7 +111,7 @@ export function YieldList({ yields, isLoading, error, onSelectYield }: YieldList
                 className="w-full p-4 text-left"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 flex-1">
+                  <div className="flex flex-1 items-center gap-3">
                     <Image
                       src={"/usdc.svg"}
                       alt={yieldOpp.metadata.name}
@@ -121,7 +122,7 @@ export function YieldList({ yields, isLoading, error, onSelectYield }: YieldList
 
                     {/* Protocol Info */}
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="font-semibold text-gray-900">
                           {formatProviderName(yieldOpp.providerId)}
                         </span>
@@ -131,9 +132,7 @@ export function YieldList({ yields, isLoading, error, onSelectYield }: YieldList
                         {/* Risk Badge */}
                         <div className="flex items-center gap-1" style={{ color: riskColor }}>
                           <Shield className="h-3 w-3" />
-                          <span className="text-xs font-medium capitalize">
-                            {riskLevel}
-                          </span>
+                          <span className="text-xs font-medium capitalize">{riskLevel}</span>
                         </div>
                       </div>
                       <p className="text-muted-foreground text-sm">{yieldOpp.metadata.name}</p>
@@ -152,7 +151,7 @@ export function YieldList({ yields, isLoading, error, onSelectYield }: YieldList
 
               {/* Expandable Safety Details */}
               <CollapsibleTrigger asChild>
-                <button className="w-full px-4 py-2 flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 border-t border-gray-100">
+                <button className="flex w-full items-center gap-1 border-t border-gray-100 px-4 py-2 text-xs text-gray-500 hover:text-gray-700">
                   <span>Safety Details</span>
                   <ChevronDown className="h-3 w-3" />
                 </button>

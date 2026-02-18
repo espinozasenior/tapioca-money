@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { neon } from '@neondatabase/serverless';
+import { neon } from "@neondatabase/serverless";
 import { calculateTotalGains, formatApyPct, formatUsd } from "@/lib/yield-optimizer/apy-calculator";
 
 const sql = neon(process.env.DATABASE_URL!);
 
-type Period = 'day' | 'week' | 'month' | 'year' | 'all';
+type Period = "day" | "week" | "month" | "year" | "all";
 
 /**
  * GET /api/agent/gains?address=0x...&period=week
@@ -13,7 +13,7 @@ type Period = 'day' | 'week' | 'month' | 'year' | 'all';
 export async function GET(request: NextRequest) {
   try {
     const address = request.nextUrl.searchParams.get("address");
-    const period = (request.nextUrl.searchParams.get("period") || 'all') as Period;
+    const period = (request.nextUrl.searchParams.get("period") || "all") as Period;
 
     if (!address) {
       return NextResponse.json({ error: "Missing address parameter" }, { status: 400 });
@@ -42,19 +42,19 @@ export async function GET(request: NextRequest) {
     let periodStart: Date;
 
     switch (period) {
-      case 'day':
+      case "day":
         periodStart = new Date(now.getTime() - 24 * 60 * 60 * 1000);
         break;
-      case 'week':
+      case "week":
         periodStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         break;
-      case 'month':
+      case "month":
         periodStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         break;
-      case 'year':
+      case "year":
         periodStart = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
         break;
-      case 'all':
+      case "all":
       default:
         periodStart = new Date(0); // Beginning of time
         break;
@@ -81,11 +81,11 @@ export async function GET(request: NextRequest) {
     // 4. Parse metadata and calculate gains
     const breakdown = rebalances.map((action: any) => {
       const metadata = action.metadata || {};
-      const amount = parseFloat(action.amount_usdc || '0');
+      const amount = parseFloat(action.amount_usdc || "0");
       const fromApy = metadata.fromApy || 0;
       const toApy = metadata.toApy || 0;
-      const apyImprovement = metadata.apyImprovement || (toApy - fromApy);
-      const estimatedGain = metadata.estimatedYearlyGain || (amount * apyImprovement);
+      const apyImprovement = metadata.apyImprovement || toApy - fromApy;
+      const estimatedGain = metadata.estimatedYearlyGain || amount * apyImprovement;
 
       return {
         date: action.created_at,
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
     });
 
     // 5. Calculate totals
-    const rebalanceData = breakdown.map(b => ({
+    const rebalanceData = breakdown.map((b) => ({
       amount: b.amount,
       fromApy: b.fromApy,
       toApy: b.toApy,
@@ -124,7 +124,6 @@ export async function GET(request: NextRequest) {
         totalCompoundedGain: totals.totalCompoundedGain,
       },
     });
-
   } catch (error: any) {
     console.error("[Agent Gains] Error:", error);
     return NextResponse.json(

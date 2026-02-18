@@ -3,16 +3,16 @@
  * Tests for autonomous rebalancing decision logic
  */
 
-import { describe, test, expect, beforeEach } from 'vitest';
-import { mockMorphoVaults, mockMorphoPositions, mockLowLiquidityVault } from '../mocks/morpho-api';
+import { describe, test, expect, beforeEach } from "vitest";
+import { mockMorphoVaults, mockMorphoPositions, mockLowLiquidityVault } from "../mocks/morpho-api";
 
-describe('Yield Decision Engine', () => {
+describe("Yield Decision Engine", () => {
   beforeEach(() => {
     // Reset any mocks if needed
   });
 
-  test('Detect profitable rebalancing opportunity', () => {
-    const userAddress = '0x1111111111111111111111111111111111111111';
+  test("Detect profitable rebalancing opportunity", () => {
+    const userAddress = "0x1111111111111111111111111111111111111111";
 
     // User currently in medium APY vault (8%)
     const currentPositions = mockMorphoPositions(userAddress);
@@ -22,7 +22,7 @@ describe('Yield Decision Engine', () => {
 
     // Best available vault has 10% APY
     const bestVault = mockMorphoVaults[0];
-    expect(bestVault.state.apy).toBe(0.10); // 10% APY
+    expect(bestVault.state.apy).toBe(0.1); // 10% APY
 
     // APY improvement
     const apyImprovement = bestVault.state.apy - currentVault.state.apy;
@@ -33,12 +33,12 @@ describe('Yield Decision Engine', () => {
     expect(shouldRebalance).toBe(true);
   });
 
-  test('Skip when improvement below threshold', () => {
+  test("Skip when improvement below threshold", () => {
     // User in 9.6% APY vault
     const currentApy = 0.096;
 
     // Best vault available: 10% APY
-    const bestApy = 0.10;
+    const bestApy = 0.1;
 
     const apyImprovement = bestApy - currentApy;
     expect(apyImprovement).toBeCloseTo(0.004, 3); // 0.4% improvement
@@ -48,11 +48,11 @@ describe('Yield Decision Engine', () => {
     expect(shouldRebalance).toBe(false);
   });
 
-  test('Calculate break-even time correctly', () => {
-    const gasCost = 0.50; // $0.50
+  test("Calculate break-even time correctly", () => {
+    const gasCost = 0.5; // $0.50
     const positionSize = 1000; // $1000
     const currentApy = 0.08; // 8%
-    const newApy = 0.10; // 10%
+    const newApy = 0.1; // 10%
 
     // APY improvement
     const apyImprovement = parseFloat((newApy - currentApy).toFixed(3)); // 0.02 = 2%
@@ -69,11 +69,11 @@ describe('Yield Decision Engine', () => {
     expect(shouldRebalance).toBe(true);
   });
 
-  test('Reject when break-even time too long', () => {
-    const gasCost = 0.50; // $0.50
+  test("Reject when break-even time too long", () => {
+    const gasCost = 0.5; // $0.50
     const positionSize = 10; // $10 (small position)
     const currentApy = 0.08; // 8%
-    const newApy = 0.10; // 10%
+    const newApy = 0.1; // 10%
 
     const apyImprovement = newApy - currentApy;
     const annualGain = positionSize * apyImprovement; // $0.20
@@ -86,7 +86,7 @@ describe('Yield Decision Engine', () => {
     expect(shouldRebalance).toBe(false);
   });
 
-  test('Filter out low-liquidity vaults', () => {
+  test("Filter out low-liquidity vaults", () => {
     const minLiquidity = 100000000000; // $100k (in USDC decimals)
 
     // High liquidity vault
@@ -109,7 +109,7 @@ describe('Yield Decision Engine', () => {
     expect(shouldSkip).toBe(true);
   });
 
-  test('Handle user with no positions', () => {
+  test("Handle user with no positions", () => {
     const emptyPositions: any[] = [];
 
     // Should return safe response
@@ -119,17 +119,17 @@ describe('Yield Decision Engine', () => {
     // No errors thrown
     expect(() => {
       if (emptyPositions.length === 0) {
-        return { shouldRebalance: false, reason: 'No positions found' };
+        return { shouldRebalance: false, reason: "No positions found" };
       }
     }).not.toThrow();
   });
 
-  test('Consider gas costs in profitability calculation', () => {
+  test("Consider gas costs in profitability calculation", () => {
     // Test case 1: Large position, high gas
     const largePosition = {
       size: 100000, // $100k
       currentApy: 0.08,
-      newApy: 0.10,
+      newApy: 0.1,
       gasCost: 2.0, // $2
     };
 
@@ -142,8 +142,8 @@ describe('Yield Decision Engine', () => {
     const smallPosition = {
       size: 50, // $50
       currentApy: 0.05,
-      newApy: 0.10,
-      gasCost: 0.30, // $0.30
+      newApy: 0.1,
+      gasCost: 0.3, // $0.30
     };
 
     const smallAnnualGain = smallPosition.size * (smallPosition.newApy - smallPosition.currentApy);
@@ -152,20 +152,20 @@ describe('Yield Decision Engine', () => {
     expect(smallBreakEven <= 30).toBe(false);
   });
 
-  test('Prioritize vaults by APY when multiple options available', () => {
+  test("Prioritize vaults by APY when multiple options available", () => {
     const vaults = [...mockMorphoVaults].sort((a, b) => b.state.apy - a.state.apy);
 
     // Should be sorted highest APY first
-    expect(vaults[0].state.apy).toBe(0.10); // High APY vault
+    expect(vaults[0].state.apy).toBe(0.1); // High APY vault
     expect(vaults[1].state.apy).toBe(0.08); // Medium APY vault
     expect(vaults[2].state.apy).toBe(0.05); // Low APY vault
 
     // Best vault should be recommended
     const bestVault = vaults[0];
-    expect(bestVault.name).toBe('High APY Vault');
+    expect(bestVault.name).toBe("High APY Vault");
   });
 
-  test('Validate minimum APY improvement threshold is 0.5%', () => {
+  test("Validate minimum APY improvement threshold is 0.5%", () => {
     const THRESHOLD = 0.005; // 0.5%
 
     // Just below threshold

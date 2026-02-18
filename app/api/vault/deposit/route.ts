@@ -8,13 +8,13 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { neon } from '@neondatabase/serverless';
-import { decryptAuthorization, SessionKey7702Authorization } from '@/lib/security/session-encryption';
+import { neon } from "@neondatabase/serverless";
 import {
-  authenticateRequest,
-  unauthorizedResponse,
-} from '@/lib/auth/middleware';
-import { executeGaslessDeposit } from '@/lib/zerodev/deposit-executor';
+  decryptAuthorization,
+  SessionKey7702Authorization,
+} from "@/lib/security/session-encryption";
+import { authenticateRequest, unauthorizedResponse } from "@/lib/auth/middleware";
+import { executeGaslessDeposit } from "@/lib/zerodev/deposit-executor";
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 
     const userWalletAddress = authResult.walletAddress;
     if (!userWalletAddress) {
-      return unauthorizedResponse('No wallet linked to account');
+      return unauthorizedResponse("No wallet linked to account");
     }
 
     // 2. Parse request body
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Validate authorization type
-    if (authorizationData.type !== 'zerodev-7702-session') {
+    if (authorizationData.type !== "zerodev-7702-session") {
       return NextResponse.json(
         { error: "Invalid authorization type. Please re-register agent." },
         { status: 400 }
@@ -143,10 +143,7 @@ export async function POST(request: NextRequest) {
 
     if (!result.success) {
       console.error("[Vault Deposit] Execution failed after", depositDuration, "ms:", result.error);
-      return NextResponse.json(
-        { error: result.error || "Vault deposit failed" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: result.error || "Vault deposit failed" }, { status: 500 });
     }
 
     console.log("[Vault Deposit] Success after", depositDuration, "ms:", result.txHash);
@@ -156,12 +153,8 @@ export async function POST(request: NextRequest) {
       txHash: result.txHash,
       userOpHash: result.userOpHash,
     });
-
   } catch (error: any) {
     console.error("[Vault Deposit] Error:", error);
-    return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
   }
 }

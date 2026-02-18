@@ -13,8 +13,8 @@
  * - Count members in window to check limit
  */
 
-import { getCacheInterface, type CacheInterface } from './client';
-import { randomUUID } from 'crypto';
+import { getCacheInterface, type CacheInterface } from "./client";
+import { randomUUID } from "crypto";
 
 export interface RateLimitConfig {
   maxRequests: number; // Maximum requests in window
@@ -34,7 +34,7 @@ export interface RateLimitResult {
 const DEFAULT_CONFIG: RateLimitConfig = {
   maxRequests: 20,
   windowMs: 24 * 60 * 60 * 1000, // 24 hours
-  keyPrefix: 'ratelimit',
+  keyPrefix: "ratelimit",
 };
 
 /**
@@ -66,9 +66,7 @@ export async function checkRateLimit(
     // 3. Check if limit exceeded
     if (count >= cfg.maxRequests) {
       // Find oldest request to calculate reset time
-      const oldestTimestamp = requests.length > 0
-        ? parseInt(requests[0].split(':')[0], 10)
-        : now;
+      const oldestTimestamp = requests.length > 0 ? parseInt(requests[0].split(":")[0], 10) : now;
       const resetTime = oldestTimestamp + cfg.windowMs;
       const retryAfter = Math.ceil((resetTime - now) / 1000);
 
@@ -90,7 +88,7 @@ export async function checkRateLimit(
       resetTime: now + cfg.windowMs,
     };
   } catch (error: any) {
-    console.error('[RateLimit] Error checking rate limit:', error.message);
+    console.error("[RateLimit] Error checking rate limit:", error.message);
 
     if (cfg.failClosed) {
       // Fail closed: deny request when Redis is unavailable
@@ -98,7 +96,7 @@ export async function checkRateLimit(
         allowed: false,
         remaining: 0,
         resetTime: now + 60_000, // Retry in 1 minute
-        reason: 'Rate limiter unavailable. Request denied for safety.',
+        reason: "Rate limiter unavailable. Request denied for safety.",
       };
     }
 
@@ -138,7 +136,7 @@ export async function recordRequest(
     const ttlSeconds = Math.ceil(cfg.windowMs / 1000) + 60;
     await cache.expire(key, ttlSeconds);
   } catch (error: any) {
-    console.error('[RateLimit] Error recording request:', error.message);
+    console.error("[RateLimit] Error recording request:", error.message);
   }
 }
 
@@ -171,7 +169,7 @@ export async function checkAndRecordRateLimit(
  */
 export async function resetRateLimit(
   identifier: string,
-  keyPrefix: string = 'ratelimit'
+  keyPrefix: string = "ratelimit"
 ): Promise<void> {
   const cache = await getCacheInterface();
   const key = `${keyPrefix}:${identifier.toLowerCase()}`;
@@ -179,7 +177,7 @@ export async function resetRateLimit(
   try {
     await cache.del(key);
   } catch (error: any) {
-    console.error('[RateLimit] Error resetting rate limit:', error.message);
+    console.error("[RateLimit] Error resetting rate limit:", error.message);
   }
 }
 
@@ -213,7 +211,7 @@ export async function getRateLimitUsage(
       max: cfg.maxRequests,
     };
   } catch (error: any) {
-    console.error('[RateLimit] Error getting usage:', error.message);
+    console.error("[RateLimit] Error getting usage:", error.message);
     return { count: 0, max: cfg.maxRequests };
   }
 }
@@ -237,8 +235,7 @@ export async function incrementUserOpCount(walletAddress: string): Promise<void>
     const current = await cache.get(key);
     const next = current ? parseInt(current, 10) + 1 : 1;
     await cache.set(key, String(next), 86400);
-  } catch {
-  }
+  } catch {}
 }
 
 // ============================================
@@ -286,7 +283,7 @@ export async function checkTransferRateLimitRedis(
   return checkRateLimit(userAddress, {
     maxRequests: cfg.maxTransfersPerDay,
     windowMs: cfg.windowMs,
-    keyPrefix: 'transfer',
+    keyPrefix: "transfer",
   });
 }
 
@@ -305,7 +302,7 @@ export async function recordTransferAttemptRedis(
   // Only record successful transfers for rate limiting
   if (success) {
     await recordRequest(userAddress, {
-      keyPrefix: 'transfer',
+      keyPrefix: "transfer",
     });
   }
 
@@ -322,6 +319,6 @@ export async function recordTransferAttemptRedis(
     await cache.zadd(logKey, Date.now(), entry);
     await cache.expire(logKey, 30 * 24 * 60 * 60); // 30 days
   } catch (error: any) {
-    console.error('[RateLimit] Error logging transfer:', error.message);
+    console.error("[RateLimit] Error logging transfer:", error.message);
   }
 }

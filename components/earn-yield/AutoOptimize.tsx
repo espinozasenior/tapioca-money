@@ -1,6 +1,12 @@
 "use client";
 
-import { useOptimizer, useRebalance, useAgent, formatApy, getProtocolColor } from "@/hooks/useOptimizer";
+import {
+  useOptimizer,
+  useRebalance,
+  useAgent,
+  formatApy,
+  getProtocolColor,
+} from "@/hooks/useOptimizer";
 import { Loader2, TrendingUp, ArrowRight, Zap, AlertCircle } from "lucide-react";
 
 interface AutoOptimizeProps {
@@ -19,7 +25,7 @@ export function AutoOptimize({ usdcBalance }: AutoOptimizeProps) {
     toggleAutoOptimize,
     isTogglingAutoOptimize,
     registerError,
-    toggleError
+    toggleError,
   } = useAgent();
   const rebalance = useRebalance();
 
@@ -27,7 +33,7 @@ export function AutoOptimize({ usdcBalance }: AutoOptimizeProps) {
     console.log("[AutoOptimize] Toggle clicked", {
       hasAuthorization,
       autoOptimizeEnabled,
-      isRegistered
+      isRegistered,
     });
 
     if (!hasAuthorization) {
@@ -71,7 +77,11 @@ export function AutoOptimize({ usdcBalance }: AutoOptimizeProps) {
           <div>
             <h3 className="font-medium text-gray-900">Auto-Optimize</h3>
             <p className="text-sm text-gray-500">
-              {isRegistering ? "Upgrading wallet..." : isTogglingAutoOptimize ? "Updating settings..." : "Automatically rebalance to highest yield (ERC-7702)"}
+              {isRegistering
+                ? "Upgrading wallet..."
+                : isTogglingAutoOptimize
+                  ? "Updating settings..."
+                  : "Automatically rebalance to highest yield (ERC-7702)"}
             </p>
           </div>
         </div>
@@ -80,7 +90,7 @@ export function AutoOptimize({ usdcBalance }: AutoOptimizeProps) {
           disabled={isTogglingDisabled}
           className={`relative h-6 w-11 rounded-full transition-colors ${
             autoOptimizeEnabled ? "bg-emerald-500" : "bg-gray-300"
-          } ${isTogglingDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
+          } ${isTogglingDisabled ? "cursor-not-allowed opacity-50" : ""}`}
         >
           <span
             className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
@@ -159,7 +169,6 @@ export function AutoOptimize({ usdcBalance }: AutoOptimizeProps) {
           </div>
         </div>
       )}
-
     </div>
   );
 }

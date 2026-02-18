@@ -7,6 +7,7 @@ Implemented field-level AES-256-GCM encryption for session private keys stored i
 ## Files Created
 
 ### Core Encryption Module
+
 - **`lib/security/encryption.ts`** (155 lines)
   - `encrypt(plaintext)` - AES-256-GCM encryption with random IV
   - `decrypt(ciphertext)` - Authenticated decryption with tamper detection
@@ -15,6 +16,7 @@ Implemented field-level AES-256-GCM encryption for session private keys stored i
   - Format: `encrypted:v1:{iv}:{ciphertext}:{authTag}`
 
 ### Session-Specific Helpers
+
 - **`lib/security/session-encryption.ts`** (80 lines)
   - `encryptAuthorization(auth)` - Encrypt only `sessionPrivateKey` field
   - `decryptAuthorization(auth)` - Decrypt only `sessionPrivateKey` field
@@ -22,6 +24,7 @@ Implemented field-level AES-256-GCM encryption for session private keys stored i
   - Supports both `SessionKeyAuthorization` and `TransferSessionAuthorization`
 
 ### Migration Script
+
 - **`scripts/migrate-encrypt-keys.ts`** (200 lines)
   - Batch processing (100 users at a time)
   - Idempotent (safe to run multiple times)
@@ -32,6 +35,7 @@ Implemented field-level AES-256-GCM encryption for session private keys stored i
   - Detailed logging and error reporting
 
 ### Test Suite
+
 - **`scripts/test-encryption.ts`**
   - 7 comprehensive tests:
     1. Basic encryption/decryption roundtrip
@@ -45,16 +49,20 @@ Implemented field-level AES-256-GCM encryption for session private keys stored i
 ## Files Modified
 
 ### API Routes
+
 1. **`app/api/agent/register/route.ts`** (POST)
+
    - Encrypts `authorization_7702` before storing (line 41-49)
    - Uses `encryptAuthorization()` helper
 
 2. **`app/api/agent/cron/route.ts`** (POST)
+
    - Decrypts `authorization_7702` after query (line 122-131)
    - Only decrypts when actually executing rebalance (performance optimization)
    - Uses `decryptAuthorization()` helper
 
 3. **`app/api/transfer/register/route.ts`** (POST)
+
    - Encrypts `transfer_authorization` before storing (line 143-150)
    - Uses `encryptAuthorization()` helper
 
@@ -63,7 +71,9 @@ Implemented field-level AES-256-GCM encryption for session private keys stored i
    - Uses `decryptAuthorization()` helper
 
 ### Configuration
+
 5. **`.env.template`**
+
    - Added `DATABASE_ENCRYPTION_KEY` with generation instructions
 
 6. **`.env`**
@@ -73,22 +83,26 @@ Implemented field-level AES-256-GCM encryption for session private keys stored i
 ## Encryption Algorithm: AES-256-GCM
 
 ### Why AES-256-GCM?
+
 - **Industry Standard**: NIST-approved authenticated encryption
 - **Built-in Tamper Detection**: Authentication tag prevents modifications
 - **Native Support**: Node.js `crypto` module (no external dependencies)
 - **Performance**: ~0.05ms per operation (negligible overhead)
 
 ### Encrypted Format
+
 ```
 encrypted:v1:{iv_base64}:{ciphertext_base64}:{authTag_base64}
 ```
 
 **Example**:
+
 ```
 encrypted:v1:WjuzSYVHhhV6lexy:OSxLG5Guz1ksf2VcC6V2...:{authTag}
 ```
 
 ### Components
+
 - **Prefix**: `encrypted` - Identifies encrypted values
 - **Version**: `v1` - Enables future algorithm upgrades
 - **IV**: 12-byte random initialization vector (unique per encryption)
@@ -98,17 +112,20 @@ encrypted:v1:WjuzSYVHhhV6lexy:OSxLG5Guz1ksf2VcC6V2...:{authTag}
 ## Security Features
 
 ### ✅ Protected Against
+
 - **Database Breach**: Keys encrypted at rest
 - **SQL Injection**: Extracted keys are useless without encryption key
 - **Log Leakage**: Encrypted keys in logs are useless
 - **Data Tampering**: GCM auth tag detects modifications
 
 ### ⚠️ NOT Protected Against
+
 - **Environment Variable Leak**: If `DATABASE_ENCRYPTION_KEY` leaks, all keys compromised
 - **Server-Side Memory Dump**: Keys decrypted in memory during use
 - **Compromised Application Code**: Attacker with code execution can read keys
 
 ### Mitigation
+
 1. Store encryption key in Vercel environment variables (encrypted at rest)
 2. Never commit encryption key to version control
 3. Rotate encryption key every 90 days (future enhancement)
@@ -138,6 +155,7 @@ All 7 tests passed:
 ```
 
 Run tests:
+
 ```bash
 DATABASE_ENCRYPTION_KEY=$(grep DATABASE_ENCRYPTION_KEY .env | cut -d'=' -f2) npx tsx scripts/test-encryption.ts
 ```
@@ -145,10 +163,12 @@ DATABASE_ENCRYPTION_KEY=$(grep DATABASE_ENCRYPTION_KEY .env | cut -d'=' -f2) npx
 ## Deployment Instructions
 
 ### 1. Setup (Already Complete)
+
 - ✅ Encryption key generated and added to `.env`
 - ✅ CRON_SECRET added to `.env`
 
 ### 2. Test Locally
+
 ```bash
 # Run encryption tests
 DATABASE_ENCRYPTION_KEY=$(grep DATABASE_ENCRYPTION_KEY .env | cut -d'=' -f2) npx tsx scripts/test-encryption.ts
@@ -158,6 +178,7 @@ npx tsx scripts/migrate-encrypt-keys.ts --dry-run
 ```
 
 ### 3. Deploy to Staging
+
 1. Add `DATABASE_ENCRYPTION_KEY` to Vercel environment variables
 2. Deploy code changes
 3. Run migration: `npx tsx scripts/migrate-encrypt-keys.ts --dry-run`
@@ -166,6 +187,7 @@ npx tsx scripts/migrate-encrypt-keys.ts --dry-run
 6. Test transfer execution
 
 ### 4. Deploy to Production
+
 1. Add `DATABASE_ENCRYPTION_KEY` to Vercel production environment
 2. Deploy code (backward compatible - works with plaintext)
 3. Run migration during low-traffic window:
@@ -176,6 +198,7 @@ npx tsx scripts/migrate-encrypt-keys.ts --dry-run
 4. Monitor logs for 24 hours
 
 ### 5. Rollback (If Needed)
+
 ```bash
 CONFIRM_ROLLBACK=yes npx tsx scripts/migrate-encrypt-keys.ts --rollback
 ```
@@ -183,30 +206,37 @@ CONFIRM_ROLLBACK=yes npx tsx scripts/migrate-encrypt-keys.ts --rollback
 ## Migration Script Usage
 
 ### Dry Run (Preview)
+
 ```bash
 npx tsx scripts/migrate-encrypt-keys.ts --dry-run
 ```
+
 - Shows what would be encrypted
 - No database changes
 - Safe to run anytime
 
 ### Execute (Encrypt Keys)
+
 ```bash
 npx tsx scripts/migrate-encrypt-keys.ts --execute
 ```
+
 - Encrypts all plaintext session keys
 - Idempotent (safe to run multiple times)
 - Batch processing (100 users at a time)
 
 ### Rollback (Decrypt Keys)
+
 ```bash
 CONFIRM_ROLLBACK=yes npx tsx scripts/migrate-encrypt-keys.ts --rollback
 ```
+
 - Decrypts all encrypted keys back to plaintext
 - Requires `CONFIRM_ROLLBACK=yes` environment variable
 - Use only if issues arise
 
 ### Example Output
+
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   Session Key Encryption Migration - EXECUTE
@@ -237,6 +267,7 @@ Errors:                    0
 ## Database Verification
 
 ### Check Encrypted Format
+
 ```sql
 SELECT
   wallet_address,
@@ -249,6 +280,7 @@ LIMIT 5;
 ```
 
 ### Expected Output
+
 ```
 wallet_address              | agent_key                                          | transfer_key
 ----------------------------|----------------------------------------------------|-----------------
@@ -259,11 +291,13 @@ wallet_address              | agent_key                                         
 ## Performance Impact
 
 ### Cron Job (Processes all active users every 5 minutes)
+
 - **Before**: 50ms query + 0ms decryption = 50ms total
 - **After**: 50ms query + (0.05ms × N users) = ~100ms for 1000 users
 - **Overhead**: <50ms (negligible)
 
 ### Why Performance Remains Good
+
 1. **Query filtering unchanged**: JSONB filters on `auto_optimize_enabled` and `expiry` don't require decryption
 2. **Lazy decryption**: Only decrypt when actually executing rebalance (5-10% of users)
 3. **Fast algorithm**: AES-256-GCM is highly optimized in Node.js crypto module
@@ -271,6 +305,7 @@ wallet_address              | agent_key                                         
 ## Future Enhancements
 
 ### Key Rotation (Recommended every 90 days)
+
 1. Implement dual-key support (old + new)
 2. Gradual migration:
    - Deploy code with both keys
@@ -278,12 +313,14 @@ wallet_address              | agent_key                                         
    - Remove old key after 30 days (all sessions expired)
 
 ### AWS KMS Integration (For >1000 users)
+
 - Migrate from environment variable to AWS KMS
 - Envelope encryption: KMS encrypts data encryption key
 - Automatic key rotation
 - Audit logging via CloudTrail
 
 ### Monitoring
+
 - Set up alerts for decryption failures
 - Log all encryption/decryption operations (without sensitive data)
 - Monitor cron job performance (<200ms threshold)
@@ -291,6 +328,7 @@ wallet_address              | agent_key                                         
 ## Summary
 
 ✅ **Implementation Complete**
+
 - Core encryption module (`lib/security/encryption.ts`)
 - Session-specific helpers (`lib/security/session-encryption.ts`)
 - 4 API routes updated (agent register/cron, transfer register/send)
@@ -299,6 +337,7 @@ wallet_address              | agent_key                                         
 - Backward compatible (zero-downtime deployment)
 
 ✅ **Security Improvements**
+
 - AES-256-GCM authenticated encryption
 - Field-level encryption (only `sessionPrivateKey`)
 - Tamper detection via auth tag
@@ -306,6 +345,7 @@ wallet_address              | agent_key                                         
 - Backward compatibility (plaintext passthrough)
 
 ✅ **Ready for Deployment**
+
 - All tests passing
 - Environment variables configured
 - Migration script tested

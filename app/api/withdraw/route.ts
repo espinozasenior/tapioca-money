@@ -23,17 +23,11 @@ export async function POST(req: NextRequest) {
 
     // Validation
     if (!protocol) {
-      return NextResponse.json(
-        { error: "Protocol is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Protocol is required" }, { status: 400 });
     }
 
     if (!userAddress) {
-      return NextResponse.json(
-        { error: "User address is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "User address is required" }, { status: 400 });
     }
 
     if (!shares && !assets) {
@@ -45,17 +39,11 @@ export async function POST(req: NextRequest) {
 
     // Validate address format
     if (!/^0x[a-fA-F0-9]{40}$/.test(userAddress)) {
-      return NextResponse.json(
-        { error: "Invalid user address format" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid user address format" }, { status: 400 });
     }
 
     if (vaultAddress && !/^0x[a-fA-F0-9]{40}$/.test(vaultAddress)) {
-      return NextResponse.json(
-        { error: "Invalid vault address format" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid vault address format" }, { status: 400 });
     }
 
     // Convert string amounts to bigint
@@ -92,14 +80,13 @@ export async function POST(req: NextRequest) {
 
     // Return the first transaction (withdrawals are single-step)
     return NextResponse.json(result.transactions[0]);
-
   } catch (error: any) {
     console.error("Error building withdrawal transaction:", error);
-    
+
     return NextResponse.json(
-      { 
+      {
         error: error.message || "Failed to build withdrawal transaction",
-        details: process.env.NODE_ENV === "development" ? error.stack : undefined
+        details: process.env.NODE_ENV === "development" ? error.stack : undefined,
       },
       { status: 500 }
     );
@@ -108,7 +95,7 @@ export async function POST(req: NextRequest) {
 
 /**
  * GET /api/withdraw
- * 
+ *
  * Get withdrawal information (optional endpoint for future use)
  */
 export async function GET(req: NextRequest) {

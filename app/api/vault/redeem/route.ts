@@ -8,14 +8,14 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { neon } from '@neondatabase/serverless';
-import { decryptAuthorization, SessionKey7702Authorization } from '@/lib/security/session-encryption';
+import { neon } from "@neondatabase/serverless";
 import {
-  authenticateRequest,
-  unauthorizedResponse,
-} from '@/lib/auth/middleware';
-import { executeVaultRedeem } from '@/lib/zerodev/vault-executor';
-import { incrementUserOpCount } from '@/lib/redis/rate-limiter';
+  decryptAuthorization,
+  SessionKey7702Authorization,
+} from "@/lib/security/session-encryption";
+import { authenticateRequest, unauthorizedResponse } from "@/lib/auth/middleware";
+import { executeVaultRedeem } from "@/lib/zerodev/vault-executor";
+import { incrementUserOpCount } from "@/lib/redis/rate-limiter";
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 
     const userWalletAddress = authResult.walletAddress;
     if (!userWalletAddress) {
-      return unauthorizedResponse('No wallet linked to account');
+      return unauthorizedResponse("No wallet linked to account");
     }
 
     // 2. Parse request body
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Validate authorization type
-    if (authorizationData.type !== 'zerodev-7702-session') {
+    if (authorizationData.type !== "zerodev-7702-session") {
       return NextResponse.json(
         { error: "Invalid authorization type. Please re-register agent." },
         { status: 400 }
@@ -126,20 +126,20 @@ export async function POST(request: NextRequest) {
     });
 
     if (!result.success) {
-      let userMessage = result.error || 'Vault redeem failed';
-      if (result.error?.includes('0xace2a47e')) {
+      let userMessage = result.error || "Vault redeem failed";
+      if (result.error?.includes("0xace2a47e")) {
         userMessage =
-          'This vault rejected the redeem (error 0xace2a47e). ' +
-          'The vault may restrict access to agent-operated accounts. ' +
-          'Please redeem directly from your wallet.';
+          "This vault rejected the redeem (error 0xace2a47e). " +
+          "The vault may restrict access to agent-operated accounts. " +
+          "Please redeem directly from your wallet.";
       } else if (
-        result.error?.includes('operation limit') ||
-        result.error?.includes('0x3e4983f6') ||
-        result.error?.includes('AA23')
+        result.error?.includes("operation limit") ||
+        result.error?.includes("0x3e4983f6") ||
+        result.error?.includes("AA23")
       ) {
         userMessage =
-          'Agent daily operation limit reached. ' +
-          'Please re-register your agent to reset the limit, or try again tomorrow.';
+          "Agent daily operation limit reached. " +
+          "Please re-register your agent to reset the limit, or try again tomorrow.";
       }
       console.error("[Vault Redeem] Execution failed:", result.error);
       return NextResponse.json({ error: userMessage }, { status: 500 });
@@ -153,12 +153,8 @@ export async function POST(request: NextRequest) {
       txHash: result.txHash,
       userOpHash: result.userOpHash,
     });
-
   } catch (error: any) {
     console.error("[Vault Redeem] Error:", error);
-    return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
   }
 }

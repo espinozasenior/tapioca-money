@@ -78,56 +78,60 @@ export async function getMoonwellOpportunities(): Promise<YieldOpportunity[]> {
     // Try DeFi Llama API first (no RPC needed, cached)
     const llamaPool = await getMoonwellUsdcPool();
     if (llamaPool) {
-      return [{
-        id: "moonwell-usdc-base",
-        protocol: "moonwell",
-        name: "Moonwell USDC",
-        asset: "USDC",
-        apy: llamaPool.apy,
-        tvl: BigInt(Math.round(llamaPool.tvlUsd * 1e6)), // Convert USD to USDC units (6 decimals)
-        address: MOONWELL_USDC,
-        riskScore: 0.3,
-        liquidityDepth: BigInt(Math.round(llamaPool.tvlUsd * 1e6)),
-        metadata: {
-          isVault: false,
-          source: "defillama",
+      return [
+        {
+          id: "moonwell-usdc-base",
+          protocol: "moonwell",
+          name: "Moonwell USDC",
+          asset: "USDC",
+          apy: llamaPool.apy,
+          tvl: BigInt(Math.round(llamaPool.tvlUsd * 1e6)), // Convert USD to USDC units (6 decimals)
+          address: MOONWELL_USDC,
+          riskScore: 0.3,
+          liquidityDepth: BigInt(Math.round(llamaPool.tvlUsd * 1e6)),
+          metadata: {
+            isVault: false,
+            source: "defillama",
+          },
         },
-      }];
+      ];
     }
 
     // Fallback to RPC if DeFi Llama unavailable
     console.warn("[Moonwell] DeFi Llama unavailable, falling back to RPC");
-    const supplyRate = await baseClient.readContract({
+    const supplyRate = (await baseClient.readContract({
       address: MOONWELL_USDC,
       abi: MOONWELL_ABI,
       functionName: "supplyRatePerTimestamp",
-    }) as bigint;
+    })) as bigint;
 
-    const liquidity = await baseClient.readContract({
+    const liquidity = (await baseClient.readContract({
       address: MOONWELL_USDC,
       abi: MOONWELL_ABI,
       functionName: "getCash",
-    }) as bigint;
+    })) as bigint;
 
     const ratePerSecond = Number(supplyRate) / 1e18;
     const secondsPerYear = 365 * 24 * 3600;
     const apy = Math.pow(1 + ratePerSecond, secondsPerYear) - 1;
 
-    return [{
-      id: "moonwell-usdc-base",
-      protocol: "moonwell",
-      name: "Moonwell USDC",
-      asset: "USDC",
-      apy,
-      tvl: liquidity,
-      address: MOONWELL_USDC,
-      riskScore: 0.3,
-      liquidityDepth: liquidity,
-      metadata: {
-        isVault: false,
-        source: "rpc",
+    return [
+      {
+        id: "moonwell-usdc-base",
+        protocol: "moonwell",
+        name: "Moonwell USDC",
+        asset: "USDC",
+        apy,
+        tvl: liquidity,
+        address: MOONWELL_USDC,
+        riskScore: 0.3,
+        liquidityDepth: liquidity,
+        metadata: {
+          isVault: false,
+          source: "rpc",
+        },
       },
-    }];
+    ];
   } catch (error) {
     console.error("Error fetching Moonwell opportunities:", error);
     return [];
@@ -141,31 +145,31 @@ export async function getMoonwellPosition(userAddress: `0x${string}`): Promise<P
 
   try {
     // Check cToken balance
-    const cTokenBalance = await baseClient.readContract({
+    const cTokenBalance = (await baseClient.readContract({
       address: MOONWELL_USDC,
       abi: MOONWELL_ABI,
       functionName: "balanceOf",
       args: [userAddress],
-    }) as bigint;
+    })) as bigint;
 
     if (cTokenBalance === 0n) {
       return null;
     }
 
     // Get underlying USDC amount
-    const underlyingBalance = await baseClient.readContract({
+    const underlyingBalance = (await baseClient.readContract({
       address: MOONWELL_USDC,
       abi: MOONWELL_ABI,
       functionName: "balanceOfUnderlying",
       args: [userAddress],
-    }) as bigint;
+    })) as bigint;
 
     // Fetch current APY
-    const supplyRate = await baseClient.readContract({
+    const supplyRate = (await baseClient.readContract({
       address: MOONWELL_USDC,
       abi: MOONWELL_ABI,
       functionName: "supplyRatePerTimestamp",
-    }) as bigint;
+    })) as bigint;
 
     const ratePerSecond = Number(supplyRate) / 1e18;
     const secondsPerYear = 365 * 24 * 3600;

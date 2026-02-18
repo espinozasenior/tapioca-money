@@ -38,17 +38,17 @@ No manual `.env.test` setup is needed. Tests load `.env` via dotenv and override
 Place in `tests/integration/`. Use the database helpers for setup/teardown:
 
 ```typescript
-import { describe, test, expect, afterEach } from 'vitest';
-import { seedTestUser, cleanupTestData } from '../helpers/test-setup';
+import { describe, test, expect, afterEach } from "vitest";
+import { seedTestUser, cleanupTestData } from "../helpers/test-setup";
 
-describe('My Feature', () => {
-  const testAddress = '0xTEST_UNIQUE_ADDRESS';
+describe("My Feature", () => {
+  const testAddress = "0xTEST_UNIQUE_ADDRESS";
 
   afterEach(async () => {
     await cleanupTestData([testAddress]);
   });
 
-  test('should work', async () => {
+  test("should work", async () => {
     await seedTestUser(testAddress, true);
     // ... test logic
   });
@@ -60,15 +60,15 @@ describe('My Feature', () => {
 Place in `tests/property/`. Use `fast-check` for random input generation:
 
 ```typescript
-import fc from 'fast-check';
+import fc from "fast-check";
 
-test('function handles arbitrary input', () => {
+test("function handles arbitrary input", () => {
   fc.assert(
     fc.property(fc.string(), (input) => {
       const result = myFunction(input);
       expect(result).toBeDefined();
     }),
-    { numRuns: 500 },
+    { numRuns: 500 }
   );
 });
 ```
@@ -88,11 +88,11 @@ for (const value of samples) {
 Mocks live in `tests/mocks/`:
 
 ```typescript
-import { createMockPrivyWallet } from '../mocks/privy-wallet';
-import { resetBundlerMocks } from '../mocks/zerodev-bundler';
+import { createMockPrivyWallet } from "../mocks/privy-wallet";
+import { resetBundlerMocks } from "../mocks/zerodev-bundler";
 
 // Mock Privy wallet for signing tests
-const wallet = createMockPrivyWallet('0xADDRESS');
+const wallet = createMockPrivyWallet("0xADDRESS");
 
 // Reset bundler state between tests
 resetBundlerMocks();
@@ -102,11 +102,15 @@ For Redis-dependent code, use `vi.doMock` with an in-memory Map:
 
 ```typescript
 const store = new Map<string, string>();
-vi.doMock('@/lib/redis/client', () => ({
+vi.doMock("@/lib/redis/client", () => ({
   getCacheInterface: async () => ({
     get: async (key: string) => store.get(key) ?? null,
-    set: async (key: string, value: string) => { store.set(key, value); },
-    del: async (key: string) => { store.delete(key); },
+    set: async (key: string, value: string) => {
+      store.set(key, value);
+    },
+    del: async (key: string) => {
+      store.delete(key);
+    },
   }),
 }));
 ```
@@ -149,10 +153,13 @@ No secrets needed — all services are mocked and `DATABASE_ENCRYPTION_KEY` uses
 ## Troubleshooting
 
 **Tests fail with "DATABASE_ENCRYPTION_KEY not set"**
+
 - The key is auto-set in `tests/setup.ts`. If running a single file outside Vitest, set it manually: `DATABASE_ENCRYPTION_KEY=aaaa...aaaa pnpm test:run`
 
 **Rate limiter tests are slow**
+
 - The in-memory sorted set implementation is slower than Redis. Rate limiter fuzz tests use small sample sizes to stay within the 30s timeout.
 
 **Module mock not working**
+
 - Use `vi.doMock()` (not `vi.mock()`) when importing after mock setup. Call `vi.doUnmock()` in cleanup.

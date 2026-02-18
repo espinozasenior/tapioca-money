@@ -48,7 +48,7 @@ export async function getRedisClient(): Promise<RedisType | null> {
 
   // Return null if Redis is not configured
   if (!redisUrl) {
-    console.warn('[Redis] REDIS_URL not configured, using in-memory fallback');
+    console.warn("[Redis] REDIS_URL not configured, using in-memory fallback");
     return null;
   }
 
@@ -60,7 +60,7 @@ export async function getRedisClient(): Promise<RedisType | null> {
   try {
     // Dynamically import ioredis (optional dependency)
     // @ts-ignore - ioredis is optional, types may not be available
-    const ioredis = await import('ioredis');
+    const ioredis = await import("ioredis");
     Redis = ioredis.default;
 
     const options = {
@@ -71,7 +71,7 @@ export async function getRedisClient(): Promise<RedisType | null> {
       // Reconnect with exponential backoff
       retryStrategy: (times: number) => {
         if (times > 10) {
-          console.error('[Redis] Max retries exceeded');
+          console.error("[Redis] Max retries exceeded");
           return null;
         }
         return Math.min(times * 100, 3000);
@@ -82,25 +82,25 @@ export async function getRedisClient(): Promise<RedisType | null> {
     const parsedUrl = new URL(redisUrl);
     redisClient = new Redis({
       host: parsedUrl.hostname,
-      port: parseInt(parsedUrl.port || '6379'),
+      port: parseInt(parsedUrl.port || "6379"),
       password: parsedUrl.password || undefined,
       username: parsedUrl.username || undefined,
       db: parsedUrl.pathname ? parseInt(parsedUrl.pathname.slice(1)) || 0 : 0,
-      tls: parsedUrl.protocol === 'rediss:' ? {} : undefined,
+      tls: parsedUrl.protocol === "rediss:" ? {} : undefined,
       ...options,
     }) as RedisType;
 
     // Set up event handlers
-    redisClient.on('connect', () => {
-      console.log('[Redis] Connected');
+    redisClient.on("connect", () => {
+      console.log("[Redis] Connected");
     });
 
-    redisClient.on('error', (err: Error) => {
-      console.error('[Redis] Connection error:', err.message);
+    redisClient.on("error", (err: Error) => {
+      console.error("[Redis] Connection error:", err.message);
     });
 
-    redisClient.on('close', () => {
-      console.log('[Redis] Connection closed');
+    redisClient.on("close", () => {
+      console.log("[Redis] Connection closed");
     });
 
     // Connect
@@ -108,7 +108,7 @@ export async function getRedisClient(): Promise<RedisType | null> {
 
     return redisClient;
   } catch (error: any) {
-    console.error('[Redis] Failed to initialize:', error.message);
+    console.error("[Redis] Failed to initialize:", error.message);
     return null;
   }
 }
@@ -210,18 +210,14 @@ export async function getCacheInterface(): Promise<CacheInterface> {
       const existing = memoryStore.get(setKey);
       if (!existing) return [];
       const entries: [string, number][] = JSON.parse(existing.value);
-      return entries
-        .filter(([_, score]) => score >= min && score <= max)
-        .map(([member]) => member);
+      return entries.filter(([_, score]) => score >= min && score <= max).map(([member]) => member);
     },
     async zremrangebyscore(key: string, min: number, max: number) {
       const setKey = `zset:${key}`;
       const existing = memoryStore.get(setKey);
       if (!existing) return;
       const entries: [string, number][] = JSON.parse(existing.value);
-      const filtered = entries.filter(
-        ([_, score]) => score < min || score > max
-      );
+      const filtered = entries.filter(([_, score]) => score < min || score > max);
       memoryStore.set(setKey, {
         value: JSON.stringify(filtered),
       });

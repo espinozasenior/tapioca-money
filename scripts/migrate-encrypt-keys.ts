@@ -11,13 +11,13 @@
  *   pnpm tsx scripts/migrate-encrypt-keys.ts --rollback   # Decrypt all keys
  */
 
-import { neon } from '@neondatabase/serverless';
+import { neon } from "@neondatabase/serverless";
 import {
   encryptAuthorization,
   decryptAuthorization,
   isAuthorizationEncrypted,
   type Authorization,
-} from '../lib/security/session-encryption';
+} from "../lib/security/session-encryption";
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -42,22 +42,22 @@ const BATCH_SIZE = 100;
 /**
  * Main migration function
  */
-async function migrate(mode: 'dry-run' | 'execute' | 'rollback') {
+async function migrate(mode: "dry-run" | "execute" | "rollback") {
   console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
   console.log(`  Session Key Encryption Migration - ${mode.toUpperCase()}`);
   console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 
-  if (mode === 'dry-run') {
-    console.log('⚠️  DRY RUN MODE - No database changes will be made\n');
-  } else if (mode === 'rollback') {
-    console.log('⚠️  ROLLBACK MODE - Will decrypt all encrypted keys\n');
+  if (mode === "dry-run") {
+    console.log("⚠️  DRY RUN MODE - No database changes will be made\n");
+  } else if (mode === "rollback") {
+    console.log("⚠️  ROLLBACK MODE - Will decrypt all encrypted keys\n");
     const confirm = process.env.CONFIRM_ROLLBACK;
-    if (confirm !== 'yes') {
-      console.error('❌ Rollback requires CONFIRM_ROLLBACK=yes environment variable');
+    if (confirm !== "yes") {
+      console.error("❌ Rollback requires CONFIRM_ROLLBACK=yes environment variable");
       process.exit(1);
     }
   } else {
-    console.log('🚀 EXECUTE MODE - Database will be modified\n');
+    console.log("🚀 EXECUTE MODE - Database will be modified\n");
   }
 
   const stats: MigrationStats = {
@@ -71,8 +71,8 @@ async function migrate(mode: 'dry-run' | 'execute' | 'rollback') {
 
   try {
     // 1. Query all users with session keys
-    console.log('📊 Querying users with session keys...');
-    const users = await sql`
+    console.log("📊 Querying users with session keys...");
+    const users = (await sql`
       SELECT
         id,
         wallet_address,
@@ -82,13 +82,13 @@ async function migrate(mode: 'dry-run' | 'execute' | 'rollback') {
       WHERE authorization_7702 IS NOT NULL
          OR transfer_authorization IS NOT NULL
       ORDER BY id
-    ` as User[];
+    `) as User[];
 
     console.log(`✓ Found ${users.length} users with session keys\n`);
     stats.totalUsers = users.length;
 
     if (users.length === 0) {
-      console.log('No users to process. Exiting.');
+      console.log("No users to process. Exiting.");
       return;
     }
 
@@ -108,7 +108,7 @@ async function migrate(mode: 'dry-run' | 'execute' | 'rollback') {
           stats.errors++;
           stats.errorDetails.push({
             address: user.wallet_address,
-            error: error.message || 'Unknown error',
+            error: error.message || "Unknown error",
           });
           console.error(`  ✗ ${user.wallet_address}: ${error.message}`);
         }
@@ -117,9 +117,8 @@ async function migrate(mode: 'dry-run' | 'execute' | 'rollback') {
 
     // 3. Print summary
     printSummary(stats, mode);
-
   } catch (error: any) {
-    console.error('\n❌ Migration failed:', error.message);
+    console.error("\n❌ Migration failed:", error.message);
     console.error(error.stack);
     process.exit(1);
   }
@@ -130,7 +129,7 @@ async function migrate(mode: 'dry-run' | 'execute' | 'rollback') {
  */
 async function processUser(
   user: User,
-  mode: 'dry-run' | 'execute' | 'rollback',
+  mode: "dry-run" | "execute" | "rollback",
   stats: MigrationStats
 ): Promise<void> {
   let updated = false;
@@ -139,7 +138,7 @@ async function processUser(
 
   // Process agent authorization
   if (agentAuth) {
-    if (mode === 'rollback') {
+    if (mode === "rollback") {
       // Decrypt if encrypted
       if (isAuthorizationEncrypted(agentAuth)) {
         agentAuth = decryptAuthorization(agentAuth);
@@ -162,7 +161,7 @@ async function processUser(
 
   // Process transfer authorization
   if (transferAuth) {
-    if (mode === 'rollback') {
+    if (mode === "rollback") {
       // Decrypt if encrypted
       if (isAuthorizationEncrypted(transferAuth)) {
         transferAuth = decryptAuthorization(transferAuth);
@@ -184,7 +183,7 @@ async function processUser(
   }
 
   // Update database if needed (and not dry-run)
-  if (updated && mode === 'execute') {
+  if (updated && mode === "execute") {
     await sql`
       UPDATE users
       SET
@@ -193,7 +192,7 @@ async function processUser(
         updated_at = NOW()
       WHERE id = ${user.id}
     `;
-  } else if (updated && mode === 'rollback') {
+  } else if (updated && mode === "rollback") {
     await sql`
       UPDATE users
       SET
@@ -208,10 +207,10 @@ async function processUser(
 /**
  * Print migration summary
  */
-function printSummary(stats: MigrationStats, mode: 'dry-run' | 'execute' | 'rollback') {
-  console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('  Migration Summary');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+function printSummary(stats: MigrationStats, mode: "dry-run" | "execute" | "rollback") {
+  console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  console.log("  Migration Summary");
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
   console.log(`Total users processed:     ${stats.totalUsers}`);
   console.log(`Agent keys processed:      ${stats.agentKeysEncrypted}`);
@@ -220,19 +219,19 @@ function printSummary(stats: MigrationStats, mode: 'dry-run' | 'execute' | 'roll
   console.log(`Errors:                    ${stats.errors}`);
 
   if (stats.errorDetails.length > 0) {
-    console.log('\n❌ Errors:');
+    console.log("\n❌ Errors:");
     stats.errorDetails.forEach(({ address, error }) => {
       console.log(`  - ${address}: ${error}`);
     });
   }
 
-  if (mode === 'dry-run') {
-    console.log('\n⚠️  Dry run complete - no changes made');
-    console.log('   Run with --execute to apply changes');
-  } else if (mode === 'rollback') {
-    console.log('\n✓ Rollback complete - keys decrypted');
+  if (mode === "dry-run") {
+    console.log("\n⚠️  Dry run complete - no changes made");
+    console.log("   Run with --execute to apply changes");
+  } else if (mode === "rollback") {
+    console.log("\n✓ Rollback complete - keys decrypted");
   } else {
-    console.log('\n✓ Migration complete - keys encrypted');
+    console.log("\n✓ Migration complete - keys encrypted");
   }
 }
 
@@ -241,14 +240,14 @@ function printSummary(stats: MigrationStats, mode: 'dry-run' | 'execute' | 'roll
  */
 function verifyEncryptionKey() {
   if (!process.env.DATABASE_ENCRYPTION_KEY) {
-    console.error('❌ DATABASE_ENCRYPTION_KEY environment variable not set');
-    console.error('\nGenerate a key with:');
-    console.error('  node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+    console.error("❌ DATABASE_ENCRYPTION_KEY environment variable not set");
+    console.error("\nGenerate a key with:");
+    console.error("  node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"");
     process.exit(1);
   }
 
   if (process.env.DATABASE_ENCRYPTION_KEY.length !== 64) {
-    console.error('❌ DATABASE_ENCRYPTION_KEY must be 64 hex characters (32 bytes)');
+    console.error("❌ DATABASE_ENCRYPTION_KEY must be 64 hex characters (32 bytes)");
     process.exit(1);
   }
 }
@@ -264,20 +263,22 @@ async function main() {
   const args = process.argv.slice(2);
   const mode = args[0];
 
-  if (!mode || !['--dry-run', '--execute', '--rollback'].includes(mode)) {
-    console.error('Usage:');
-    console.error('  pnpm tsx scripts/migrate-encrypt-keys.ts --dry-run    # Preview changes');
-    console.error('  pnpm tsx scripts/migrate-encrypt-keys.ts --execute    # Run migration');
-    console.error('  CONFIRM_ROLLBACK=yes pnpm tsx scripts/migrate-encrypt-keys.ts --rollback   # Decrypt keys');
+  if (!mode || !["--dry-run", "--execute", "--rollback"].includes(mode)) {
+    console.error("Usage:");
+    console.error("  pnpm tsx scripts/migrate-encrypt-keys.ts --dry-run    # Preview changes");
+    console.error("  pnpm tsx scripts/migrate-encrypt-keys.ts --execute    # Run migration");
+    console.error(
+      "  CONFIRM_ROLLBACK=yes pnpm tsx scripts/migrate-encrypt-keys.ts --rollback   # Decrypt keys"
+    );
     process.exit(1);
   }
 
-  const modeValue = mode.replace('--', '') as 'dry-run' | 'execute' | 'rollback';
+  const modeValue = mode.replace("--", "") as "dry-run" | "execute" | "rollback";
   await migrate(modeValue);
 }
 
 // Run migration
 main().catch((error) => {
-  console.error('Fatal error:', error);
+  console.error("Fatal error:", error);
   process.exit(1);
 });

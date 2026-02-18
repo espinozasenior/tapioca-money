@@ -2,10 +2,10 @@
  * Test Setup Helpers for Agent Integration Tests
  */
 
-import { neon } from '@neondatabase/serverless';
+import { neon } from "@neondatabase/serverless";
 
 // Use test database URL or fallback to a mock connection string
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://test:test@localhost:5432/test_db';
+const DATABASE_URL = process.env.DATABASE_URL || "postgresql://test:test@localhost:5432/test_db";
 const sql = neon(DATABASE_URL);
 
 export interface TestUser {
@@ -18,16 +18,16 @@ export interface TestUser {
  * Create a test user with authorization
  */
 export async function seedTestUser(
-  walletAddress: string = '0xTEST1234567890123456789012345678901234',
+  walletAddress: string = "0xTEST1234567890123456789012345678901234",
   autoOptimizeEnabled: boolean = true,
-  minApyThreshold: string = '0.005'
+  minApyThreshold: string = "0.005"
 ): Promise<TestUser> {
   // Sample EIP-7702 authorization
   const authorization = {
     chainId: 8453, // Base
     address: walletAddress,
     nonce: 1,
-    signature: '0xtest_signature',
+    signature: "0xtest_signature",
     expiry: Math.floor(Date.now() / 1000) + 86400, // 24 hours
   };
 
@@ -73,13 +73,13 @@ export async function seedTestUser(
  * Create test user with expired authorization
  */
 export async function seedTestUserWithExpiredAuth(
-  walletAddress: string = '0xEXPIRED1234567890123456789012345678901'
+  walletAddress: string = "0xEXPIRED1234567890123456789012345678901"
 ): Promise<TestUser> {
   const authorization = {
     chainId: 8453,
     address: walletAddress,
     nonce: 1,
-    signature: '0xtest_signature',
+    signature: "0xtest_signature",
     expiry: Math.floor(Date.now() / 1000) - 3600, // Expired 1 hour ago
   };
 
@@ -135,7 +135,7 @@ export async function cleanupAllTestData(): Promise<void> {
       OR wallet_address LIKE '0xEXPIRED%'
   `;
 
-  console.log('Cleaned up all test data');
+  console.log("Cleaned up all test data");
 }
 
 /**
@@ -148,24 +148,21 @@ export function createTestClient() {
 /**
  * Mock transaction API response
  */
-export function mockTransactionResponse(
-  success: boolean = true,
-  txHash?: string
-): any {
+export function mockTransactionResponse(success: boolean = true, txHash?: string): any {
   if (success) {
     return {
-      id: 'task_test_123',
-      taskId: 'task_test_123',
-      status: 'completed',
-      transactionHash: txHash || '0xtest_tx_hash_1234567890',
-      gasUsed: '200000',
+      id: "task_test_123",
+      taskId: "task_test_123",
+      status: "completed",
+      transactionHash: txHash || "0xtest_tx_hash_1234567890",
+      gasUsed: "200000",
     };
   } else {
     return {
-      id: 'task_test_456',
-      taskId: 'task_test_456',
-      status: 'failed',
-      error: 'Test error: Simulation failed',
+      id: "task_test_456",
+      taskId: "task_test_456",
+      status: "failed",
+      error: "Test error: Simulation failed",
     };
   }
 }
@@ -176,31 +173,31 @@ export function mockTransactionResponse(
 export function mockYieldOpportunities() {
   return [
     {
-      id: 'morpho-vault-1',
-      protocol: 'morpho' as const,
-      name: 'Morpho USDC Vault',
-      asset: 'USDC',
+      id: "morpho-vault-1",
+      protocol: "morpho" as const,
+      name: "Morpho USDC Vault",
+      asset: "USDC",
       apy: 0.08, // 8%
-      tvl: BigInt('10000000000000'), // 10M USDC
-      address: '0xMORPHO_VAULT_TEST' as `0x${string}`,
+      tvl: BigInt("10000000000000"), // 10M USDC
+      address: "0xMORPHO_VAULT_TEST" as `0x${string}`,
       riskScore: 0.2,
-      liquidityDepth: BigInt('1000000000000'),
+      liquidityDepth: BigInt("1000000000000"),
       metadata: {
-        vaultAddress: '0xMORPHO_VAULT_TEST' as `0x${string}`,
-        curator: 'Test Curator',
+        vaultAddress: "0xMORPHO_VAULT_TEST" as `0x${string}`,
+        curator: "Test Curator",
         isVault: true,
       },
     },
     {
-      id: 'aave-pool-1',
-      protocol: 'aave' as const,
-      name: 'Aave V3 USDC',
-      asset: 'USDC',
+      id: "aave-pool-1",
+      protocol: "aave" as const,
+      name: "Aave V3 USDC",
+      asset: "USDC",
       apy: 0.05, // 5%
-      tvl: BigInt('50000000000000'),
-      address: '0xAAVE_POOL_TEST' as `0x${string}`,
+      tvl: BigInt("50000000000000"),
+      address: "0xAAVE_POOL_TEST" as `0x${string}`,
       riskScore: 0.1,
-      liquidityDepth: BigInt('5000000000000'),
+      liquidityDepth: BigInt("5000000000000"),
     },
   ];
 }
@@ -209,8 +206,8 @@ export function mockYieldOpportunities() {
  * Mock position for testing
  */
 export function mockPosition(
-  protocol: 'morpho' | 'aave' | 'moonwell' = 'aave',
-  assets: bigint = BigInt('1000000000'), // 1000 USDC
+  protocol: "morpho" | "aave" | "moonwell" = "aave",
+  assets: bigint = BigInt("1000000000"), // 1000 USDC
   apy: number = 0.04 // 4%
 ) {
   return {
@@ -227,7 +224,7 @@ export function mockPosition(
  * Wait for async operations
  */
 export async function waitFor(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -235,7 +232,7 @@ export async function waitFor(ms: number): Promise<void> {
  */
 export async function verifyAgentActionLogged(
   userId: string,
-  actionType: string = 'rebalance',
+  actionType: string = "rebalance",
   expectedStatus?: string
 ): Promise<boolean> {
   const actions = await sql`
@@ -255,10 +252,7 @@ export async function verifyAgentActionLogged(
 /**
  * Get agent actions for user
  */
-export async function getAgentActions(
-  userId: string,
-  limit: number = 10
-) {
+export async function getAgentActions(userId: string, limit: number = 10) {
   return await sql`
     SELECT * FROM agent_actions
     WHERE user_id = ${userId}
@@ -270,18 +264,16 @@ export async function getAgentActions(
 /**
  * Create test transfer session key
  */
-export async function createTestTransferSession(
-  walletAddress: string
-): Promise<any> {
+export async function createTestTransferSession(walletAddress: string): Promise<any> {
   // Generate proper hex addresses for testing
-  const smartAccount = `0x${'a'.repeat(40)}` as `0x${string}`;
-  const sessionKey = `0x${'b'.repeat(40)}` as `0x${string}`;
+  const smartAccount = `0x${"a".repeat(40)}` as `0x${string}`;
+  const sessionKey = `0x${"b".repeat(40)}` as `0x${string}`;
 
   const transferAuth = {
-    type: 'zerodev-transfer-session',
+    type: "zerodev-transfer-session",
     smartAccountAddress: smartAccount,
     sessionKeyAddress: sessionKey,
-    sessionPrivateKey: `0x${'1234567890abcdef'.repeat(4)}` as `0x${string}`,
+    sessionPrivateKey: `0x${"1234567890abcdef".repeat(4)}` as `0x${string}`,
     expiry: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60, // 30 days
     createdAt: Date.now(),
   };
@@ -298,19 +290,17 @@ export async function createTestTransferSession(
 /**
  * Create test agent session key with full permissions
  */
-export async function createTestAgentSession(
-  walletAddress: string
-): Promise<any> {
+export async function createTestAgentSession(walletAddress: string): Promise<any> {
   // Generate proper hex addresses for vaults
-  const vault1 = `0x${'c'.repeat(40)}` as `0x${string}`;
-  const vault2 = `0x${'d'.repeat(40)}` as `0x${string}`;
+  const vault1 = `0x${"c".repeat(40)}` as `0x${string}`;
+  const vault2 = `0x${"d".repeat(40)}` as `0x${string}`;
 
   const agentAuth = {
-    type: 'zerodev-agent-session',
-    smartAccountAddress: `0x${'e'.repeat(40)}` as `0x${string}`,
-    sessionKeyAddress: `0x${'f'.repeat(40)}` as `0x${string}`,
-    serializedAccount: `base64_test_serialized_${'a'.repeat(100)}`, // Serialized kernel account (new pattern)
-    sessionPrivateKey: `0x${'fedcba0987654321'.repeat(4)}` as `0x${string}`, // Legacy field
+    type: "zerodev-agent-session",
+    smartAccountAddress: `0x${"e".repeat(40)}` as `0x${string}`,
+    sessionKeyAddress: `0x${"f".repeat(40)}` as `0x${string}`,
+    serializedAccount: `base64_test_serialized_${"a".repeat(100)}`, // Serialized kernel account (new pattern)
+    sessionPrivateKey: `0x${"fedcba0987654321".repeat(4)}` as `0x${string}`, // Legacy field
     expiry: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60, // 30 days
     approvedVaults: [vault1, vault2],
     timestamp: Date.now(),

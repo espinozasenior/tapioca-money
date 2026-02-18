@@ -32,16 +32,12 @@ interface AgentActivityResponse {
  * Hook to fetch agent activity for a user
  * Refreshes every 30 seconds to show real-time updates
  */
-export function useAgentActivity(
-  address?: string,
-  limit: number = 50,
-  offset: number = 0
-) {
+export function useAgentActivity(address?: string, limit: number = 50, offset: number = 0) {
   return useQuery<AgentActivityResponse>({
-    queryKey: ['agent-activity', address, limit, offset],
+    queryKey: ["agent-activity", address, limit, offset],
     queryFn: async () => {
       if (!address) {
-        throw new Error('Address is required');
+        throw new Error("Address is required");
       }
 
       const params = new URLSearchParams({
@@ -54,7 +50,7 @@ export function useAgentActivity(
 
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.error || 'Failed to fetch activity');
+        throw new Error(error.error || "Failed to fetch activity");
       }
 
       return res.json();
@@ -70,13 +66,13 @@ export function useAgentActivity(
  */
 export function useAgentGains(
   address?: string,
-  period: 'day' | 'week' | 'month' | 'year' | 'all' = 'all'
+  period: "day" | "week" | "month" | "year" | "all" = "all"
 ) {
   return useQuery({
-    queryKey: ['agent-gains', address, period],
+    queryKey: ["agent-gains", address, period],
     queryFn: async () => {
       if (!address) {
-        throw new Error('Address is required');
+        throw new Error("Address is required");
       }
 
       const params = new URLSearchParams({
@@ -88,7 +84,7 @@ export function useAgentGains(
 
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.error || 'Failed to fetch gains');
+        throw new Error(error.error || "Failed to fetch gains");
       }
 
       return res.json();

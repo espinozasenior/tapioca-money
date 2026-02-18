@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import crypto from "crypto";
 
 /**
  * AES-256-GCM encryption for sensitive data in database
@@ -10,11 +10,11 @@ import crypto from 'crypto';
  * - authTag: Authentication tag for tamper detection
  */
 
-const ALGORITHM = 'aes-256-gcm';
+const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12; // 96 bits recommended for GCM
 const AUTH_TAG_LENGTH = 16; // 128 bits
-const VERSION = 'v1';
-const PREFIX = 'encrypted';
+const VERSION = "v1";
+const PREFIX = "encrypted";
 
 /**
  * Get encryption key from environment variable
@@ -24,18 +24,18 @@ function getEncryptionKey(): Buffer {
   const key = process.env.DATABASE_ENCRYPTION_KEY;
 
   if (!key) {
-    throw new Error('DATABASE_ENCRYPTION_KEY environment variable is not set');
+    throw new Error("DATABASE_ENCRYPTION_KEY environment variable is not set");
   }
 
   // Key should be 64 hex characters (32 bytes)
   if (key.length !== 64) {
-    throw new Error('DATABASE_ENCRYPTION_KEY must be 64 hex characters (32 bytes)');
+    throw new Error("DATABASE_ENCRYPTION_KEY must be 64 hex characters (32 bytes)");
   }
 
   try {
-    return Buffer.from(key, 'hex');
+    return Buffer.from(key, "hex");
   } catch (error) {
-    throw new Error('DATABASE_ENCRYPTION_KEY must be a valid hex string');
+    throw new Error("DATABASE_ENCRYPTION_KEY must be a valid hex string");
   }
 }
 
@@ -55,7 +55,7 @@ export function isEncrypted(value: string): boolean {
  */
 export function encrypt(plaintext: string): string {
   if (!plaintext) {
-    throw new Error('Cannot encrypt empty string');
+    throw new Error("Cannot encrypt empty string");
   }
 
   // Don't re-encrypt already encrypted values
@@ -72,14 +72,14 @@ export function encrypt(plaintext: string): string {
   const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
 
   // Encrypt data
-  let ciphertext = cipher.update(plaintext, 'utf8', 'base64');
-  ciphertext += cipher.final('base64');
+  let ciphertext = cipher.update(plaintext, "utf8", "base64");
+  ciphertext += cipher.final("base64");
 
   // Get authentication tag (for tamper detection)
   const authTag = cipher.getAuthTag();
 
   // Return versioned format
-  return `${PREFIX}:${VERSION}:${iv.toString('base64')}:${ciphertext}:${authTag.toString('base64')}`;
+  return `${PREFIX}:${VERSION}:${iv.toString("base64")}:${ciphertext}:${authTag.toString("base64")}`;
 }
 
 /**
@@ -91,7 +91,7 @@ export function encrypt(plaintext: string): string {
  */
 export function decrypt(ciphertext: string): string {
   if (!ciphertext) {
-    throw new Error('Cannot decrypt empty string');
+    throw new Error("Cannot decrypt empty string");
   }
 
   // Backward compatibility: If not encrypted, return as-is (plaintext)
@@ -102,10 +102,10 @@ export function decrypt(ciphertext: string): string {
   const key = getEncryptionKey();
 
   // Parse encrypted format
-  const parts = ciphertext.split(':');
+  const parts = ciphertext.split(":");
 
   if (parts.length !== 5) {
-    throw new Error('Invalid encrypted format: expected 5 parts separated by colons');
+    throw new Error("Invalid encrypted format: expected 5 parts separated by colons");
   }
 
   const [prefix, version, ivBase64, encryptedData, authTagBase64] = parts;
@@ -122,8 +122,8 @@ export function decrypt(ciphertext: string): string {
 
   try {
     // Decode components
-    const iv = Buffer.from(ivBase64, 'base64');
-    const authTag = Buffer.from(authTagBase64, 'base64');
+    const iv = Buffer.from(ivBase64, "base64");
+    const authTag = Buffer.from(authTagBase64, "base64");
 
     // Validate lengths
     if (iv.length !== IV_LENGTH) {
@@ -131,7 +131,9 @@ export function decrypt(ciphertext: string): string {
     }
 
     if (authTag.length !== AUTH_TAG_LENGTH) {
-      throw new Error(`Invalid auth tag length: expected ${AUTH_TAG_LENGTH} bytes, got ${authTag.length}`);
+      throw new Error(
+        `Invalid auth tag length: expected ${AUTH_TAG_LENGTH} bytes, got ${authTag.length}`
+      );
     }
 
     // Create decipher
@@ -139,19 +141,19 @@ export function decrypt(ciphertext: string): string {
     decipher.setAuthTag(authTag);
 
     // Decrypt data
-    let plaintext = decipher.update(encryptedData, 'base64', 'utf8');
-    plaintext += decipher.final('utf8');
+    let plaintext = decipher.update(encryptedData, "base64", "utf8");
+    plaintext += decipher.final("utf8");
 
     return plaintext;
   } catch (error) {
     if (error instanceof Error) {
       // Auth tag verification failure indicates tampering
-      if (error.message.includes('auth')) {
-        throw new Error('Decryption failed: data has been tampered with or corrupted');
+      if (error.message.includes("auth")) {
+        throw new Error("Decryption failed: data has been tampered with or corrupted");
       }
       throw new Error(`Decryption failed: ${error.message}`);
     }
-    throw new Error('Decryption failed: unknown error');
+    throw new Error("Decryption failed: unknown error");
   }
 }
 
@@ -160,5 +162,5 @@ export function decrypt(ciphertext: string): string {
  * @returns 64-character hex string (32 bytes)
  */
 export function generateKey(): string {
-  return crypto.randomBytes(32).toString('hex');
+  return crypto.randomBytes(32).toString("hex");
 }

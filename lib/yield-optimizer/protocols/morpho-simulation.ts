@@ -33,7 +33,7 @@ export function createSimulationState(
   blockNumber: bigint = BigInt(Math.floor(Date.now() / 1000))
 ): SimulationState {
   const marketId = getMarketIdFromParams(MORPHO_USDC_MARKET_PARAMS);
-  
+
   // Default market state (supply-only market)
   const defaultMarket: Market = {
     params: {
@@ -97,11 +97,11 @@ export function simulateSupply(
   };
 
   const newState = simulateOperation(operation, simState) as SimulationState;
-  
+
   // Calculate shares received by comparing position before/after
   const positionBefore = simState.tryGetPosition(userAddress, marketId);
   const positionAfter = newState.tryGetPosition(userAddress, marketId);
-  
+
   const sharesBefore = positionBefore?.supplyShares || 0n;
   const sharesAfter = positionAfter?.supplyShares || 0n;
   const expectedShares = sharesAfter - sharesBefore;
@@ -112,18 +112,15 @@ export function simulateSupply(
 /**
  * Convert shares to assets using market state
  */
-export function sharesToAssets(
-  shares: bigint,
-  state?: SimulationState
-): bigint {
+export function sharesToAssets(shares: bigint, state?: SimulationState): bigint {
   const simState = state || createSimulationState();
   const marketId = getMarketIdFromParams(MORPHO_USDC_MARKET_PARAMS);
   const market = simState.tryGetMarket(marketId);
-  
+
   if (!market || market.totalSupplyShares === 0n) {
     return shares; // 1:1 fallback
   }
-  
+
   // assets = shares * totalAssets / totalShares
   return (shares * market.totalSupplyAssets) / market.totalSupplyShares;
 }
@@ -131,18 +128,15 @@ export function sharesToAssets(
 /**
  * Convert assets to shares using market state
  */
-export function assetsToShares(
-  assets: bigint,
-  state?: SimulationState
-): bigint {
+export function assetsToShares(assets: bigint, state?: SimulationState): bigint {
   const simState = state || createSimulationState();
   const marketId = getMarketIdFromParams(MORPHO_USDC_MARKET_PARAMS);
   const market = simState.tryGetMarket(marketId);
-  
+
   if (!market || market.totalSupplyAssets === 0n) {
     return assets; // 1:1 fallback
   }
-  
+
   // shares = assets * totalShares / totalAssets
   return (assets * market.totalSupplyShares) / market.totalSupplyAssets;
 }
@@ -155,25 +149,25 @@ export function calculateSupplyApy(state?: SimulationState): number {
   const simState = state || createSimulationState();
   const marketId = getMarketIdFromParams(MORPHO_USDC_MARKET_PARAMS);
   const market = simState.tryGetMarket(marketId);
-  
+
   if (!market) {
     return 0.045; // Default 4.5% estimate
   }
-  
+
   // For supply-only market with no borrowing, APY is 0 from interest
   // Real APY would come from protocol rewards or incentives
   if (market.totalBorrowAssets === 0n) {
     return 0.045; // Estimated APY from incentives
   }
-  
+
   // Calculate utilization rate
   const utilization = Number(market.totalBorrowAssets) / Number(market.totalSupplyAssets);
-  
+
   // Simple APY model based on utilization (would use IRM in production)
   const baseRate = 0.02; // 2% base
   const utilizationMultiplier = 0.1; // 10% at 100% utilization
-  
-  return baseRate + (utilization * utilizationMultiplier);
+
+  return baseRate + utilization * utilizationMultiplier;
 }
 
 /**
@@ -193,13 +187,14 @@ export function previewSupply(
 ): SupplyPreview {
   const simState = state || createSimulationState();
   const { expectedShares } = simulateSupply(userAddress, amount, simState);
-  
+
   // Calculate price impact (difference from 1:1 ratio)
   const idealShares = amount;
-  const priceImpact = expectedShares > 0n 
-    ? Math.abs(Number(expectedShares - idealShares) / Number(idealShares)) * 100
-    : 0;
-  
+  const priceImpact =
+    expectedShares > 0n
+      ? Math.abs(Number(expectedShares - idealShares) / Number(idealShares)) * 100
+      : 0;
+
   return {
     inputAssets: amount,
     expectedShares,

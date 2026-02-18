@@ -3,25 +3,25 @@
  * Tests for USDC/USD price feed staleness, depeg detection, and L2 sequencer uptime
  */
 
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from "vitest";
 
 // Mock readContract responses per call
 const mockReadContract = vi.fn();
 
-vi.mock('viem', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('viem')>();
+vi.mock("viem", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("viem")>();
   return {
     ...actual,
     createPublicClient: () => ({ readContract: mockReadContract }),
   };
 });
 
-vi.mock('@/lib/yield-optimizer/config', () => ({
-  CHAIN_CONFIG: { rpcUrl: 'https://test-rpc.example.com', chainId: 8453, name: 'Base' },
+vi.mock("@/lib/yield-optimizer/config", () => ({
+  CHAIN_CONFIG: { rpcUrl: "https://test-rpc.example.com", chainId: 8453, name: "Base" },
 }));
 
 // Import after mocks are set up
-const { getUsdcPrice, isRebalanceSafe } = await import('@/lib/oracles/chainlink');
+const { getUsdcPrice, isRebalanceSafe } = await import("@/lib/oracles/chainlink");
 
 // Helpers to configure mock responses
 const NOW_UNIX = Math.floor(Date.now() / 1000);
@@ -49,13 +49,13 @@ function mockDecimals(decimals: number = 8) {
   return decimals;
 }
 
-describe('Chainlink Oracle Safety Checks', () => {
+describe("Chainlink Oracle Safety Checks", () => {
   beforeEach(() => {
     mockReadContract.mockReset();
   });
 
-  describe('getUsdcPrice', () => {
-    test('returns correct price for healthy feed', async () => {
+  describe("getUsdcPrice", () => {
+    test("returns correct price for healthy feed", async () => {
       mockReadContract
         .mockResolvedValueOnce(mockPriceData(100010000n, 1800)) // $1.0001, updated 30min ago
         .mockResolvedValueOnce(mockDecimals(8));
@@ -67,7 +67,7 @@ describe('Chainlink Oracle Safety Checks', () => {
       expect(result.isDepegged).toBe(false);
     });
 
-    test('detects stale data (>24h old)', async () => {
+    test("detects stale data (>24h old)", async () => {
       mockReadContract
         .mockResolvedValueOnce(mockPriceData(100000000n, 90000)) // updated 25h ago
         .mockResolvedValueOnce(mockDecimals(8));
@@ -77,7 +77,7 @@ describe('Chainlink Oracle Safety Checks', () => {
       expect(result.isStale).toBe(true);
     });
 
-    test('does not flag data updated 23h ago as stale', async () => {
+    test("does not flag data updated 23h ago as stale", async () => {
       mockReadContract
         .mockResolvedValueOnce(mockPriceData(100000000n, 82800)) // updated 23h ago
         .mockResolvedValueOnce(mockDecimals(8));
@@ -87,7 +87,7 @@ describe('Chainlink Oracle Safety Checks', () => {
       expect(result.isStale).toBe(false);
     });
 
-    test('detects USDC depeg above 0.5%', async () => {
+    test("detects USDC depeg above 0.5%", async () => {
       mockReadContract
         .mockResolvedValueOnce(mockPriceData(99400000n, 1800)) // $0.994 (0.6% deviation)
         .mockResolvedValueOnce(mockDecimals(8));
@@ -97,7 +97,7 @@ describe('Chainlink Oracle Safety Checks', () => {
       expect(result.isDepegged).toBe(true);
     });
 
-    test('does not flag 0.4% deviation as depeg', async () => {
+    test("does not flag 0.4% deviation as depeg", async () => {
       mockReadContract
         .mockResolvedValueOnce(mockPriceData(99600000n, 1800)) // $0.996 (0.4% deviation)
         .mockResolvedValueOnce(mockDecimals(8));
@@ -108,12 +108,12 @@ describe('Chainlink Oracle Safety Checks', () => {
     });
   });
 
-  describe('isRebalanceSafe', () => {
-    test('returns safe when sequencer is up and price is healthy', async () => {
+  describe("isRebalanceSafe", () => {
+    test("returns safe when sequencer is up and price is healthy", async () => {
       mockReadContract
-        .mockResolvedValueOnce(mockSequencerUp())         // sequencer check
+        .mockResolvedValueOnce(mockSequencerUp()) // sequencer check
         .mockResolvedValueOnce(mockPriceData(100000000n)) // price feed
-        .mockResolvedValueOnce(mockDecimals(8));           // decimals
+        .mockResolvedValueOnce(mockDecimals(8)); // decimals
 
       const result = await isRebalanceSafe();
 
@@ -121,26 +121,26 @@ describe('Chainlink Oracle Safety Checks', () => {
       expect(result.reason).toBeUndefined();
     });
 
-    test('blocks when sequencer is down', async () => {
+    test("blocks when sequencer is down", async () => {
       mockReadContract.mockResolvedValueOnce(mockSequencerDown());
 
       const result = await isRebalanceSafe();
 
       expect(result.safe).toBe(false);
-      expect(result.reason).toContain('sequencer is down');
+      expect(result.reason).toContain("sequencer is down");
     });
 
-    test('blocks during sequencer grace period', async () => {
+    test("blocks during sequencer grace period", async () => {
       mockReadContract.mockResolvedValueOnce(mockSequencerRecentRestart(600)); // 10min ago
 
       const result = await isRebalanceSafe();
 
       expect(result.safe).toBe(false);
-      expect(result.reason).toContain('recently restarted');
-      expect(result.reason).toContain('grace period');
+      expect(result.reason).toContain("recently restarted");
+      expect(result.reason).toContain("grace period");
     });
 
-    test('allows after sequencer grace period passes', async () => {
+    test("allows after sequencer grace period passes", async () => {
       mockReadContract
         .mockResolvedValueOnce(mockSequencerUp(NOW_UNIX - 3700)) // restarted 1h+ ago
         .mockResolvedValueOnce(mockPriceData(100000000n))
@@ -151,7 +151,7 @@ describe('Chainlink Oracle Safety Checks', () => {
       expect(result.safe).toBe(true);
     });
 
-    test('blocks when price data is stale', async () => {
+    test("blocks when price data is stale", async () => {
       mockReadContract
         .mockResolvedValueOnce(mockSequencerUp())
         .mockResolvedValueOnce(mockPriceData(100000000n, 90000)) // 25h old
@@ -160,10 +160,10 @@ describe('Chainlink Oracle Safety Checks', () => {
       const result = await isRebalanceSafe();
 
       expect(result.safe).toBe(false);
-      expect(result.reason).toContain('stale');
+      expect(result.reason).toContain("stale");
     });
 
-    test('blocks when USDC is depegged', async () => {
+    test("blocks when USDC is depegged", async () => {
       mockReadContract
         .mockResolvedValueOnce(mockSequencerUp())
         .mockResolvedValueOnce(mockPriceData(98000000n, 1800)) // $0.98
@@ -172,19 +172,19 @@ describe('Chainlink Oracle Safety Checks', () => {
       const result = await isRebalanceSafe();
 
       expect(result.safe).toBe(false);
-      expect(result.reason).toContain('depegged');
+      expect(result.reason).toContain("depegged");
     });
 
-    test('handles RPC errors gracefully', async () => {
-      mockReadContract.mockRejectedValueOnce(new Error('RPC timeout'));
+    test("handles RPC errors gracefully", async () => {
+      mockReadContract.mockRejectedValueOnce(new Error("RPC timeout"));
 
       const result = await isRebalanceSafe();
 
       expect(result.safe).toBe(false);
-      expect(result.reason).toContain('RPC timeout');
+      expect(result.reason).toContain("RPC timeout");
     });
 
-    test('checks sequencer before price feed (short-circuits)', async () => {
+    test("checks sequencer before price feed (short-circuits)", async () => {
       mockReadContract.mockResolvedValueOnce(mockSequencerDown());
 
       await isRebalanceSafe();

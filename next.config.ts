@@ -60,7 +60,7 @@ const nextConfig: NextConfig = {
     // Exclude React Native transitive dependencies (completely unused in this EVM project)
     config.plugins.push(
       new IgnorePlugin({ resourceRegExp: /^react-native$/ }),
-      new IgnorePlugin({ resourceRegExp: /^@react-native/ }),
+      new IgnorePlugin({ resourceRegExp: /^@react-native/ })
     );
 
     // Stub out heavy Solana transitive deps from @crossmint/client-sdk-react-ui

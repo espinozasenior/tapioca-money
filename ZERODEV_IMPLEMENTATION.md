@@ -193,14 +193,14 @@ curl -X POST http://localhost:3000/api/agent/cron \
 
 ## Current Implementation
 
-| Aspect | ZeroDev |
-|--------|---------|
-| **Smart Account** | Kernel V3 ✓ |
-| **Session Keys** | Session Key Plugin ✓ |
-| **SDK Compatibility** | ✅ Works with Privy |
-| **Documentation** | Comprehensive |
-| **Agent Wallet** | ❌ Not needed (session key = permission grant) |
-| **Permission Model** | ZeroDev Policies ✓ |
+| Aspect                | ZeroDev                                        |
+| --------------------- | ---------------------------------------------- |
+| **Smart Account**     | Kernel V3 ✓                                    |
+| **Session Keys**      | Session Key Plugin ✓                           |
+| **SDK Compatibility** | ✅ Works with Privy                            |
+| **Documentation**     | Comprehensive                                  |
+| **Agent Wallet**      | ❌ Not needed (session key = permission grant) |
+| **Permission Model**  | ZeroDev Policies ✓                             |
 
 ---
 
@@ -222,7 +222,7 @@ curl -X POST http://localhost:3000/api/agent/cron \
 
 ```typescript
 // Example using encryption
-import { encrypt } from './encryption';
+import { encrypt } from "./encryption";
 
 const encryptedKey = await encrypt(sessionPrivateKey, SECRET_KEY);
 

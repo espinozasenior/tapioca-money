@@ -23,7 +23,13 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
   const { wallet } = useWallet();
   const { getAccessToken } = usePrivy();
   const { displayableBalance, refetch: refetchBalance } = useBalance();
-  const { isRegistered, hasAuthorization, isLoading: isAgentLoading, register, isRegistering } = useAgent();
+  const {
+    isRegistered,
+    hasAuthorization,
+    isLoading: isAgentLoading,
+    register,
+    isRegistering,
+  } = useAgent();
   const [amount, setAmount] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -72,7 +78,7 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ vaultAddress, amount }),
       });
@@ -94,12 +100,16 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
 
       let errorMessage = err.message || "Failed to deposit. Please try again.";
 
-      if (errorMessage.includes("Agent not registered") || errorMessage.includes("User not found")) {
+      if (
+        errorMessage.includes("Agent not registered") ||
+        errorMessage.includes("User not found")
+      ) {
         errorMessage = "Please register your agent first to enable gasless deposits.";
       } else if (errorMessage.includes("Session key expired")) {
         errorMessage = "Your session has expired. Please re-register your agent.";
       } else if (errorMessage.includes("Vault not approved")) {
-        errorMessage = "This vault is not approved. Please re-register your agent with updated vault permissions.";
+        errorMessage =
+          "This vault is not approved. Please re-register your agent with updated vault permissions.";
       }
 
       setError(errorMessage);
@@ -161,7 +171,7 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
         )}
 
         {/* Safety Information */}
-        <div className="mt-4 border-t border-primary/10 pt-4">
+        <div className="border-primary/10 mt-4 border-t pt-4">
           <VaultSafetyDetails vault={yieldOpportunity} />
         </div>
       </div>
@@ -231,9 +241,7 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
 
       {/* Deposit Button */}
       <PrimaryButton onClick={handleDeposit} disabled={!isAmountValid || isLoading}>
-        {isLoading
-          ? "Processing deposit..."
-          : `Deposit ${amount || "0"} USDC`}
+        {isLoading ? "Processing deposit..." : `Deposit ${amount || "0"} USDC`}
       </PrimaryButton>
 
       {/* Risk Disclaimer */}

@@ -3,16 +3,14 @@
  * Uses user's session key authorization for gasless execution via ZeroDev
  */
 
-import { encodeFunctionData, parseAbi, parseUnits, type Hex } from 'viem';
-import { createDeserializedKernelClient, createSessionKernelClient } from './kernel-client';
+import { encodeFunctionData, parseAbi, parseUnits, type Hex } from "viem";
+import { createDeserializedKernelClient, createSessionKernelClient } from "./kernel-client";
 
 const VAULT_ABI = parseAbi([
-  'function deposit(uint256 assets, address receiver) returns (uint256 shares)',
+  "function deposit(uint256 assets, address receiver) returns (uint256 shares)",
 ]);
 
-const ERC20_ABI = parseAbi([
-  'function approve(address spender, uint256 amount) returns (bool)',
-]);
+const ERC20_ABI = parseAbi(["function approve(address spender, uint256 amount) returns (bool)"]);
 
 const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
 
@@ -47,15 +45,15 @@ export async function executeGaslessDeposit(
   params: VaultDepositParams
 ): Promise<VaultDepositResult> {
   try {
-    console.log('[VaultDeposit] Starting ZeroDev execution...');
-    console.log('[VaultDeposit] Vault:', params.vaultAddress);
-    console.log('[VaultDeposit] Amount:', params.amount, 'USDC');
+    console.log("[VaultDeposit] Starting ZeroDev execution...");
+    console.log("[VaultDeposit] Vault:", params.vaultAddress);
+    console.log("[VaultDeposit] Amount:", params.amount, "USDC");
 
     // Check if simulation mode
-    const isSimulation = process.env.AGENT_SIMULATION_MODE === 'true';
+    const isSimulation = process.env.AGENT_SIMULATION_MODE === "true";
 
     if (isSimulation) {
-      console.log('[VaultDeposit] SIMULATION MODE - No real transaction');
+      console.log("[VaultDeposit] SIMULATION MODE - No real transaction");
       const mockHash = `0x${Math.random().toString(16).slice(2)}${Math.random().toString(16).slice(2)}${Math.random().toString(16).slice(2)}`;
       return {
         success: true,
@@ -67,11 +65,11 @@ export async function executeGaslessDeposit(
     // Create kernel client — prefer deserialized account (new pattern)
     let kernelClient;
     if (params.serializedAccount) {
-      console.log('[VaultDeposit] Using deserialized kernel client');
+      console.log("[VaultDeposit] Using deserialized kernel client");
       kernelClient = await createDeserializedKernelClient(params.serializedAccount);
     } else if (params.sessionPrivateKey) {
       // Legacy path — will fail with "sudo validator not set" for first UserOp
-      console.warn('[VaultDeposit] Using legacy session key path — user should re-register');
+      console.warn("[VaultDeposit] Using legacy session key path — user should re-register");
       const permissions: Array<{ target: `0x${string}`; selector: Hex }> = [];
       if (params.approvedVaults && params.approvedVaults.length > 0) {
         permissions.push({ target: USDC_ADDRESS, selector: APPROVE_SELECTOR });
@@ -86,7 +84,7 @@ export async function executeGaslessDeposit(
         eip7702SignedAuth: params.eip7702SignedAuth,
       });
     } else {
-      throw new Error('No serializedAccount or sessionPrivateKey provided. User must register.');
+      throw new Error("No serializedAccount or sessionPrivateKey provided. User must register.");
     }
 
     // Build approve + deposit calls (batched atomically)
@@ -94,17 +92,17 @@ export async function executeGaslessDeposit(
 
     const approveCallData = encodeFunctionData({
       abi: ERC20_ABI,
-      functionName: 'approve',
+      functionName: "approve",
       args: [params.vaultAddress, amountInUSDC],
     });
 
     const depositCallData = encodeFunctionData({
       abi: VAULT_ABI,
-      functionName: 'deposit',
+      functionName: "deposit",
       args: [amountInUSDC, params.smartAccountAddress],
     });
 
-    console.log('[VaultDeposit] Executing approve + deposit batch...');
+    console.log("[VaultDeposit] Executing approve + deposit batch...");
 
     // Execute both calls atomically via single UserOperation
     const userOpHash = await kernelClient.sendUserOperation({
@@ -114,22 +112,21 @@ export async function executeGaslessDeposit(
       ],
     });
 
-    console.log('[VaultDeposit] UserOp submitted:', userOpHash);
+    console.log("[VaultDeposit] UserOp submitted:", userOpHash);
 
     const receipt = await kernelClient.waitForUserOperationReceipt({
       hash: userOpHash,
     });
 
-    console.log('[VaultDeposit] Transaction confirmed:', receipt.receipt.transactionHash);
+    console.log("[VaultDeposit] Transaction confirmed:", receipt.receipt.transactionHash);
 
     return {
       success: true,
       txHash: receipt.receipt.transactionHash,
       userOpHash,
     };
-
   } catch (error: any) {
-    console.error('[VaultDeposit] Execution error:', error);
+    console.error("[VaultDeposit] Execution error:", error);
     return {
       success: false,
       error: error.message,

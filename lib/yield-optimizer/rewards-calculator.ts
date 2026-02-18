@@ -50,9 +50,7 @@ export function calculateAccruedRewards(position: Position): PositionRewards {
 /**
  * Calculate aggregate rewards across multiple positions
  */
-export function calculateTotalRewards(
-  positions: Position[]
-): {
+export function calculateTotalRewards(positions: Position[]): {
   totalEarned: number;
   monthlyRate: number;
   positionCount: number;

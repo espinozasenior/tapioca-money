@@ -11,15 +11,15 @@
  * deserialization during execution.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
-import { encryptAuthorization } from '@/lib/security/session-encryption';
+import { NextRequest, NextResponse } from "next/server";
+import { neon } from "@neondatabase/serverless";
+import { encryptAuthorization } from "@/lib/security/session-encryption";
 import {
   requireAuthForAddress,
   unauthorizedResponse,
   forbiddenResponse,
-} from '@/lib/auth/middleware';
-import { revokeSession } from '@/lib/security/session-revocation';
+} from "@/lib/auth/middleware";
+import { revokeSession } from "@/lib/security/session-revocation";
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -43,47 +43,35 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!address) {
-      return NextResponse.json(
-        { error: 'Missing wallet address' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing wallet address" }, { status: 400 });
     }
 
     if (!serializedAccount) {
-      return NextResponse.json(
-        { error: 'Missing serialized account data' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing serialized account data" }, { status: 400 });
     }
 
     if (!sessionKeyAddress) {
-      return NextResponse.json(
-        { error: 'Missing session key address' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing session key address" }, { status: 400 });
     }
 
     if (!approvedVaults || !Array.isArray(approvedVaults)) {
-      return NextResponse.json(
-        { error: 'Missing or invalid approved vaults' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing or invalid approved vaults" }, { status: 400 });
     }
 
     // SECURITY: Verify authenticated user owns the requested address
     const authResult = await requireAuthForAddress(request, address);
     if (!authResult.authenticated) {
-      if (authResult.error === 'Address does not belong to authenticated user') {
+      if (authResult.error === "Address does not belong to authenticated user") {
         return forbiddenResponse(authResult.error);
       }
       return unauthorizedResponse(authResult.error);
     }
 
-    console.log('[Session Key] Storing serialized account for:', address);
+    console.log("[Session Key] Storing serialized account for:", address);
 
     // Create authorization object and encrypt
     const authorization = {
-      type: 'zerodev-7702-session' as const,
+      type: "zerodev-7702-session" as const,
       eoaAddress: address as `0x${string}`,
       sessionKeyAddress: sessionKeyAddress as `0x${string}`,
       serializedAccount, // Will be encrypted
@@ -131,7 +119,7 @@ export async function POST(request: NextRequest) {
       ON CONFLICT (user_id) DO NOTHING
     `;
 
-    console.log('[Session Key] Serialized account stored successfully');
+    console.log("[Session Key] Serialized account stored successfully");
 
     // Return ONLY the public session key address
     return NextResponse.json({
@@ -140,10 +128,10 @@ export async function POST(request: NextRequest) {
       expiry,
     });
   } catch (error: any) {
-    console.error('[Session Key] Storage error:', error);
+    console.error("[Session Key] Storage error:", error);
     return NextResponse.json(
       {
-        error: error.message || 'Failed to store session data',
+        error: error.message || "Failed to store session data",
       },
       { status: 500 }
     );
@@ -160,22 +148,19 @@ export async function DELETE(request: NextRequest) {
     const { address } = body;
 
     if (!address) {
-      return NextResponse.json(
-        { error: 'Missing wallet address' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing wallet address" }, { status: 400 });
     }
 
     // SECURITY: Verify authenticated user owns the requested address
     const authResult = await requireAuthForAddress(request, address);
     if (!authResult.authenticated) {
-      if (authResult.error === 'Address does not belong to authenticated user') {
+      if (authResult.error === "Address does not belong to authenticated user") {
         return forbiddenResponse(authResult.error);
       }
       return unauthorizedResponse(authResult.error);
     }
 
-    console.log('[Session Key] Revoking session key for:', address);
+    console.log("[Session Key] Revoking session key for:", address);
 
     // Read existing session key address for revocation blacklist
     const existing = await sql`
@@ -207,21 +192,21 @@ export async function DELETE(request: NextRequest) {
       )
       SELECT id, 'delegation_cleared', 'success', ${JSON.stringify({
         timestamp: Date.now(),
-        revokedBy: 'user',
+        revokedBy: "user",
       })}::jsonb
       FROM users WHERE wallet_address = ${normalizedAddress}
     `;
 
-    console.log('[Session Key] Session key revoked');
+    console.log("[Session Key] Session key revoked");
 
     return NextResponse.json({
       success: true,
-      message: 'Session key revoked successfully',
+      message: "Session key revoked successfully",
     });
   } catch (error: any) {
-    console.error('[Session Key] Revocation error:', error);
+    console.error("[Session Key] Revocation error:", error);
     return NextResponse.json(
-      { error: error.message || 'Failed to revoke session key' },
+      { error: error.message || "Failed to revoke session key" },
       { status: 500 }
     );
   }

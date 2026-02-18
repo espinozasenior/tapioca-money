@@ -1,13 +1,12 @@
-
 import { NextRequest, NextResponse } from "next/server";
-import { neon } from '@neondatabase/serverless';
-import { encryptAuthorization } from '@/lib/security/session-encryption';
+import { neon } from "@neondatabase/serverless";
+import { encryptAuthorization } from "@/lib/security/session-encryption";
 import {
   authenticateRequest,
   requireAuthForAddress,
   unauthorizedResponse,
   forbiddenResponse,
-} from '@/lib/auth/middleware';
+} from "@/lib/auth/middleware";
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -33,7 +32,7 @@ export async function POST(request: NextRequest) {
     // SECURITY: Verify authenticated user owns the requested address
     const authResult = await requireAuthForAddress(request, address);
     if (!authResult.authenticated) {
-      if (authResult.error === 'Address does not belong to authenticated user') {
+      if (authResult.error === "Address does not belong to authenticated user") {
         return forbiddenResponse(authResult.error);
       }
       return unauthorizedResponse(authResult.error);
@@ -92,14 +91,17 @@ export async function POST(request: NextRequest) {
       eoaAddress: authorization.eoaAddress,
       sessionKeyAddress: authorization.sessionKeyAddress,
       approvedVaults: authorization.approvedVaults?.length || 0,
-      status: "active"
+      status: "active",
     });
   } catch (error: any) {
     console.error("Agent registration error:", error);
-    return NextResponse.json({
-      error: error.message || "Failed to register agent",
-      details: process.env.NODE_ENV === "development" ? error.stack : undefined
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: error.message || "Failed to register agent",
+        details: process.env.NODE_ENV === "development" ? error.stack : undefined,
+      },
+      { status: 500 }
+    );
   }
 }
 
@@ -128,8 +130,8 @@ export async function GET(request: NextRequest) {
       address,
       userFound: users.length > 0,
       hasAuth: users.length > 0 && users[0].authorization_7702 !== null,
-      authType: users.length > 0 ? typeof users[0].authorization_7702 : 'N/A',
-      autoOptimize: users.length > 0 ? users[0].auto_optimize_enabled : 'N/A'
+      authType: users.length > 0 ? typeof users[0].authorization_7702 : "N/A",
+      autoOptimize: users.length > 0 ? users[0].auto_optimize_enabled : "N/A",
     });
 
     const hasAuthorization = users.length > 0 && users[0].authorization_7702 !== null;
@@ -140,7 +142,7 @@ export async function GET(request: NextRequest) {
       isRegistered,
       autoOptimizeEnabled,
       hasAuthorization,
-      status: isRegistered ? "active" : "inactive"
+      status: isRegistered ? "active" : "inactive",
     });
   } catch (error: any) {
     console.error("Agent status check error:", error);
@@ -150,7 +152,7 @@ export async function GET(request: NextRequest) {
         autoOptimizeEnabled: false,
         hasAuthorization: false,
         status: "error",
-        error: process.env.NODE_ENV === "development" ? error.message : "Database error"
+        error: process.env.NODE_ENV === "development" ? error.message : "Database error",
       },
       { status: 500 }
     );
@@ -179,7 +181,7 @@ export async function PATCH(request: NextRequest) {
       return unauthorizedResponse(authResult.error);
     }
 
-    if (typeof autoOptimizeEnabled !== 'boolean') {
+    if (typeof autoOptimizeEnabled !== "boolean") {
       return NextResponse.json({ error: "autoOptimizeEnabled must be a boolean" }, { status: 400 });
     }
 
@@ -192,7 +194,10 @@ export async function PATCH(request: NextRequest) {
     `;
 
     if (users.length === 0 || !users[0].authorization_7702) {
-      return NextResponse.json({ error: "Agent not registered. Please register first." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Agent not registered. Please register first." },
+        { status: 400 }
+      );
     }
 
     // Update the auto_optimize_enabled flag
@@ -206,10 +211,13 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({
       message: "Auto-optimize setting updated successfully",
       autoOptimizeEnabled,
-      status: autoOptimizeEnabled ? "active" : "inactive"
+      status: autoOptimizeEnabled ? "active" : "inactive",
     });
   } catch (error: any) {
     console.error("Auto-optimize update error:", error);
-    return NextResponse.json({ error: error.message || "Failed to update auto-optimize setting" }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message || "Failed to update auto-optimize setting" },
+      { status: 500 }
+    );
   }
 }

@@ -18,9 +18,9 @@ import {
   setCachedUserPositions,
   getCachedBestVault,
   setCachedBestVault,
-} from '@/lib/redis/morpho-cache';
+} from "@/lib/redis/morpho-cache";
 
-const MORPHO_API_URL = 'https://api.morpho.org/graphql';
+const MORPHO_API_URL = "https://api.morpho.org/graphql";
 
 export interface MorphoVault {
   address: `0x${string}`;
@@ -76,9 +76,9 @@ export class MorphoClient {
    */
   private async query<T>(query: string, variables?: Record<string, any>): Promise<T> {
     const response = await fetch(this.apiUrl, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ query, variables }),
     });
@@ -194,10 +194,7 @@ export class MorphoClient {
    * @param chainId - Chain ID
    * @returns Vault details or null if not found
    */
-  async fetchVault(
-    vaultAddress: string,
-    chainId: number
-  ): Promise<MorphoVault | null> {
+  async fetchVault(vaultAddress: string, chainId: number): Promise<MorphoVault | null> {
     const query = `
       query GetVault($address: String!, $chainId: Int!) {
         vaultV2ByAddress(address: $address, chainId: $chainId) {
@@ -287,7 +284,9 @@ export class MorphoClient {
       }
     `;
 
-    const data = await this.query<{ userByAddress: { vaultV2Positions: MorphoUserPosition[] } | null }>(query, {
+    const data = await this.query<{
+      userByAddress: { vaultV2Positions: MorphoUserPosition[] } | null;
+    }>(query, {
       userAddress: userAddress.toLowerCase(),
       chainId,
     });
@@ -318,9 +317,8 @@ export class MorphoClient {
   ): Promise<MorphoUserPosition | null> {
     const positions = await this.fetchUserPositions(userAddress, chainId);
     return (
-      positions.find(
-        (pos) => pos.vault.address.toLowerCase() === vaultAddress.toLowerCase()
-      ) || null
+      positions.find((pos) => pos.vault.address.toLowerCase() === vaultAddress.toLowerCase()) ||
+      null
     );
   }
 
@@ -351,9 +349,7 @@ export class MorphoClient {
     const vaults = await this.fetchVaults(chainId, assetSymbol, 50, skipCache);
 
     // Filter by minimum liquidity
-    const eligibleVaults = vaults.filter(
-      (vault) => vault.totalAssetsUsd >= minLiquidityUsd
-    );
+    const eligibleVaults = vaults.filter((vault) => vault.totalAssetsUsd >= minLiquidityUsd);
 
     // Return highest APY vault
     const bestVault = eligibleVaults.length > 0 ? eligibleVaults[0] : null;

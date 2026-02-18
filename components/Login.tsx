@@ -7,12 +7,12 @@ export function Login() {
   const { login, ready, authenticated } = usePrivy();
   const loginTriggeredRef = useRef(false);
 
-  console.log('[Login] Status:', { ready, authenticated });
+  console.log("[Login] Status:", { ready, authenticated });
 
   useEffect(() => {
     // Only trigger login once when Privy is ready and user not authenticated
     if (ready && !authenticated && !loginTriggeredRef.current) {
-      console.log('[Login] Triggering Privy login modal');
+      console.log("[Login] Triggering Privy login modal");
       loginTriggeredRef.current = true;
       login();
     }

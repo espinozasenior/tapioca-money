@@ -3,13 +3,13 @@
  * Uses user's session key authorization for gasless execution via ZeroDev
  */
 
-import { createPublicClient, encodeFunctionData, http, parseAbi, type Hex } from 'viem';
-import { base } from 'viem/chains';
-import { createDeserializedKernelClient, createSessionKernelClient } from './kernel-client';
-import { CHAIN_CONFIG } from '@/lib/yield-optimizer/config';
+import { createPublicClient, encodeFunctionData, http, parseAbi, type Hex } from "viem";
+import { base } from "viem/chains";
+import { createDeserializedKernelClient, createSessionKernelClient } from "./kernel-client";
+import { CHAIN_CONFIG } from "@/lib/yield-optimizer/config";
 
 const VAULT_ABI = parseAbi([
-  'function redeem(uint256 shares, address receiver, address owner) returns (uint256 assets)',
+  "function redeem(uint256 shares, address receiver, address owner) returns (uint256 assets)",
 ]);
 
 // Function selector for scoped permissions
@@ -37,19 +37,17 @@ export interface VaultRedeemResult {
  * Execute ERC4626 vault redeem via ZeroDev Kernel account with session key
  * All gas fees sponsored via bundler paymaster
  */
-export async function executeVaultRedeem(
-  params: VaultRedeemParams
-): Promise<VaultRedeemResult> {
+export async function executeVaultRedeem(params: VaultRedeemParams): Promise<VaultRedeemResult> {
   try {
-    console.log('[VaultRedeem] Starting ZeroDev execution...');
-    console.log('[VaultRedeem] Vault:', params.vaultAddress);
-    console.log('[VaultRedeem] Shares:', params.shares.toString());
+    console.log("[VaultRedeem] Starting ZeroDev execution...");
+    console.log("[VaultRedeem] Vault:", params.vaultAddress);
+    console.log("[VaultRedeem] Shares:", params.shares.toString());
 
     // Check if simulation mode
-    const isSimulation = process.env.AGENT_SIMULATION_MODE === 'true';
+    const isSimulation = process.env.AGENT_SIMULATION_MODE === "true";
 
     if (isSimulation) {
-      console.log('[VaultRedeem] SIMULATION MODE - No real transaction');
+      console.log("[VaultRedeem] SIMULATION MODE - No real transaction");
       const mockHash = `0x${Math.random().toString(16).slice(2)}${Math.random().toString(16).slice(2)}${Math.random().toString(16).slice(2)}`;
       return {
         success: true,
@@ -61,10 +59,10 @@ export async function executeVaultRedeem(
     // Create kernel client — prefer deserialized account (new pattern)
     let kernelClient;
     if (params.serializedAccount) {
-      console.log('[VaultRedeem] Using deserialized kernel client');
+      console.log("[VaultRedeem] Using deserialized kernel client");
       kernelClient = await createDeserializedKernelClient(params.serializedAccount);
     } else if (params.sessionPrivateKey) {
-      console.warn('[VaultRedeem] Using legacy session key path — user should re-register');
+      console.warn("[VaultRedeem] Using legacy session key path — user should re-register");
       const permissions: Array<{ target: `0x${string}`; selector: Hex }> = [];
       if (params.approvedVaults && params.approvedVaults.length > 0) {
         for (const vaultAddress of params.approvedVaults) {
@@ -77,7 +75,7 @@ export async function executeVaultRedeem(
         permissions,
       });
     } else {
-      throw new Error('No serializedAccount or sessionPrivateKey provided. User must register.');
+      throw new Error("No serializedAccount or sessionPrivateKey provided. User must register.");
     }
 
     // Pre-flight: simulate vault call directly to catch access control failures early
@@ -91,61 +89,57 @@ export async function executeVaultRedeem(
         account: params.smartAccountAddress,
         address: params.vaultAddress,
         abi: VAULT_ABI,
-        functionName: 'redeem',
+        functionName: "redeem",
         args: [params.shares, params.receiver, params.receiver],
       });
     } catch (simError: any) {
       const reason = simError.shortMessage || simError.message;
-      console.error('[VaultRedeem] Pre-flight vault simulation failed:', reason);
+      console.error("[VaultRedeem] Pre-flight vault simulation failed:", reason);
       return {
         success: false,
-        error: `Vault rejected the redeem: ${reason}. ` +
+        error:
+          `Vault rejected the redeem: ${reason}. ` +
           `This vault may restrict access to agent-operated accounts. ` +
           `Try redeeming directly from your wallet instead of through the agent.`,
       };
     }
-    console.log('[VaultRedeem] Pre-flight simulation passed');
+    console.log("[VaultRedeem] Pre-flight simulation passed");
 
     // Build redeem call
     const redeemCallData = encodeFunctionData({
       abi: VAULT_ABI,
-      functionName: 'redeem',
+      functionName: "redeem",
       args: [params.shares, params.receiver, params.receiver],
     });
 
-    console.log('[VaultRedeem] Executing redeem transaction...');
+    console.log("[VaultRedeem] Executing redeem transaction...");
 
     const userOpHash = await kernelClient.sendUserOperation({
-      calls: [
-        { to: params.vaultAddress, value: BigInt(0), data: redeemCallData },
-      ],
+      calls: [{ to: params.vaultAddress, value: BigInt(0), data: redeemCallData }],
     });
 
-    console.log('[VaultRedeem] UserOp submitted:', userOpHash);
+    console.log("[VaultRedeem] UserOp submitted:", userOpHash);
 
     const receipt = await kernelClient.waitForUserOperationReceipt({
       hash: userOpHash,
     });
 
-    console.log('[VaultRedeem] Transaction confirmed:', receipt.receipt.transactionHash);
+    console.log("[VaultRedeem] Transaction confirmed:", receipt.receipt.transactionHash);
 
     return {
       success: true,
       txHash: receipt.receipt.transactionHash,
       userOpHash,
     };
-
   } catch (error: any) {
-    console.error('[VaultRedeem] Execution error:', error);
-    const msg: string = error.message || '';
+    console.error("[VaultRedeem] Execution error:", error);
+    const msg: string = error.message || "";
     const isRateLimit =
-      msg.includes('AA23') ||
-      msg.includes('0x3e4983f6') ||
-      msg.includes('validateUserOp');
+      msg.includes("AA23") || msg.includes("0x3e4983f6") || msg.includes("validateUserOp");
     return {
       success: false,
       error: isRateLimit
-        ? 'Agent daily operation limit reached. Please re-register your agent to reset the limit, or try again tomorrow.'
+        ? "Agent daily operation limit reached. Please re-register your agent to reset the limit, or try again tomorrow."
         : msg,
     };
   }

@@ -1,11 +1,11 @@
 // Transaction executor for yield optimizer
 import { encodeFunctionData, parseUnits } from "viem";
 import { MORPHO_BLUE_BASE } from "./types";
-import { 
-  findActiveUsdcMarket, 
-  buildMorphoDepositTx, 
+import {
+  findActiveUsdcMarket,
+  buildMorphoDepositTx,
   buildMorphoWithdrawTx,
-  MORPHO_BLUE_ABI 
+  MORPHO_BLUE_ABI,
 } from "./protocols/morpho";
 import { PROTOCOLS, USDC_ADDRESS } from "./config";
 
@@ -128,7 +128,7 @@ export async function buildDepositTransaction(
     if (vaultAddress) {
       // Build ERC4626 vault deposit transaction
       const morphoTxs = buildMorphoDepositTx(amountWei, userAddress, vaultAddress);
-      
+
       transactions.push({
         id: `supply-${Date.now()}`,
         title: "Deposit to Morpho Vault",
@@ -144,17 +144,17 @@ export async function buildDepositTransaction(
     } else {
       // Fallback: direct market supply (for testing/legacy)
       const marketParams = await findActiveUsdcMarket();
-      
+
       if (!marketParams) {
         throw new Error(
           "Morpho USDC market not available. " +
-          "Please provide a vault address for production deposits."
+            "Please provide a vault address for production deposits."
         );
       }
-      
+
       // Build deposit transactions using refactored function
       const morphoTxs = buildMorphoDepositTx(amountWei, userAddress);
-      
+
       transactions.push({
         id: `supply-${Date.now()}`,
         title: "Supply to Morpho",
@@ -215,23 +215,20 @@ export async function buildRebalanceTransactions(
     amountWei,
     fromVaultAddress
   );
-  
+
   // Add withdrawal with stepIndex 0
-  transactions.push(...withdrawRes.transactions.map(tx => ({ ...tx, stepIndex: 0 })));
+  transactions.push(...withdrawRes.transactions.map((tx) => ({ ...tx, stepIndex: 0 })));
 
   // 2. Build Deposit (includes Approval)
-  const depositRes = await buildDepositTransaction(
-    toProtocol,
-    userAddress,
-    amount,
-    toVaultAddress
-  );
+  const depositRes = await buildDepositTransaction(toProtocol, userAddress, amount, toVaultAddress);
 
   // Add deposit steps starting from stepIndex 1
-  transactions.push(...depositRes.transactions.map(tx => ({ 
-    ...tx, 
-    stepIndex: tx.stepIndex + 1 
-  })));
+  transactions.push(
+    ...depositRes.transactions.map((tx) => ({
+      ...tx,
+      stepIndex: tx.stepIndex + 1,
+    }))
+  );
 
   return { transactions };
 }
@@ -255,14 +252,14 @@ export async function buildWithdrawTransaction(
   if (protocol === "morpho") {
     // Check if market exists
     const marketParams = await findActiveUsdcMarket();
-    
+
     if (!marketParams) {
       throw new Error("Morpho USDC market not available");
     }
 
     // Build withdrawal transaction
     const withdrawTx = buildMorphoWithdrawTx(userAddress, shares, assets, vaultAddress);
-    
+
     transactions.push({
       id: `withdraw-${Date.now()}`,
       title: "Withdraw from Morpho",

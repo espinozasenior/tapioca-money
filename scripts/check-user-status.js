@@ -3,7 +3,7 @@
  * Usage: node --env-file=.env scripts/check-user-status.js <wallet_address>
  */
 
-const { neon } = require('@neondatabase/serverless');
+const { neon } = require("@neondatabase/serverless");
 
 if (!process.env.DATABASE_URL) {
   console.error("❌ DATABASE_URL is not set");
@@ -33,7 +33,9 @@ async function checkUserStatus(walletAddress) {
 
     if (users.length === 0) {
       console.log("❌ User not found in database");
-      console.log("\n💡 Tip: Make sure you're using the correct wallet address (including 0x prefix and correct case)");
+      console.log(
+        "\n💡 Tip: Make sure you're using the correct wallet address (including 0x prefix and correct case)"
+      );
       return;
     }
 
@@ -64,7 +66,10 @@ async function checkUserStatus(walletAddress) {
       WHERE user_id = ${user.id}
     `;
 
-    console.log("\n  User Strategies:", strategies.length > 0 ? "✅ Configured" : "⚠️  Not configured");
+    console.log(
+      "\n  User Strategies:",
+      strategies.length > 0 ? "✅ Configured" : "⚠️  Not configured"
+    );
 
     // Check agent actions
     const actions = await sql`
@@ -98,7 +103,6 @@ async function checkUserStatus(walletAddress) {
       console.log("  ✅ Fully registered and active");
       console.log("  → The toggle should enable/disable auto-optimize");
     }
-
   } catch (error) {
     console.error("❌ Error:", error.message);
     if (error.message.includes('relation "users" does not exist')) {
@@ -106,7 +110,9 @@ async function checkUserStatus(walletAddress) {
       console.error("   psql $DATABASE_URL -f lib/yield-optimizer/db/schema.sql");
     } else if (error.message.includes('column "authorization_7702" does not exist')) {
       console.error("\n💡 The authorization_7702 column is missing. Run the migration:");
-      console.error("   psql $DATABASE_URL -f lib/yield-optimizer/db/migrate-add-authorization.sql");
+      console.error(
+        "   psql $DATABASE_URL -f lib/yield-optimizer/db/migrate-add-authorization.sql"
+      );
     }
     console.error(error);
   }

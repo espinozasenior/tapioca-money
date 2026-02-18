@@ -1,11 +1,7 @@
 "use client";
 
 import { Shield, AlertTriangle, Award, Coins } from "lucide-react";
-import {
-  getRiskLevel,
-  getRiskColor,
-  isTrustedCurator,
-} from "@/lib/morpho/risk-scoring";
+import { getRiskLevel, getRiskColor, isTrustedCurator } from "@/lib/morpho/risk-scoring";
 
 interface VaultSafetyDetailsProps {
   vault: any;
@@ -32,10 +28,7 @@ export function VaultSafetyDetails({ vault }: VaultSafetyDetailsProps) {
         <span className="text-sm font-medium text-gray-700">Safety Rating</span>
         <div className="flex items-center gap-2">
           <Shield className="h-4 w-4" style={{ color: riskColor }} />
-          <span
-            className="text-sm font-semibold capitalize"
-            style={{ color: riskColor }}
-          >
+          <span className="text-sm font-semibold capitalize" style={{ color: riskColor }}>
             {riskLevel} Risk
           </span>
         </div>
@@ -43,13 +36,13 @@ export function VaultSafetyDetails({ vault }: VaultSafetyDetailsProps) {
 
       {/* Warnings */}
       {warnings && warnings.length > 0 && (
-        <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-3">
+        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3">
           <div className="flex items-start gap-2">
-            <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
+            <AlertTriangle className="mt-0.5 h-4 w-4 text-yellow-600" />
             <div>
               <p className="text-sm font-medium text-yellow-800">Warnings</p>
               {warnings.map((w: any, i: number) => (
-                <p key={i} className="text-xs text-yellow-700 mt-1">
+                <p key={i} className="mt-1 text-xs text-yellow-700">
                   {w.type.replace(/_/g, " ")}
                 </p>
               ))}
@@ -66,9 +59,7 @@ export function VaultSafetyDetails({ vault }: VaultSafetyDetailsProps) {
             {isTrustedCurator(curators.items[0].name) && (
               <Award className="h-3 w-3 text-emerald-600" />
             )}
-            <span className="font-medium text-gray-900">
-              {curators.items[0].name}
-            </span>
+            <span className="font-medium text-gray-900">{curators.items[0].name}</span>
           </div>
         </div>
       )}
@@ -122,9 +113,7 @@ export function VaultSafetyDetails({ vault }: VaultSafetyDetailsProps) {
       {whitelisted && (
         <div className="flex items-center gap-2 rounded-lg bg-emerald-50 p-2">
           <Shield className="h-3 w-3 text-emerald-600" />
-          <span className="text-xs font-medium text-emerald-700">
-            Morpho Whitelisted
-          </span>
+          <span className="text-xs font-medium text-emerald-700">Morpho Whitelisted</span>
         </div>
       )}
     </div>

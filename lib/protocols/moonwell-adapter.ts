@@ -1,15 +1,15 @@
-import type { ProtocolAdapter } from './adapter';
-import type { YieldOpportunity, Position } from '../yield-optimizer/types';
+import type { ProtocolAdapter } from "./adapter";
+import type { YieldOpportunity, Position } from "../yield-optimizer/types";
 import {
   getMoonwellOpportunities,
   getMoonwellPosition,
   buildMoonwellDepositTx,
   buildMoonwellWithdrawTx,
-} from '../yield-optimizer/protocols/moonwell';
+} from "../yield-optimizer/protocols/moonwell";
 
 export class MoonwellAdapter implements ProtocolAdapter {
-  readonly protocol = 'moonwell' as const;
-  readonly name = 'Moonwell';
+  readonly protocol = "moonwell" as const;
+  readonly name = "Moonwell";
   readonly enabled = true;
 
   async getOpportunities(): Promise<YieldOpportunity[]> {
@@ -24,7 +24,7 @@ export class MoonwellAdapter implements ProtocolAdapter {
   async buildDepositCalls(
     amount: bigint,
     userAddress: `0x${string}`,
-    _vaultAddress: `0x${string}`,
+    _vaultAddress: `0x${string}`
   ): Promise<{ to: `0x${string}`; data: `0x${string}`; value: bigint }[]> {
     const tx = buildMoonwellDepositTx(amount, userAddress);
     return [
@@ -37,7 +37,7 @@ export class MoonwellAdapter implements ProtocolAdapter {
     userAddress: `0x${string}`,
     _vaultAddress: `0x${string}`,
     _shares?: bigint,
-    assets?: bigint,
+    assets?: bigint
   ): Promise<{ to: `0x${string}`; data: `0x${string}`; value: bigint }[]> {
     const amount = assets || 0n;
     const tx = buildMoonwellWithdrawTx(amount, userAddress);

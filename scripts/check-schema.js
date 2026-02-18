@@ -3,7 +3,7 @@
  * Usage: node --env-file=.env scripts/check-schema.js
  */
 
-const { neon } = require('@neondatabase/serverless');
+const { neon } = require("@neondatabase/serverless");
 
 if (!process.env.DATABASE_URL) {
   console.error("❌ DATABASE_URL is not set");
@@ -34,25 +34,27 @@ async function checkSchema() {
 
     console.log("✅ Users table exists\n");
     console.log("Columns:");
-    columns.forEach(col => {
-      console.log(`  - ${col.column_name}: ${col.data_type}${col.is_nullable === 'YES' ? ' (nullable)' : ''}`);
+    columns.forEach((col) => {
+      console.log(
+        `  - ${col.column_name}: ${col.data_type}${col.is_nullable === "YES" ? " (nullable)" : ""}`
+      );
     });
 
     // Check for required columns
     const requiredColumns = [
-      'id',
-      'wallet_address',
-      'auto_optimize_enabled',
-      'agent_registered',
-      'authorization_7702',
-      'created_at',
-      'updated_at'
+      "id",
+      "wallet_address",
+      "auto_optimize_enabled",
+      "agent_registered",
+      "authorization_7702",
+      "created_at",
+      "updated_at",
     ];
 
     console.log("\n📋 Required columns check:");
     let allPresent = true;
-    requiredColumns.forEach(col => {
-      const found = columns.find(c => c.column_name === col);
+    requiredColumns.forEach((col) => {
+      const found = columns.find((c) => c.column_name === col);
       if (found) {
         console.log(`  ✅ ${col}`);
       } else {
@@ -83,7 +85,6 @@ async function checkSchema() {
       console.log(`   - With authorization: ${withAuth[0].count}`);
       console.log(`   - Without authorization: ${userCount[0].count - withAuth[0].count}`);
     }
-
   } catch (error) {
     console.error("❌ Error:", error.message);
     console.error(error);

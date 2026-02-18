@@ -47,7 +47,7 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
           setUseGasless(false);
         }
       } catch (error) {
-        console.error('Failed to check gasless status:', error);
+        console.error("Failed to check gasless status:", error);
         setGaslessEnabled(false);
       }
     }
@@ -56,7 +56,7 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
   }, [wallet, open]);
 
   // Debug logging
-  console.log('[SendFunds] State:', {
+  console.log("[SendFunds] State:", {
     recipient,
     amount,
     displayableBalance,
@@ -118,10 +118,10 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
 
       // Use gasless or regular transaction based on toggle
       if (useGasless && gaslessEnabled) {
-        console.log('[SendFunds] Sending gasless transaction');
+        console.log("[SendFunds] Sending gasless transaction");
         await wallet.sendSponsored(recipient, "USDC", amount);
       } else {
-        console.log('[SendFunds] Sending regular transaction');
+        console.log("[SendFunds] Sending regular transaction");
         await wallet.send(recipient, "usdc", amount);
       }
 
@@ -199,7 +199,7 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
                       No ETH needed - ZeroDev sponsors gas fees
                     </p>
                     {sessionExpiry && (
-                      <p className="text-xs text-gray-400 mt-1">
+                      <p className="mt-1 text-xs text-gray-400">
                         Session expires: {new Date(sessionExpiry * 1000).toLocaleDateString()}
                       </p>
                     )}
@@ -208,12 +208,12 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
                     type="button"
                     onClick={() => setUseGasless(!useGasless)}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      useGasless ? 'bg-blue-600' : 'bg-gray-300'
+                      useGasless ? "bg-blue-600" : "bg-gray-300"
                     }`}
                   >
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        useGasless ? 'translate-x-6' : 'translate-x-1'
+                        useGasless ? "translate-x-6" : "translate-x-1"
                       }`}
                     />
                   </button>
@@ -226,7 +226,7 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
                     setError(null);
                     try {
                       if (!wallet?.enableGaslessTransfers) {
-                        setError('Gasless transfers not available');
+                        setError("Gasless transfers not available");
                         return;
                       }
                       const result = await wallet.enableGaslessTransfers();
@@ -234,7 +234,7 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
                       setSessionExpiry(result.expiry);
                       setUseGasless(true);
                     } catch (err: any) {
-                      setError(err.message || 'Failed to enable gasless transfers');
+                      setError(err.message || "Failed to enable gasless transfers");
                     } finally {
                       setGaslessLoading(false);
                     }
@@ -245,12 +245,10 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
                   <div className="flex items-center justify-center gap-2">
                     <Zap className="h-5 w-5 text-blue-600" />
                     <span className="text-sm font-medium text-blue-900">
-                      {gaslessLoading ? 'Enabling...' : 'Enable Gasless Transfers'}
+                      {gaslessLoading ? "Enabling..." : "Enable Gasless Transfers"}
                     </span>
                   </div>
-                  <p className="text-xs text-blue-700 mt-1">
-                    Send USDC without paying gas fees
-                  </p>
+                  <p className="mt-1 text-xs text-blue-700">Send USDC without paying gas fees</p>
                 </button>
               )}
             </div>

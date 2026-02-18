@@ -1,8 +1,8 @@
-import { MorphoClient, MorphoVault, MorphoUserPosition } from '../morpho/api-client';
-import { CHAIN_CONFIG, REBALANCE_THRESHOLDS } from '../yield-optimizer/config';
+import { MorphoClient, MorphoVault, MorphoUserPosition } from "../morpho/api-client";
+import { CHAIN_CONFIG, REBALANCE_THRESHOLDS } from "../yield-optimizer/config";
 
 const CHAIN_ID = CHAIN_CONFIG.chainId;
-const ASSET_SYMBOL = 'USDC';
+const ASSET_SYMBOL = "USDC";
 
 export interface RebalanceDecision {
   shouldRebalance: boolean;
@@ -45,7 +45,7 @@ export class YieldDecisionEngine {
    */
   async evaluateRebalancing(
     userAddress: `0x${string}`,
-    targetedVaults?: string[] | null,
+    targetedVaults?: string[] | null
   ): Promise<RebalanceDecision> {
     try {
       // 1. Fetch user's current positions
@@ -54,7 +54,7 @@ export class YieldDecisionEngine {
       if (positions.length === 0) {
         return {
           shouldRebalance: false,
-          reason: 'No active positions found',
+          reason: "No active positions found",
           currentVault: null,
           targetVault: null,
           apyImprovement: 0,
@@ -77,7 +77,7 @@ export class YieldDecisionEngine {
       if (!currentVaultDetails) {
         return {
           shouldRebalance: false,
-          reason: 'Could not fetch current vault details',
+          reason: "Could not fetch current vault details",
           currentVault: null,
           targetVault: null,
           apyImprovement: 0,
@@ -98,7 +98,7 @@ export class YieldDecisionEngine {
       if (eligibleVaults.length === 0) {
         return {
           shouldRebalance: false,
-          reason: 'No eligible alternative vaults found',
+          reason: "No eligible alternative vaults found",
           currentVault: {
             address: currentVaultDetails.address,
             name: currentVaultDetails.name,
@@ -130,14 +130,16 @@ export class YieldDecisionEngine {
       // 8. Make decision — gates on APY improvement threshold only
       // Use lower threshold for targeted rebalances (APY monitor detected drops)
       const isTargeted = targetedVaults?.some(
-        v => v.toLowerCase() === currentVaultDetails.address.toLowerCase()
+        (v) => v.toLowerCase() === currentVaultDetails.address.toLowerCase()
       );
-      const effectiveThreshold = isTargeted ? REBALANCE_THRESHOLDS.targetedApyImprovement : REBALANCE_THRESHOLDS.minApyImprovement;
+      const effectiveThreshold = isTargeted
+        ? REBALANCE_THRESHOLDS.targetedApyImprovement
+        : REBALANCE_THRESHOLDS.minApyImprovement;
 
       const shouldRebalance = apyImprovement >= effectiveThreshold;
 
       const reason = shouldRebalance
-        ? `${isTargeted ? '[TARGETED] ' : ''}Found ${(apyImprovement * 100).toFixed(2)}% APY improvement (${(currentApy * 100).toFixed(2)}% → ${(bestApy * 100).toFixed(2)}%). Estimated gain: $${estimatedAnnualGain.toFixed(2)}/year.`
+        ? `${isTargeted ? "[TARGETED] " : ""}Found ${(apyImprovement * 100).toFixed(2)}% APY improvement (${(currentApy * 100).toFixed(2)}% → ${(bestApy * 100).toFixed(2)}%). Estimated gain: $${estimatedAnnualGain.toFixed(2)}/year.`
         : `APY improvement too small (${(apyImprovement * 100).toFixed(2)}% < ${(effectiveThreshold * 100).toFixed(1)}% threshold)`;
 
       return {
@@ -163,7 +165,7 @@ export class YieldDecisionEngine {
         breakEvenDays,
       };
     } catch (error: any) {
-      console.error('Error evaluating rebalancing:', error);
+      console.error("Error evaluating rebalancing:", error);
       return {
         shouldRebalance: false,
         reason: `Error: ${error.message}`,

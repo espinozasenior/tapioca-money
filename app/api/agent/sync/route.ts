@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { neon } from '@neondatabase/serverless';
+import { neon } from "@neondatabase/serverless";
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       message: "User synchronized successfully",
-      address
+      address,
     });
   } catch (error: any) {
     console.error("Agent sync error:", error);

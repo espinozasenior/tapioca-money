@@ -2,7 +2,7 @@
  * Mock ZeroDev Bundler for Testing
  */
 
-import { vi } from 'vitest';
+import { vi } from "vitest";
 
 interface BundlerCall {
   calls: Array<{

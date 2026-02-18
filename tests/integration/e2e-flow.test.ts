@@ -3,19 +3,23 @@
  * Tests complete user workflows from start to finish
  */
 
-import { describe, test, expect, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, beforeEach, afterEach } from "vitest";
 import {
   seedTestUser,
   createTestTransferSession,
   createTestAgentSession,
   cleanupTestData,
-} from '../helpers/test-setup';
-import { executeGaslessTransfer } from '@/lib/zerodev/transfer-executor';
-import { checkTransferRateLimit, recordTransferAttempt, resetUserRateLimit } from '@/lib/rate-limiter';
+} from "../helpers/test-setup";
+import { executeGaslessTransfer } from "@/lib/zerodev/transfer-executor";
+import {
+  checkTransferRateLimit,
+  recordTransferAttempt,
+  resetUserRateLimit,
+} from "@/lib/rate-limiter";
 
-describe('End-to-End Workflows', () => {
-  const testAddress = '0x4444444444444444444444444444444444444444' as `0x${string}`;
-  const recipientAddress = '0x5555555555555555555555555555555555555555' as `0x${string}`;
+describe("End-to-End Workflows", () => {
+  const testAddress = "0x4444444444444444444444444444444444444444" as `0x${string}`;
+  const recipientAddress = "0x5555555555555555555555555555555555555555" as `0x${string}`;
 
   beforeEach(async () => {
     await seedTestUser(testAddress, false);
@@ -27,7 +31,7 @@ describe('End-to-End Workflows', () => {
     resetUserRateLimit(testAddress);
   });
 
-  test('Full gasless transfer flow (legacy sessionPrivateKey)', async () => {
+  test("Full gasless transfer flow (legacy sessionPrivateKey)", async () => {
     // Step 1: User enables gasless transfers (creates transfer session)
     const transferSession = await createTestTransferSession(testAddress);
     expect(transferSession).toBeDefined();
@@ -38,7 +42,7 @@ describe('End-to-End Workflows', () => {
       userAddress: testAddress,
       smartAccountAddress: transferSession.smartAccountAddress,
       recipient: recipientAddress,
-      amount: '50.00',
+      amount: "50.00",
       sessionPrivateKey: transferSession.sessionPrivateKey,
     };
 
@@ -53,7 +57,7 @@ describe('End-to-End Workflows', () => {
     // Step 5: Recipient balance increased (would be verified on-chain)
   });
 
-  test('Full gasless transfer flow (serializedAccount)', async () => {
+  test("Full gasless transfer flow (serializedAccount)", async () => {
     // Step 1: User enables gasless transfers with serialized kernel account
     const transferSession = await createTestTransferSession(testAddress);
     expect(transferSession).toBeDefined();
@@ -63,8 +67,8 @@ describe('End-to-End Workflows', () => {
       userAddress: testAddress,
       smartAccountAddress: transferSession.smartAccountAddress,
       recipient: recipientAddress,
-      amount: '50.00',
-      serializedAccount: 'base64_test_serialized_account_data',
+      amount: "50.00",
+      serializedAccount: "base64_test_serialized_account_data",
     };
 
     const result = await executeGaslessTransfer(transferParams);
@@ -75,7 +79,7 @@ describe('End-to-End Workflows', () => {
     expect(result.hash).toMatch(/^0x[a-fA-F0-9]+$/);
   });
 
-  test('Full autonomous rebalancing flow', async () => {
+  test("Full autonomous rebalancing flow", async () => {
     // Step 1: User enables auto-optimize (creates agent session with serialized account)
     const agentSession = await createTestAgentSession(testAddress);
     expect(agentSession).toBeDefined();
@@ -87,7 +91,7 @@ describe('End-to-End Workflows', () => {
     // (Would check Morpho positions, calculate APY improvement)
     const mockOpportunity = {
       currentApy: 0.08,
-      targetApy: 0.10,
+      targetApy: 0.1,
       improvement: 0.02,
       shouldRebalance: true,
     };
@@ -98,9 +102,9 @@ describe('End-to-End Workflows', () => {
     // Step 3: Cron executes rebalance via session key
     // (Would execute 3-step: redeem, approve, deposit)
     const mockExecution = {
-      steps: ['redeem', 'approve', 'deposit'],
+      steps: ["redeem", "approve", "deposit"],
       success: true,
-      hash: '0xmock_tx_hash',
+      hash: "0xmock_tx_hash",
     };
 
     expect(mockExecution.success).toBe(true);
@@ -110,7 +114,7 @@ describe('End-to-End Workflows', () => {
     // Step 5: User's position updated to new vault
   });
 
-  test('User can toggle auto-optimize off', async () => {
+  test("User can toggle auto-optimize off", async () => {
     // Step 1: Enable auto-optimize
     await createTestAgentSession(testAddress);
 
@@ -123,7 +127,7 @@ describe('End-to-End Workflows', () => {
     expect(shouldProcess).toBe(false);
   });
 
-  test('User can revoke transfer session', async () => {
+  test("User can revoke transfer session", async () => {
     // Step 1: Enable gasless transfers
     const transferSession = await createTestTransferSession(testAddress);
     expect(transferSession).toBeDefined();
@@ -140,10 +144,10 @@ describe('End-to-End Workflows', () => {
     expect(transferSession.sessionPrivateKey).toBeDefined();
   });
 
-  test('Session key expiry handling', async () => {
+  test("Session key expiry handling", async () => {
     // Step 1: Create session with short expiry
     const expiredSession = {
-      ...await createTestTransferSession(testAddress),
+      ...(await createTestTransferSession(testAddress)),
       expiry: Math.floor(Date.now() / 1000) - 3600, // Expired 1 hour ago
     };
 
@@ -160,7 +164,7 @@ describe('End-to-End Workflows', () => {
     expect(needsReauth).toBe(true);
   });
 
-  test('Rate limit enforcement across multiple transfers', async () => {
+  test("Rate limit enforcement across multiple transfers", async () => {
     const transferSession = await createTestTransferSession(testAddress);
 
     // Execute 19 successful transfers
@@ -178,32 +182,32 @@ describe('End-to-End Workflows', () => {
     // 21st transfer should fail
     const result21 = checkTransferRateLimit(testAddress, 10);
     expect(result21.allowed).toBe(false);
-    expect(result21.reason).toContain('Daily transfer limit');
+    expect(result21.reason).toContain("Daily transfer limit");
   });
 
-  test('User can have both transfer and agent sessions active', async () => {
+  test("User can have both transfer and agent sessions active", async () => {
     // Create both sessions
     const transferSession = await createTestTransferSession(testAddress);
     const agentSession = await createTestAgentSession(testAddress);
 
     // Both should be independent
-    expect(transferSession.type).toBe('zerodev-transfer-session');
-    expect(agentSession.type).toBe('zerodev-agent-session');
+    expect(transferSession.type).toBe("zerodev-transfer-session");
+    expect(agentSession.type).toBe("zerodev-agent-session");
 
     // Different session keys
     expect(transferSession.sessionKeyAddress).not.toBe(agentSession.sessionKeyAddress);
 
     // Different permissions
-    expect(transferSession).not.toHaveProperty('approvedVaults');
-    expect(agentSession).toHaveProperty('approvedVaults');
+    expect(transferSession).not.toHaveProperty("approvedVaults");
+    expect(agentSession).toHaveProperty("approvedVaults");
 
     // Both can be used simultaneously
     expect(transferSession).toBeDefined();
     expect(agentSession).toBeDefined();
   });
 
-  test('Simulation mode prevents real transactions', async () => {
-    const isSimulation = process.env.AGENT_SIMULATION_MODE === 'true';
+  test("Simulation mode prevents real transactions", async () => {
+    const isSimulation = process.env.AGENT_SIMULATION_MODE === "true";
     expect(isSimulation).toBe(true);
 
     if (isSimulation) {
@@ -213,7 +217,7 @@ describe('End-to-End Workflows', () => {
         userAddress: testAddress,
         smartAccountAddress: transferSession.smartAccountAddress,
         recipient: recipientAddress,
-        amount: '25.00',
+        amount: "25.00",
         sessionPrivateKey: transferSession.sessionPrivateKey,
       });
 
@@ -225,15 +229,15 @@ describe('End-to-End Workflows', () => {
     }
   });
 
-  test('Error recovery and retry logic', async () => {
+  test("Error recovery and retry logic", async () => {
     // Simulate failure scenarios
     const failures = [
-      { attempt: 1, success: false, error: 'Network timeout' },
-      { attempt: 2, success: false, error: 'Bundler unavailable' },
-      { attempt: 3, success: true, hash: '0xSuccess' },
+      { attempt: 1, success: false, error: "Network timeout" },
+      { attempt: 2, success: false, error: "Bundler unavailable" },
+      { attempt: 3, success: true, hash: "0xSuccess" },
     ];
 
-    const successfulAttempt = failures.find(f => f.success);
+    const successfulAttempt = failures.find((f) => f.success);
     expect(successfulAttempt).toBeDefined();
     expect(successfulAttempt?.attempt).toBe(3);
 

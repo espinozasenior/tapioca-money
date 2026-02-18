@@ -24,14 +24,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <PrivyProvider
         appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID!}
         config={{
-          loginMethods: ['email', 'google'],
+          loginMethods: ["email", "google"],
           appearance: {
-            theme: 'light',
-            accentColor: '#676FFF',
+            theme: "light",
+            accentColor: "#676FFF",
           },
           embeddedWallets: {
             ethereum: {
-              createOnLogin: 'all-users', // Force embedded wallet creation for all users
+              createOnLogin: "all-users", // Force embedded wallet creation for all users
             },
           },
           defaultChain: base,

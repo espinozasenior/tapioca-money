@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { neon } from '@neondatabase/serverless';
+import { neon } from "@neondatabase/serverless";
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -88,10 +88,10 @@ export async function GET(request: NextRequest) {
     `;
 
     const stats = {
-      totalRebalances: parseInt(statsResult[0].total_rebalances || '0'),
-      successfulRebalances: parseInt(statsResult[0].successful_rebalances || '0'),
-      failedRebalances: parseInt(statsResult[0].failed_rebalances || '0'),
-      totalSaved: parseFloat(statsResult[0].total_saved || '0'),
+      totalRebalances: parseInt(statsResult[0].total_rebalances || "0"),
+      successfulRebalances: parseInt(statsResult[0].successful_rebalances || "0"),
+      failedRebalances: parseInt(statsResult[0].failed_rebalances || "0"),
+      totalSaved: parseFloat(statsResult[0].total_saved || "0"),
     };
 
     // 5. Format activities for response
@@ -115,7 +115,6 @@ export async function GET(request: NextRequest) {
       offset,
       stats,
     });
-
   } catch (error: any) {
     console.error("[Agent Activity] Error:", error);
     return NextResponse.json(

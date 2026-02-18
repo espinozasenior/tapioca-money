@@ -9,9 +9,9 @@
  * once the session key would have expired anyway.
  */
 
-import { getCacheInterface } from '@/lib/redis/client';
+import { getCacheInterface } from "@/lib/redis/client";
 
-const REVOCATION_PREFIX = 'session:revoked';
+const REVOCATION_PREFIX = "session:revoked";
 const REVOCATION_TTL = 7 * 24 * 60 * 60; // 7 days (matches session key lifetime)
 
 /**
@@ -22,7 +22,7 @@ export async function revokeSession(sessionKeyAddress: string): Promise<void> {
   const cache = await getCacheInterface();
   const key = `${REVOCATION_PREFIX}:${sessionKeyAddress.toLowerCase()}`;
   await cache.set(key, Date.now().toString(), REVOCATION_TTL);
-  console.log('[SessionRevocation] Session key revoked:', sessionKeyAddress);
+  console.log("[SessionRevocation] Session key revoked:", sessionKeyAddress);
 }
 
 /**

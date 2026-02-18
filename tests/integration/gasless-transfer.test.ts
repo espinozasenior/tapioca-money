@@ -2,27 +2,27 @@
  * Gasless Transfer Execution Tests
  */
 
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, test, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   executeGaslessTransfer,
   validateTransferParams,
   type GaslessTransferParams,
-} from '@/lib/zerodev/transfer-executor';
+} from "@/lib/zerodev/transfer-executor";
 import {
   seedTestUser,
   createTestTransferSession,
   cleanupTestData,
   verifyAgentActionLogged,
-} from '../helpers/test-setup';
+} from "../helpers/test-setup";
 import {
   resetBundlerMocks,
   getBundlerCallCount,
   getLastBundlerCall,
-} from '../mocks/zerodev-bundler';
+} from "../mocks/zerodev-bundler";
 
-describe('Gasless Transfer Execution', () => {
-  const testAddress = '0x1234567890123456789012345678901234567890' as `0x${string}`;
-  const recipientAddress = '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd' as `0x${string}`;
+describe("Gasless Transfer Execution", () => {
+  const testAddress = "0x1234567890123456789012345678901234567890" as `0x${string}`;
+  const recipientAddress = "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd" as `0x${string}`;
   let userId: string;
   let transferSession: any;
 
@@ -40,12 +40,12 @@ describe('Gasless Transfer Execution', () => {
     await cleanupTestData([testAddress]);
   });
 
-  test('Execute gasless USDC transfer in simulation mode', async () => {
+  test("Execute gasless USDC transfer in simulation mode", async () => {
     const params: GaslessTransferParams = {
       userAddress: testAddress as `0x${string}`,
       smartAccountAddress: transferSession.smartAccountAddress,
       recipient: recipientAddress as `0x${string}`,
-      amount: '10.50',
+      amount: "10.50",
       sessionPrivateKey: transferSession.sessionPrivateKey,
     };
 
@@ -58,12 +58,12 @@ describe('Gasless Transfer Execution', () => {
     expect(result.userOpHash).toBeDefined();
   });
 
-  test('Validate transfer parameters - valid case', async () => {
+  test("Validate transfer parameters - valid case", async () => {
     const params: GaslessTransferParams = {
       userAddress: testAddress as `0x${string}`,
       smartAccountAddress: transferSession.smartAccountAddress,
       recipient: recipientAddress as `0x${string}`,
-      amount: '25.00',
+      amount: "25.00",
       sessionPrivateKey: transferSession.sessionPrivateKey,
     };
 
@@ -72,84 +72,84 @@ describe('Gasless Transfer Execution', () => {
     expect(validation.error).toBeUndefined();
   });
 
-  test('Validate transfer parameters - invalid recipient', () => {
+  test("Validate transfer parameters - invalid recipient", () => {
     const params = {
       userAddress: testAddress,
       smartAccountAddress: transferSession.smartAccountAddress,
-      recipient: 'invalid_address',
-      amount: '10.00',
+      recipient: "invalid_address",
+      amount: "10.00",
       sessionPrivateKey: transferSession.sessionPrivateKey,
     };
 
     const validation = validateTransferParams(params as any);
     expect(validation.valid).toBe(false);
-    expect(validation.error).toBe('Invalid recipient address format');
+    expect(validation.error).toBe("Invalid recipient address format");
   });
 
-  test('Validate transfer parameters - negative amount', () => {
+  test("Validate transfer parameters - negative amount", () => {
     const params = {
       userAddress: testAddress as `0x${string}`,
       smartAccountAddress: transferSession.smartAccountAddress,
       recipient: recipientAddress as `0x${string}`,
-      amount: '-5.00',
+      amount: "-5.00",
       sessionPrivateKey: transferSession.sessionPrivateKey,
     };
 
     const validation = validateTransferParams(params);
     expect(validation.valid).toBe(false);
-    expect(validation.error).toBe('Amount must be greater than 0');
+    expect(validation.error).toBe("Amount must be greater than 0");
   });
 
-  test('Validate transfer parameters - amount exceeds limit', () => {
+  test("Validate transfer parameters - amount exceeds limit", () => {
     const params = {
       userAddress: testAddress as `0x${string}`,
       smartAccountAddress: transferSession.smartAccountAddress,
       recipient: recipientAddress as `0x${string}`,
-      amount: '600.00', // Exceeds $500 limit
+      amount: "600.00", // Exceeds $500 limit
       sessionPrivateKey: transferSession.sessionPrivateKey,
     };
 
     const validation = validateTransferParams(params);
     expect(validation.valid).toBe(false);
-    expect(validation.error).toBe('Amount exceeds $500 limit per transfer');
+    expect(validation.error).toBe("Amount exceeds $500 limit per transfer");
   });
 
-  test('Validate transfer parameters - missing recipient', () => {
+  test("Validate transfer parameters - missing recipient", () => {
     const params = {
       userAddress: testAddress,
       smartAccountAddress: transferSession.smartAccountAddress,
-      recipient: '',
-      amount: '10.00',
+      recipient: "",
+      amount: "10.00",
       sessionPrivateKey: transferSession.sessionPrivateKey,
     };
 
     const validation = validateTransferParams(params as any);
     expect(validation.valid).toBe(false);
-    expect(validation.error).toBe('Recipient address required');
+    expect(validation.error).toBe("Recipient address required");
   });
 
-  test('Validate transfer parameters - missing session authorization', () => {
+  test("Validate transfer parameters - missing session authorization", () => {
     const params = {
       userAddress: testAddress as `0x${string}`,
-      smartAccountAddress: '',
+      smartAccountAddress: "",
       recipient: recipientAddress as `0x${string}`,
-      amount: '10.00',
-      sessionPrivateKey: '',
+      amount: "10.00",
+      sessionPrivateKey: "",
     };
 
     const validation = validateTransferParams(params as any);
     expect(validation.valid).toBe(false);
-    expect(validation.error).toBe('Session authorization required');
+    expect(validation.error).toBe("Session authorization required");
   });
 
-  test('Validate transfer parameters - serializedAccount as alternative to sessionPrivateKey', () => {
+  test("Validate transfer parameters - serializedAccount as alternative to sessionPrivateKey", () => {
     // With serializedAccount, sessionPrivateKey is not required
     const params = {
       userAddress: testAddress as `0x${string}`,
       smartAccountAddress: transferSession.smartAccountAddress,
       recipient: recipientAddress as `0x${string}`,
-      amount: '25.00',
-      serializedAccount: 'base64_test_serialized_account',
+      amount: "25.00",
+      serializedAccount: "base64_test_serialized_account",
     };
 
     const validation = validateTransferParams(params);
@@ -157,28 +157,28 @@ describe('Gasless Transfer Execution', () => {
     expect(validation.error).toBeUndefined();
   });
 
-  test('Validate transfer parameters - neither serializedAccount nor sessionPrivateKey', () => {
+  test("Validate transfer parameters - neither serializedAccount nor sessionPrivateKey", () => {
     const params = {
       userAddress: testAddress as `0x${string}`,
       smartAccountAddress: transferSession.smartAccountAddress,
       recipient: recipientAddress as `0x${string}`,
-      amount: '25.00',
+      amount: "25.00",
       // No serializedAccount and no sessionPrivateKey
     };
 
     const validation = validateTransferParams(params);
     expect(validation.valid).toBe(false);
-    expect(validation.error).toBe('Session authorization required');
+    expect(validation.error).toBe("Session authorization required");
   });
 
-  test('Transfer amounts are correctly converted to USDC decimals', async () => {
+  test("Transfer amounts are correctly converted to USDC decimals", async () => {
     // USDC has 6 decimals
     // "10.50" should become 10500000
     const params: GaslessTransferParams = {
       userAddress: testAddress as `0x${string}`,
       smartAccountAddress: transferSession.smartAccountAddress,
       recipient: recipientAddress as `0x${string}`,
-      amount: '10.50',
+      amount: "10.50",
       sessionPrivateKey: transferSession.sessionPrivateKey,
     };
 
@@ -189,13 +189,13 @@ describe('Gasless Transfer Execution', () => {
     // For now, just ensure it doesn't throw
   });
 
-  test('Error handling for invalid session key', async () => {
+  test("Error handling for invalid session key", async () => {
     const params: GaslessTransferParams = {
       userAddress: testAddress as `0x${string}`,
       smartAccountAddress: transferSession.smartAccountAddress,
       recipient: recipientAddress as `0x${string}`,
-      amount: '10.00',
-      sessionPrivateKey: '0xinvalid' as `0x${string}`,
+      amount: "10.00",
+      sessionPrivateKey: "0xinvalid" as `0x${string}`,
     };
 
     // In simulation mode, this should still succeed
@@ -204,15 +204,15 @@ describe('Gasless Transfer Execution', () => {
     expect(result).toBeDefined();
   });
 
-  test('Simulation mode returns mock hash', async () => {
+  test("Simulation mode returns mock hash", async () => {
     // Ensure simulation mode is enabled
-    process.env.AGENT_SIMULATION_MODE = 'true';
+    process.env.AGENT_SIMULATION_MODE = "true";
 
     const params: GaslessTransferParams = {
       userAddress: testAddress as `0x${string}`,
       smartAccountAddress: transferSession.smartAccountAddress,
       recipient: recipientAddress as `0x${string}`,
-      amount: '50.00',
+      amount: "50.00",
       sessionPrivateKey: transferSession.sessionPrivateKey,
     };
 
