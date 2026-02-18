@@ -1,10 +1,10 @@
-import { MorphoClient, type MorphoVault } from '../morpho/api-client';
-import { getCacheInterface } from '../redis/client';
+import { MorphoClient, type MorphoVault } from "../morpho/api-client";
+import { getCacheInterface } from "../redis/client";
 
 const CHAIN_ID = 8453;
-const ASSET_SYMBOL = 'USDC';
+const ASSET_SYMBOL = "USDC";
 const APY_CHANGE_THRESHOLD = 0.01; // 1% absolute APY change triggers alert
-const CACHE_KEY_PREFIX = 'apy_baseline:';
+const CACHE_KEY_PREFIX = "apy_baseline:";
 const BASELINE_TTL = 86400; // 24 hours - baseline refreshed daily
 
 export interface ApyChangeEvent {
@@ -14,7 +14,7 @@ export interface ApyChangeEvent {
   currentApy: number;
   changeAbsolute: number; // Absolute change (e.g., -0.02 = -2%)
   changeRelative: number; // Relative change (e.g., -0.4 = -40%)
-  direction: 'up' | 'down';
+  direction: "up" | "down";
   timestamp: number;
 }
 
@@ -65,7 +65,7 @@ export class ApyEventMonitor {
             currentApy,
             changeAbsolute,
             changeRelative: baseline > 0 ? changeAbsolute / baseline : 0,
-            direction: changeAbsolute > 0 ? 'up' : 'down',
+            direction: changeAbsolute > 0 ? "up" : "down",
             timestamp: Date.now(),
           });
         }
@@ -79,7 +79,7 @@ export class ApyEventMonitor {
       console.log(`[APY Monitor] Detected ${changes.length} significant APY changes:`);
       for (const change of changes) {
         console.log(
-          `  ${change.vaultName}: ${(change.previousApy * 100).toFixed(2)}% → ${(change.currentApy * 100).toFixed(2)}% (${change.direction === 'up' ? '+' : ''}${(change.changeAbsolute * 100).toFixed(2)}%)`
+          `  ${change.vaultName}: ${(change.previousApy * 100).toFixed(2)}% → ${(change.currentApy * 100).toFixed(2)}% (${change.direction === "up" ? "+" : ""}${(change.changeAbsolute * 100).toFixed(2)}%)`
         );
       }
     }
@@ -87,7 +87,7 @@ export class ApyEventMonitor {
     return {
       checked: vaults.length,
       changes,
-      affectedVaults: changes.map(c => c.vaultAddress),
+      affectedVaults: changes.map((c) => c.vaultAddress),
     };
   }
 
@@ -97,7 +97,7 @@ export class ApyEventMonitor {
    */
   async getDroppedVaults(): Promise<ApyChangeEvent[]> {
     const result = await this.detectChanges();
-    return result.changes.filter(c => c.direction === 'down');
+    return result.changes.filter((c) => c.direction === "down");
   }
 
   /**
@@ -106,7 +106,7 @@ export class ApyEventMonitor {
    */
   async getImprovedVaults(): Promise<ApyChangeEvent[]> {
     const result = await this.detectChanges();
-    return result.changes.filter(c => c.direction === 'up');
+    return result.changes.filter((c) => c.direction === "up");
   }
 
   /**
@@ -119,7 +119,7 @@ export class ApyEventMonitor {
       await cache.set(
         `${CACHE_KEY_PREFIX}${vault.address}`,
         vault.avgNetApy.toString(),
-        BASELINE_TTL,
+        BASELINE_TTL
       );
     }
     console.log(`[APY Monitor] Reset baselines for ${vaults.length} vaults`);

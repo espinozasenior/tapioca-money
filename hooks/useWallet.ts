@@ -1,7 +1,16 @@
 "use client";
 
 import { usePrivy, useWallets } from "@privy-io/react-auth";
-import { type Hex, createPublicClient, createWalletClient, custom, http, formatUnits, parseUnits, encodeFunctionData } from "viem";
+import {
+  type Hex,
+  createPublicClient,
+  createWalletClient,
+  custom,
+  http,
+  formatUnits,
+  parseUnits,
+  encodeFunctionData,
+} from "viem";
 import { base } from "viem/chains";
 import { useMemo, useCallback } from "react";
 
@@ -20,20 +29,20 @@ function wrapProviderWithTracing(provider: any, label: string): any {
 
   provider.request = async (args: { method: string; params?: any[] }) => {
     const trackedMethods = [
-      'eth_sendTransaction',
-      'eth_sendRawTransaction',
-      'eth_signTransaction',
-      'personal_sign',
-      'eth_sign',
-      'eth_signTypedData_v4',
+      "eth_sendTransaction",
+      "eth_sendRawTransaction",
+      "eth_signTransaction",
+      "personal_sign",
+      "eth_sign",
+      "eth_signTypedData_v4",
     ];
 
     if (trackedMethods.includes(args.method)) {
       const stack = new Error().stack;
       console.warn(
         `[TRACE ${label}] ⚠️ Provider.request("${args.method}") intercepted!\n` +
-        `Params: ${JSON.stringify(args.params, null, 2)}\n` +
-        `Stack trace:\n${stack}`
+          `Params: ${JSON.stringify(args.params, null, 2)}\n` +
+          `Stack trace:\n${stack}`
       );
     }
 
@@ -79,7 +88,10 @@ export function useWallet() {
 
   // Debug: Log only when authenticated but no wallet (unusual state)
   if (ready && authenticated && !wallet) {
-    console.warn('[useWallet] Authenticated but no wallet found. Wallets count:', wallets?.length || 0);
+    console.warn(
+      "[useWallet] Authenticated but no wallet found. Wallets count:",
+      wallets?.length || 0
+    );
   }
 
   // Check for wallet object existence rather than requiring address immediately
@@ -87,17 +99,21 @@ export function useWallet() {
   const isReady = ready && authenticated && !!wallet;
 
   // Create a public client for balance queries (memoized to prevent recreating on every render)
-  const publicClient = useMemo(() => createPublicClient({
-    chain: base,
-    transport: http(),
-  }), []);
+  const publicClient = useMemo(
+    () =>
+      createPublicClient({
+        chain: base,
+        transport: http(),
+      }),
+    []
+  );
 
   // Memoize the wallet object to prevent unnecessary re-renders
   const walletObject = useMemo(() => {
     if (!isReady) return null;
 
     return {
-      address: address || "0x0000000000000000000000000000000000000000" as Hex, // Fallback while loading
+      address: address || ("0x0000000000000000000000000000000000000000" as Hex), // Fallback while loading
       chain: "base" as const,
 
       /**
@@ -153,7 +169,7 @@ export function useWallet() {
 
           // Get the Ethereum provider from Privy wallet
           const rawProvider = await wallet.getEthereumProvider();
-          const provider = wrapProviderWithTracing(rawProvider, 'useWallet.send');
+          const provider = wrapProviderWithTracing(rawProvider, "useWallet.send");
 
           // Create wallet client with the provider
           const walletClient = createWalletClient({
@@ -182,8 +198,8 @@ export function useWallet() {
       async sendSponsored(to: string, asset: string, amount: string) {
         if (!address) throw new Error("Wallet address not yet available");
 
-        if (asset !== 'USDC') {
-          throw new Error('Only USDC gasless transfers supported');
+        if (asset !== "USDC") {
+          throw new Error("Only USDC gasless transfers supported");
         }
 
         // Get access token for authenticated request
@@ -197,23 +213,23 @@ export function useWallet() {
         const status = await statusResponse.json();
 
         if (!status.isEnabled) {
-          throw new Error('Gasless transfers not enabled. Please enable in settings first.');
+          throw new Error("Gasless transfers not enabled. Please enable in settings first.");
         }
 
         // Execute gasless transfer with authentication
-        const response = await fetch('/api/transfer/send', {
-          method: 'POST',
+        const response = await fetch("/api/transfer/send", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
           },
-          body: JSON.stringify({ address, recipient: to, amount })
+          body: JSON.stringify({ address, recipient: to, amount }),
         });
 
         const result = await response.json();
 
         if (!result.success) {
-          throw new Error(result.error || 'Gasless transfer failed');
+          throw new Error(result.error || "Gasless transfer failed");
         }
 
         return result.hash;
@@ -234,25 +250,25 @@ export function useWallet() {
         }
 
         // Create transfer session key with authentication
-        const response = await fetch('/api/transfer/register', {
-          method: 'POST',
+        const response = await fetch("/api/transfer/register", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify({
             address,
             privyWallet: {
               address: wallet.address,
               getEthereumProvider: wallet.getEthereumProvider.bind(wallet),
-            }
-          })
+            },
+          }),
         });
 
         const result = await response.json();
 
         if (!result.success) {
-          throw new Error(result.error || 'Failed to enable gasless transfers');
+          throw new Error(result.error || "Failed to enable gasless transfers");
         }
 
         return {
@@ -273,19 +289,19 @@ export function useWallet() {
           throw new Error("Authentication required");
         }
 
-        const response = await fetch('/api/transfer/register', {
-          method: 'DELETE',
+        const response = await fetch("/api/transfer/register", {
+          method: "DELETE",
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
           },
-          body: JSON.stringify({ address })
+          body: JSON.stringify({ address }),
         });
 
         const result = await response.json();
 
         if (!result.success) {
-          throw new Error(result.error || 'Failed to revoke gasless transfers');
+          throw new Error(result.error || "Failed to revoke gasless transfers");
         }
 
         return true;
@@ -312,7 +328,7 @@ export function useWallet() {
       async getEthereumProvider() {
         if (!wallet) throw new Error("Wallet not ready");
         const rawProvider = await wallet.getEthereumProvider();
-        return wrapProviderWithTracing(rawProvider, 'useWallet.getEthereumProvider');
+        return wrapProviderWithTracing(rawProvider, "useWallet.getEthereumProvider");
       },
 
       /**
@@ -337,7 +353,7 @@ export function useWallet() {
           contractAddress,
         });
 
-        console.log('[useWallet] EIP-7702 authorization signed for:', contractAddress);
+        console.log("[useWallet] EIP-7702 authorization signed for:", contractAddress);
         return authorization;
       },
     };
@@ -364,10 +380,10 @@ export function useAuth() {
      */
     login: () => {
       if (ready) {
-        console.log('[Privy] Triggering login modal');
+        console.log("[Privy] Triggering login modal");
         login();
       } else {
-        console.warn('[Privy] SDK not ready yet, cannot trigger login');
+        console.warn("[Privy] SDK not ready yet, cannot trigger login");
       }
     },
 
@@ -389,10 +405,12 @@ export function useAuth() {
     /**
      * User info
      */
-    user: user ? {
-      email: user.email?.address,
-      id: user.id,
-      wallet: user.wallet?.address,
-    } : null,
+    user: user
+      ? {
+          email: user.email?.address,
+          id: user.id,
+          wallet: user.wallet?.address,
+        }
+      : null,
   };
 }

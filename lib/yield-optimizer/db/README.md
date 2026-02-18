@@ -40,6 +40,7 @@ psql $DATABASE_URL -f lib/yield-optimizer/db/migrate-add-authorization.sql
 ### Tables
 
 #### `users`
+
 - Stores wallet addresses and auto-optimize preferences
 - Tracks EIP-7702 authorization data
 - Fields:
@@ -51,6 +52,7 @@ psql $DATABASE_URL -f lib/yield-optimizer/db/migrate-add-authorization.sql
   - `created_at`, `updated_at`: Timestamps
 
 #### `user_strategies`
+
 - Stores user-specific optimization preferences
 - Fields:
   - `min_apy_gain_threshold`: Minimum APY gain to trigger rebalance (default: 0.5%)
@@ -58,6 +60,7 @@ psql $DATABASE_URL -f lib/yield-optimizer/db/migrate-add-authorization.sql
   - `risk_level`: Risk preference (low, medium, high)
 
 #### `agent_actions`
+
 - Audit log of all agent actions
 - Tracks rebalancing operations, health checks, and optimization checks
 - Includes transaction hashes and error messages for debugging
@@ -65,9 +68,11 @@ psql $DATABASE_URL -f lib/yield-optimizer/db/migrate-add-authorization.sql
 ## API Endpoints
 
 ### `GET /api/agent/register?address={wallet_address}`
+
 Check if agent is registered and auto-optimize is enabled for a wallet.
 
 Response:
+
 ```json
 {
   "isRegistered": true,
@@ -78,9 +83,11 @@ Response:
 ```
 
 ### `POST /api/agent/register`
+
 Register agent with EIP-7702 authorization.
 
 Body:
+
 ```json
 {
   "address": "0x...",
@@ -89,9 +96,11 @@ Body:
 ```
 
 ### `PATCH /api/agent/register`
+
 Update auto-optimize setting (toggle on/off).
 
 Body:
+
 ```json
 {
   "address": "0x...",
@@ -102,12 +111,15 @@ Body:
 ## Troubleshooting
 
 ### Connection Issues
+
 - Verify `DATABASE_URL` is correctly set in `.env`
 - Ensure your database allows SSL connections (Neon requires SSL)
 - Check that your IP is whitelisted if using IP restrictions
 
 ### Missing Column Errors
+
 If you see errors about missing `authorization_7702` column:
+
 1. Run the migration: `migrate-add-authorization.sql`
 2. Or manually add the column:
    ```sql
@@ -115,6 +127,8 @@ If you see errors about missing `authorization_7702` column:
    ```
 
 ### Permission Errors
+
 Ensure your database user has permissions to:
+
 - CREATE, ALTER, DROP tables
 - INSERT, UPDATE, DELETE, SELECT data

@@ -23,9 +23,7 @@ export function RewardsBalance() {
     <div className="flex w-full flex-col items-start md:w-auto">
       <span className="text-muted-foreground text-sm">Rewards Earned</span>
       <div className="flex items-baseline gap-2">
-        <span className="text-3xl font-semibold text-blue-600">
-          ${totalRewards.toFixed(2)}
-        </span>
+        <span className="text-3xl font-semibold text-blue-600">${totalRewards.toFixed(2)}</span>
         <span className="text-sm text-gray-500">
           across {positionCount} {positionCount === 1 ? "vault" : "vaults"}
         </span>

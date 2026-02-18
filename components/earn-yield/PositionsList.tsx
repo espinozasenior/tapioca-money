@@ -2,28 +2,19 @@ import React, { useState } from "react";
 import Image from "next/image";
 import { Info } from "lucide-react";
 import { useWallet } from "@/hooks/useWallet";
-import { YieldOpportunity, YieldPosition, useVaultExit } from "@/hooks/useOptimizer";
-
-// Legacy type alias for backward compatibility
-type YieldAction = YieldPosition;
+import {
+  YieldOpportunity,
+  YieldPosition,
+  useVaultExit,
+  getProtocolInfo,
+} from "@/hooks/useOptimizer";
 
 interface PositionsListProps {
-  positions: YieldAction[];
+  positions: YieldPosition[];
   yields: YieldOpportunity[];
   isLoading: boolean;
   onExitSuccess: () => void;
 }
-
-// Format provider ID to display name
-const formatProviderName = (yieldId: string) => {
-  // Extract provider from yieldId like "base-usdc-aave-v3-lending"
-  const parts = yieldId.split("-");
-  if (parts.length >= 3) {
-    const provider = parts[2]; // Usually the third part is the provider
-    return provider.charAt(0).toUpperCase() + provider.slice(1);
-  }
-  return "Unknown";
-};
 
 // Format USD amount for display
 const formatUsdAmount = (amountUsd: string | undefined, amount: string | undefined) => {
@@ -65,7 +56,7 @@ export function PositionsList({ positions, yields, isLoading, onExitSuccess }: P
     return yields.find((y) => y.id === yieldId);
   };
 
-  const handleExit = async (position: YieldAction) => {
+  const handleExit = async (position: YieldPosition) => {
     if (!wallet?.address) {
       setError("No wallet connected");
       return;
@@ -141,9 +132,13 @@ export function PositionsList({ positions, yields, isLoading, onExitSuccess }: P
 
       {positions.map((position) => {
         const yieldOpp = getYieldForPosition(position.yieldId);
-        const apy = yieldOpp?.rewardRate?.total;
+        const apy = yieldOpp?.rewardRate?.total ?? position.apy;
         const isExiting = exitingId === position.id;
         const displayAmount = formatUsdAmount(position.amountUsd, position.amount);
+        const protocolInfo = getProtocolInfo(position.protocol);
+        const vaultName = position.vaultName ?? yieldOpp?.metadata?.name ?? protocolInfo.name;
+        const vaultDescription = position.vaultDescription ?? yieldOpp?.metadata?.description;
+        const rewards = position.rewards;
 
         // Calculate estimated yearly earnings
         const estimatedYearlyEarnings = apy
@@ -151,44 +146,52 @@ export function PositionsList({ positions, yields, isLoading, onExitSuccess }: P
           : null;
 
         return (
-          <div
-            key={position.id}
-            className="rounded-xl border border-gray-200 bg-white p-4"
-          >
+          <div key={position.id} className="rounded-xl border border-gray-200 bg-white p-4">
             {/* Main content row */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Image
-                  src={"/usdc.svg"}
-                  alt={position.yieldId}
-                  width={40}
-                  height={40}
-                  unoptimized
-                />
+                <Image src={"/usdc.svg"} alt={vaultName} width={40} height={40} unoptimized />
 
                 {/* Position info */}
                 <div>
-                  <p className="font-semibold text-gray-900">
-                    ${displayAmount} USDC
-                  </p>
-                  <p className="text-sm text-gray-400">
-                    {formatProviderName(position.yieldId)}
-                  </p>
+                  <p className="font-semibold text-gray-900">${displayAmount} USDC</p>
+                  <p className="text-sm text-gray-700">{vaultName}</p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <span
+                      className="rounded-full px-2 py-0.5 text-xs font-medium text-white"
+                      style={{ backgroundColor: protocolInfo.color }}
+                    >
+                      {protocolInfo.name}
+                    </span>
+                  </div>
                 </div>
               </div>
 
               {/* Earnings & APY */}
               <div className="text-right">
-                {estimatedYearlyEarnings && (
-                  <p className="font-semibold text-green-500">
-                    +${estimatedYearlyEarnings}/year
-                  </p>
+                {apy !== undefined && apy > 0 && (
+                  <p className="font-semibold text-green-500">{formatApy(apy)} APY</p>
                 )}
-                {apy !== undefined && (
-                  <p className="text-sm text-gray-400">{formatApy(apy)} APY</p>
+                {estimatedYearlyEarnings && (
+                  <p className="text-sm text-gray-400">+${estimatedYearlyEarnings}/year</p>
                 )}
               </div>
             </div>
+
+            {/* Rewards & activity info */}
+            {rewards && (
+              <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
+                <p className="text-sm text-green-600">+${rewards.totalEarned} earned</p>
+                {rewards.daysActive !== undefined && (
+                  <p className="text-xs text-gray-400">
+                    Active for {rewards.daysActive} {rewards.daysActive === 1 ? "day" : "days"}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Vault description */}
+            {vaultDescription && <p className="mt-2 text-xs text-gray-400">{vaultDescription}</p>}
 
             {/* Exit button */}
             <button

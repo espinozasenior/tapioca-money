@@ -51,9 +51,7 @@ async function fetchDefiLlamaYields(): Promise<DefiLlamaPool[]> {
     const response = await fetch(DEFI_LLAMA_POOLS_URL);
 
     if (!response.ok) {
-      console.error(
-        `[DefiLlama] API error: ${response.status} ${response.statusText}`
-      );
+      console.error(`[DefiLlama] API error: ${response.status} ${response.statusText}`);
       return [];
     }
 
@@ -92,9 +90,7 @@ export async function getAaveUsdcPool(): Promise<{
     const pools = await fetchDefiLlamaYields();
 
     const aaveUsdc = pools.find(
-      (pool) =>
-        pool.project === "aave-v3" &&
-        pool.symbol.toUpperCase().includes("USDC")
+      (pool) => pool.project === "aave-v3" && pool.symbol.toUpperCase().includes("USDC")
     );
 
     if (!aaveUsdc) {
@@ -127,9 +123,7 @@ export async function getMoonwellUsdcPool(): Promise<{
     const pools = await fetchDefiLlamaYields();
 
     const moonwellUsdc = pools.find(
-      (pool) =>
-        pool.project === "moonwell-apollo" &&
-        pool.symbol.toUpperCase().includes("USDC")
+      (pool) => pool.project === "moonwell-apollo" && pool.symbol.toUpperCase().includes("USDC")
     );
 
     if (!moonwellUsdc) {

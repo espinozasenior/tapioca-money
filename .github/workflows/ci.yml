@@ -49,7 +49,7 @@ jobs:
           --exclude '**/integration/edge-cases.test.ts'
         env:
           DATABASE_ENCRYPTION_KEY: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-          AGENT_SIMULATION_MODE: 'true'
+          AGENT_SIMULATION_MODE: "true"
 
       # Build is validated by Vercel on deploy.
       # Skipped in CI because Privy SDK validates appId against their API

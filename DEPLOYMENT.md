@@ -21,6 +21,7 @@ This guide covers the complete deployment procedure for the fintech-starter-app 
 Before deployment, verify all required environment variables are set. Use `.env.template` as reference.
 
 **Server-Only Variables** (never exposed to browser):
+
 - `PRIVY_APP_SECRET` - From https://dashboard.privy.io (keep confidential)
 - `DATABASE_URL` - Neon Postgres connection string with connection pooling
 - `DATABASE_ENCRYPTION_KEY` - 32-byte hex string for session key encryption
@@ -28,11 +29,13 @@ Before deployment, verify all required environment variables are set. Use `.env.
 - `ZERODEV_PROJECT_ID` - From https://dashboard.zerodev.app
 
 **Public Variables** (safe to expose):
+
 - `NEXT_PUBLIC_PRIVY_APP_ID` - From Privy dashboard
 - `NEXT_PUBLIC_CHAIN_ID` - Must be `base` for production
 - `NEXT_PUBLIC_USDC_MINT` - `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` (Base mainnet)
 
 **Optional Variables**:
+
 - `ZERODEV_BUNDLER_URL` - Defaults to ZeroDev's bundler, only set if using custom bundler
 - `AGENT_SIMULATION_MODE` - Set to `false` for production (default is `false`)
 - `AGENT_MIN_APY_THRESHOLD` - Default `0.005` (0.5% APY improvement minimum)
@@ -40,6 +43,7 @@ Before deployment, verify all required environment variables are set. Use `.env.
 - `CRON_CONCURRENCY` - Default `10` (10 concurrent users per batch)
 
 **Verification Command**:
+
 ```bash
 # Check all required variables are set
 grep -E "NEXT_PUBLIC_|DATABASE_|CRON_|ZERODEV_|PRIVY_" .env.prod | wc -l
@@ -49,6 +53,7 @@ grep -E "NEXT_PUBLIC_|DATABASE_|CRON_|ZERODEV_|PRIVY_" .env.prod | wc -l
 ### Database Migration Steps
 
 **1. Backup current database** (if upgrading existing deployment):
+
 ```bash
 # Via Neon console
 # 1. Go to https://console.neon.tech
@@ -58,6 +63,7 @@ grep -E "NEXT_PUBLIC_|DATABASE_|CRON_|ZERODEV_|PRIVY_" .env.prod | wc -l
 ```
 
 **2. Run migrations locally first**:
+
 ```bash
 # In fintech-starter-app directory
 export DATABASE_URL="postgresql://dev:password@localhost/dev"
@@ -66,6 +72,7 @@ pnpm db:push      # Push to local database for testing
 ```
 
 **3. Verify schema changes**:
+
 ```bash
 # Check migration files
 ls -la drizzle/
@@ -73,6 +80,7 @@ ls -la drizzle/
 ```
 
 **4. Prepare production migration**:
+
 ```bash
 # Create migration summary document
 cat > deployment-migrations.md << EOF
@@ -102,6 +110,7 @@ EOF
 - [ ] All external API calls (Morpho, ZeroDev) use HTTPS
 
 **Quick Security Check**:
+
 ```bash
 # Check for secrets in codebase
 grep -r "sk_prod\|sk_live\|secret\|private" --include="*.ts" --include="*.tsx" \
@@ -129,6 +138,7 @@ pnpm format:check
 ```
 
 **Acceptance Criteria**:
+
 - [ ] All tests pass (`test:run` exit code 0)
 - [ ] No type errors in build
 - [ ] No formatting errors
@@ -167,6 +177,7 @@ pnpm build
 2. Select the fintech-starter-app project
 3. Settings → Environment Variables
 4. Add/update all variables from `.env.prod`:
+
    ```
    NEXT_PUBLIC_PRIVY_APP_ID=<from-privy>
    PRIVY_APP_SECRET=<from-privy>
@@ -185,6 +196,7 @@ pnpm build
 5. Ensure all variables are set to "Production" environment only
 
 **Via CLI**:
+
 ```bash
 # Using Vercel CLI (requires login)
 vercel env add NEXT_PUBLIC_PRIVY_APP_ID
@@ -224,6 +236,7 @@ DATABASE_URL="postgresql://..." pnpm db:studio
 ### 4. Deploy to Vercel
 
 **Automatic Deployment** (Recommended):
+
 ```bash
 # Push to main branch (triggers automatic deployment)
 git add .
@@ -234,6 +247,7 @@ git push origin main
 ```
 
 **Manual Deployment** (if needed):
+
 ```bash
 # Using Vercel CLI
 vercel deploy --prod
@@ -243,6 +257,7 @@ vercel redeploy --prod
 ```
 
 **Deployment Checks**:
+
 - Vercel build completes without errors
 - All environment variables are available (check build logs)
 - Database migrations completed
@@ -253,6 +268,7 @@ vercel redeploy --prod
 Vercel automatically runs crons based on `vercel.json` configuration.
 
 **Current Configuration** (in `vercel.json`):
+
 ```json
 {
   "crons": [
@@ -267,6 +283,7 @@ Vercel automatically runs crons based on `vercel.json` configuration.
 This runs the autonomous rebalancing agent every 5 minutes.
 
 **Verify Cron Setup**:
+
 ```bash
 # Check Vercel cron logs
 vercel env pull  # Get latest env
@@ -306,21 +323,21 @@ curl -H "authorization: Bearer $CRON_SECRET" \
 
 ### Required Environment Variables Reference
 
-| Variable | Type | Source | Notes |
-|----------|------|--------|-------|
-| `NEXT_PUBLIC_PRIVY_APP_ID` | String | Privy Dashboard | Public, safe to expose |
-| `PRIVY_APP_SECRET` | String | Privy Dashboard | Secret, server-only |
-| `DATABASE_URL` | URL | Neon Console | Use connection pooling endpoint |
-| `DATABASE_ENCRYPTION_KEY` | Hex String | Generate via `openssl rand -hex 32` | 32-byte key for AES-256 encryption |
-| `CRON_SECRET` | Hex String | Generate via `openssl rand -hex 16` | Used to authenticate cron requests |
-| `NEXT_PUBLIC_CHAIN_ID` | String | Fixed | Must be `base` for mainnet |
-| `NEXT_PUBLIC_USDC_MINT` | Address | Fixed | Base mainnet USDC: `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
-| `ZERODEV_PROJECT_ID` | String | ZeroDev Dashboard | For Kernel V3 smart accounts |
-| `ZERODEV_BUNDLER_URL` | URL | Optional | Custom bundler endpoint (defaults to ZeroDev) |
-| `AGENT_SIMULATION_MODE` | Boolean | Set to `false` | For production, rebalances execute real transactions |
-| `AGENT_MIN_APY_THRESHOLD` | Decimal | Default: 0.005 | Minimum APY improvement (0.5%) to trigger rebalance |
-| `CRON_BATCH_SIZE` | Number | Default: 50 | Users processed per batch (tune for memory) |
-| `CRON_CONCURRENCY` | Number | Default: 10 | Concurrent user processing (tune for rate limits) |
+| Variable                   | Type       | Source                              | Notes                                                           |
+| -------------------------- | ---------- | ----------------------------------- | --------------------------------------------------------------- |
+| `NEXT_PUBLIC_PRIVY_APP_ID` | String     | Privy Dashboard                     | Public, safe to expose                                          |
+| `PRIVY_APP_SECRET`         | String     | Privy Dashboard                     | Secret, server-only                                             |
+| `DATABASE_URL`             | URL        | Neon Console                        | Use connection pooling endpoint                                 |
+| `DATABASE_ENCRYPTION_KEY`  | Hex String | Generate via `openssl rand -hex 32` | 32-byte key for AES-256 encryption                              |
+| `CRON_SECRET`              | Hex String | Generate via `openssl rand -hex 16` | Used to authenticate cron requests                              |
+| `NEXT_PUBLIC_CHAIN_ID`     | String     | Fixed                               | Must be `base` for mainnet                                      |
+| `NEXT_PUBLIC_USDC_MINT`    | Address    | Fixed                               | Base mainnet USDC: `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
+| `ZERODEV_PROJECT_ID`       | String     | ZeroDev Dashboard                   | For Kernel V3 smart accounts                                    |
+| `ZERODEV_BUNDLER_URL`      | URL        | Optional                            | Custom bundler endpoint (defaults to ZeroDev)                   |
+| `AGENT_SIMULATION_MODE`    | Boolean    | Set to `false`                      | For production, rebalances execute real transactions            |
+| `AGENT_MIN_APY_THRESHOLD`  | Decimal    | Default: 0.005                      | Minimum APY improvement (0.5%) to trigger rebalance             |
+| `CRON_BATCH_SIZE`          | Number     | Default: 50                         | Users processed per batch (tune for memory)                     |
+| `CRON_CONCURRENCY`         | Number     | Default: 10                         | Concurrent user processing (tune for rate limits)               |
 
 ### Database Connection Pooling
 
@@ -333,12 +350,14 @@ postgresql://username:password@project-id.us-east-1.neon.tech/dbname?sslmode=req
 ```
 
 **Connection Pool Settings**:
+
 - Max connections per Vercel serverless function: 10
 - Idle connection timeout: 30 seconds
 - Connection reuse: Enabled by default
 - SSL mode: Required (`?sslmode=require`)
 
 **For High Traffic** (if needed):
+
 1. Upgrade Neon plan to Unlimited connections
 2. Set `DATABASE_POOL_SIZE=50` if using PgBouncer
 3. Monitor connection usage in Neon dashboard
@@ -346,6 +365,7 @@ postgresql://username:password@project-id.us-east-1.neon.tech/dbname?sslmode=req
 ### Redis Configuration (Optional)
 
 Currently not required, but can be added for:
+
 - Session caching (reduce database load)
 - Rate limiting (prevent abuse)
 - Real-time data cache (Morpho vault APYs)
@@ -363,17 +383,20 @@ export REDIS_URL="redis://username:password@host:port"
 ### Autonomous Agent Configuration
 
 **Cron Schedule** (from `vercel.json`):
+
 - Every 5 minutes: `*/5 * * * *`
 - Runs independently of user sessions
 - Uses session keys stored in database (encrypted)
 
 **Batch Processing**:
+
 ```
 CRON_BATCH_SIZE=50    # 50 users per batch
 CRON_CONCURRENCY=10   # 10 users processed in parallel
 ```
 
 For 10,000 active users:
+
 - Batches: 200 batches of 50 users each
 - Processing time: ~8 minutes total (vs 83 minutes sequential)
 - Executes 5 times per hour
@@ -381,6 +404,7 @@ For 10,000 active users:
 **Tuning for Production**:
 
 If cron runs over 5 minutes:
+
 ```bash
 # Increase batch size
 export CRON_BATCH_SIZE=100
@@ -393,6 +417,7 @@ export CRON_CONCURRENCY=20
 ```
 
 If getting rate limited:
+
 ```bash
 # Decrease concurrency
 export CRON_CONCURRENCY=5
@@ -400,6 +425,7 @@ export CRON_BATCH_SIZE=25
 ```
 
 **Session Key Management**:
+
 - Created with 30-day expiry in `/api/agent/register`
 - Encrypted and stored in `users.authorization_7702` column
 - Automatically invalidated if user disables auto-optimize
@@ -412,11 +438,13 @@ export CRON_BATCH_SIZE=25
 ### Health Check Endpoints
 
 **Main Health Endpoint**:
+
 ```bash
 curl https://your-domain.vercel.app/api/agent/health
 ```
 
 Response:
+
 ```json
 {
   "status": "healthy",
@@ -439,6 +467,7 @@ Response:
 ```
 
 **Status Values**:
+
 - `healthy` - All services operational
 - `degraded` - Some services down but core functionality works
 - `down` - Critical services unavailable
@@ -463,6 +492,7 @@ curl -X POST https://your-domain.vercel.app/api/agent/health \
 ### Key Metrics to Monitor
 
 **1. Autonomous Agent Performance**:
+
 ```sql
 -- Query in Neon console
 SELECT
@@ -477,6 +507,7 @@ GROUP BY action_type, status;
 ```
 
 **2. Active Users with Auto-Optimize**:
+
 ```sql
 SELECT
   COUNT(*) as active_users,
@@ -487,6 +518,7 @@ WHERE auto_optimize_enabled = true;
 ```
 
 **3. Cron Job Execution**:
+
 ```sql
 -- Last 10 cron runs
 SELECT
@@ -503,6 +535,7 @@ ORDER BY created_at DESC;
 ```
 
 **4. Error Tracking**:
+
 ```sql
 -- Recent errors
 SELECT
@@ -521,25 +554,27 @@ ORDER BY created_at DESC;
 
 Set up alerts in your monitoring tool (Vercel Analytics, DataDog, etc.):
 
-| Metric | Threshold | Action |
-|--------|-----------|--------|
-| Health Status = `down` | Immediate | Page on-call engineer |
-| Success Rate < 95% | 1 hour | Review cron logs for patterns |
-| Database Response > 1000ms | 5 min average | Check Neon connection pool |
-| Cron Runtime > 4 min 30 sec | Each execution | Adjust batch/concurrency settings |
-| Active Users = 0 | Immediate | Check Privy integration |
-| ZeroDev Bundler = down | 5 min | Use fallback bundler or pause deployments |
-| Morpho API = down | 5 min | Pause rebalancing (cron will skip) |
-| Database Encryption Key Invalid | Immediate | Verify KEY_ROTATION procedure |
+| Metric                          | Threshold      | Action                                    |
+| ------------------------------- | -------------- | ----------------------------------------- |
+| Health Status = `down`          | Immediate      | Page on-call engineer                     |
+| Success Rate < 95%              | 1 hour         | Review cron logs for patterns             |
+| Database Response > 1000ms      | 5 min average  | Check Neon connection pool                |
+| Cron Runtime > 4 min 30 sec     | Each execution | Adjust batch/concurrency settings         |
+| Active Users = 0                | Immediate      | Check Privy integration                   |
+| ZeroDev Bundler = down          | 5 min          | Use fallback bundler or pause deployments |
+| Morpho API = down               | 5 min          | Pause rebalancing (cron will skip)        |
+| Database Encryption Key Invalid | Immediate      | Verify KEY_ROTATION procedure             |
 
 ### Log Aggregation
 
 **Vercel Logs**:
+
 - Accessible via Vercel dashboard → Deployments → Logs
 - Shows all `console.log()` statements from API routes
 - 24-hour retention on free tier
 
 **Check Cron Logs**:
+
 ```bash
 # Via Vercel CLI
 vercel logs --prod
@@ -565,6 +600,7 @@ vercel logs --prod | grep "Cron"
 ```
 
 **Error Log Patterns** (investigate these):
+
 ```
 [Cron] Error processing user {address}: {error}
 [Cron] Unauthorized attempt - invalid secret
@@ -576,6 +612,7 @@ vercel logs --prod | grep "Cron"
 ### Performance Monitoring
 
 **Vercel Metrics**:
+
 1. Go to Vercel Dashboard → your-project → Analytics
 2. Monitor:
    - **TTFB** (Time to First Byte): Target < 500ms
@@ -583,6 +620,7 @@ vercel logs --prod | grep "Cron"
    - **LCP** (Largest Contentful Paint): Target < 2.5s
 
 **Database Query Performance**:
+
 ```bash
 # Enable query logging in Neon
 # Via Neon console → Project Settings → Query Logs
@@ -596,6 +634,7 @@ LIMIT 10;
 ```
 
 **API Endpoint Response Times**:
+
 - `/api/agent/health`: Target < 500ms
 - `/api/optimize`: Target < 2s (calls Morpho API)
 - `/api/agent/register`: Target < 5s (creates session key)
@@ -610,6 +649,7 @@ LIMIT 10;
 If critical issues arise immediately after deployment:
 
 **Step 1: Revert Deployment**:
+
 ```bash
 # Option A: Via Vercel Dashboard
 # 1. Go to Vercel → Deployments
@@ -626,6 +666,7 @@ git push origin main
 ```
 
 **Step 2: Verify Rollback**:
+
 ```bash
 curl https://your-domain.vercel.app/api/agent/health
 # Should return health status
@@ -637,6 +678,7 @@ git log --oneline -5
 **Step 3: Cron Cleanup** (if needed):
 
 If cron failed mid-execution:
+
 ```bash
 # Via Neon console → SQL Editor
 -- Mark failed actions as rolled back
@@ -656,6 +698,7 @@ WHERE status = 'pending';
 If database migrations caused issues:
 
 **Option 1: Revert to Backup Branch** (Recommended):
+
 ```bash
 # Via Neon console
 # 1. Go to Branches
@@ -668,6 +711,7 @@ If database migrations caused issues:
 ```
 
 **Option 2: Manual Schema Rollback**:
+
 ```bash
 # Via Neon SQL Editor
 -- Identify failing migration
@@ -682,6 +726,7 @@ SELECT * FROM information_schema.tables WHERE table_schema = 'public' LIMIT 5;
 ```
 
 **Option 3: Using Drizzle Migration**:
+
 ```bash
 # Locally determine safe revert point
 pnpm db:push --dry-run
@@ -712,11 +757,13 @@ WHERE auto_optimize_enabled = true;
 ### Communication Checklist
 
 After rollback, notify:
+
 - [ ] Team in Slack/Discord
 - [ ] Users via email (if major feature rolled back)
 - [ ] Post-mortem in incident tracker
 
 **Post-Mortem Template**:
+
 ```markdown
 ## Incident Report
 
@@ -725,20 +772,25 @@ After rollback, notify:
 **Severity**: P1 (Production down) / P2 (Degraded) / P3 (Minor)
 
 ### Root Cause
+
 [Describe what went wrong]
 
 ### Detection
+
 [How we noticed the issue]
 
 ### Impact
+
 - [Users affected]
 - [Data impacted]
 - [Rebalances failed]
 
 ### Resolution
+
 [Steps taken to fix]
 
 ### Follow-up Actions
+
 - [ ] [Action 1]
 - [ ] [Action 2]
 ```
@@ -752,10 +804,12 @@ After rollback, notify:
 #### 1. Cron Job Not Running
 
 **Symptoms**:
+
 - No cron logs in Vercel
 - `/api/agent/health` shows old `lastCronRun` timestamp
 
 **Debugging**:
+
 ```bash
 # 1. Verify cron is configured
 cat vercel.json
@@ -773,6 +827,7 @@ curl -X POST https://your-domain.vercel.app/api/agent/cron \
 ```
 
 **Solutions**:
+
 1. Redeploy with `vercel deploy --prod`
 2. Verify `vercel.json` syntax (JSON validator)
 3. Check CRON_SECRET length (must be 32+ chars)
@@ -781,10 +836,12 @@ curl -X POST https://your-domain.vercel.app/api/agent/cron \
 #### 2. Database Connection Errors
 
 **Symptoms**:
+
 - `/api/agent/health` returns `"database": "down"`
 - `connect ECONNREFUSED` errors in logs
 
 **Debugging**:
+
 ```bash
 # 1. Verify DATABASE_URL is set
 vercel env ls | grep DATABASE_URL
@@ -801,6 +858,7 @@ node -e "const { neon } = require('@neondatabase/serverless'); const sql = neon(
 ```
 
 **Solutions**:
+
 1. Reset DATABASE_URL in Vercel env with pooled connection string:
    ```
    postgresql://user:pass@project.us-east-1.neon.tech/db?sslmode=require
@@ -812,10 +870,12 @@ node -e "const { neon } = require('@neondatabase/serverless'); const sql = neon(
 #### 3. Session Key Expired
 
 **Symptoms**:
+
 - Cron logs show many "Session key expired" skipped actions
 - Users complain rebalancing stopped
 
 **Debugging**:
+
 ```bash
 # Check session expiry in database
 DATABASE_URL="prod-url" psql << EOF
@@ -832,6 +892,7 @@ EOF
 ```
 
 **Solutions**:
+
 1. Users must manually re-register agents via UI
 2. Implement automated renewal: extend expiry 7 days before actual expiry
 3. Batch refresh: create endpoint `/api/agent/refresh-session` that users call
@@ -839,11 +900,13 @@ EOF
 #### 4. Morpho API Unreachable
 
 **Symptoms**:
+
 - `/api/agent/health` returns `"morphoApi": "down"`
 - Cron logs show Morpho API failures
 - Decision engine returns empty vault lists
 
 **Debugging**:
+
 ```bash
 # 1. Check API availability
 curl -X POST https://blue-api.morpho.org/graphql \
@@ -858,6 +921,7 @@ grep -i "morpho" vercel logs --prod
 ```
 
 **Solutions**:
+
 1. Increase CRON_BATCH_SIZE to reduce API calls
 2. Implement caching: store vault data in Redis with 5-minute TTL
 3. Add retry logic with exponential backoff
@@ -866,11 +930,13 @@ grep -i "morpho" vercel logs --prod
 #### 5. ZeroDev Bundler Failures
 
 **Symptoms**:
+
 - Transaction failures: `ZeroDev bundler rejected transaction`
 - `/api/agent/health` returns `"zerodev": "down"`
 - Rebalance attempts fail with no on-chain transaction
 
 **Debugging**:
+
 ```bash
 # 1. Check bundler status
 ZERODEV_PROJECT_ID="your-id" \
@@ -886,6 +952,7 @@ vercel logs --prod | grep -i "bundler\|zerodev"
 ```
 
 **Solutions**:
+
 1. Set `ZERODEV_BUNDLER_URL` to fallback bundler if available
 2. Reduce CRON_CONCURRENCY to lower bundler load
 3. Implement transaction retry with exponential backoff
@@ -894,11 +961,13 @@ vercel logs --prod | grep -i "bundler\|zerodev"
 #### 6. High Database Load / Slow Queries
 
 **Symptoms**:
+
 - Cron takes > 5 minutes (hits next cron start)
 - Database response > 1s
 - Vercel timeout errors
 
 **Debugging**:
+
 ```bash
 # 1. Check slow queries in Neon
 # Via Neon console → Monitoring → Slow Queries
@@ -914,6 +983,7 @@ SELECT datname, count(*) FROM pg_stat_activity GROUP BY datname;
 ```
 
 **Solutions**:
+
 1. Add database index (if not exists):
    ```sql
    CREATE INDEX IF NOT EXISTS idx_users_cron_query
@@ -927,11 +997,13 @@ SELECT datname, count(*) FROM pg_stat_activity GROUP BY datname;
 #### 7. Privy Authentication Issues
 
 **Symptoms**:
+
 - Login modal not appearing
 - "NEXT_PUBLIC_PRIVY_APP_ID is not set" error
 - Embedded wallet not created after login
 
 **Debugging**:
+
 ```bash
 # 1. Check Privy app ID is set
 vercel env ls | grep NEXT_PUBLIC_PRIVY_APP_ID
@@ -947,6 +1019,7 @@ vercel env ls | grep NEXT_PUBLIC_PRIVY_APP_ID
 ```
 
 **Solutions**:
+
 1. Verify `NEXT_PUBLIC_PRIVY_APP_ID` in Vercel env
 2. Redeploy to invalidate old app ID: `vercel deploy --prod`
 3. Clear browser cache: Cmd+Shift+Delete (Chrome)
@@ -955,11 +1028,13 @@ vercel env ls | grep NEXT_PUBLIC_PRIVY_APP_ID
 ### Debug Endpoints
 
 **Health Check with Detailed Output**:
+
 ```bash
 curl https://your-domain.vercel.app/api/agent/health?verbose=1 -s | jq .
 ```
 
 **Cron Manual Trigger** (for testing):
+
 ```bash
 curl -X POST https://your-domain.vercel.app/api/agent/cron \
   -H "x-cron-secret: $CRON_SECRET" \
@@ -967,6 +1042,7 @@ curl -X POST https://your-domain.vercel.app/api/agent/cron \
 ```
 
 **Database Query Test**:
+
 ```bash
 # In /app/api/debug/route.ts
 export async function GET() {
@@ -1003,23 +1079,27 @@ vercel logs --prod > deployment-logs.txt
 ### First 24-Hour Monitoring Checklist
 
 **Every 15 minutes (first 2 hours)**:
+
 - [ ] Check `/api/agent/health` status (should be `healthy`)
 - [ ] Verify no new error patterns in logs
 - [ ] Monitor Vercel real-time metrics
 
 **Every hour (first 24 hours)**:
+
 - [ ] Check active user count (should grow)
 - [ ] Verify cron runs every 5 minutes
 - [ ] Monitor database connection pool (should be < 50%)
 - [ ] Verify no session key expiry issues
 
 **After 24 hours**:
+
 - [ ] Review first 24-hour metrics
 - [ ] Analyze rebalance success rate (target > 95%)
 - [ ] Check for any errors that need addressing
 - [ ] Calculate actual vs estimated gas costs
 
 **Metrics to Track**:
+
 ```sql
 -- Successful rebalances in first 24h
 SELECT
@@ -1078,6 +1158,7 @@ npm audit  # Check for new vulnerabilities
 ```
 
 **Weekly Actions**:
+
 - [ ] Run `pnpm format:check` and `pnpm test:run` on main
 - [ ] Review Vercel analytics for performance regressions
 - [ ] Check Neon backup status
@@ -1089,12 +1170,14 @@ npm audit  # Check for new vulnerabilities
 **First of month** (or chosen date):
 
 1. **Operational Review**:
+
    - Total active users with auto-optimize
    - Total rebalances executed
    - Total gas costs vs savings
    - User growth rate
 
 2. **Financial Analysis**:
+
    ```sql
    SELECT
      COUNT(DISTINCT user_id) as active_users,
@@ -1109,18 +1192,21 @@ npm audit  # Check for new vulnerabilities
    ```
 
 3. **Performance Review**:
+
    - Cron average execution time
    - Cron success rate
    - Database query performance
    - API endpoint response times
 
 4. **Security Review**:
+
    - Session key rotation (verify expiry < 30 days)
    - No unauthorized access attempts
    - Database encryption key rotation schedule
    - Environment variable audit
 
 5. **Cost Optimization**:
+
    - Vercel compute costs (check for runaway crons)
    - Neon database costs (connection pool sizing)
    - ZeroDev bundler costs (transaction volume)
@@ -1133,6 +1219,7 @@ npm audit  # Check for new vulnerabilities
    - Performance improvements needed
 
 **Monthly Checklist**:
+
 - [ ] Database backups successful (check Neon)
 - [ ] No deprecated dependencies
 - [ ] All alerts configured properly
@@ -1144,11 +1231,13 @@ npm audit  # Check for new vulnerabilities
 **For Critical Incidents** (production down):
 
 1. **Immediate** (0-5 min):
+
    - Alert on-call engineer
    - Check `/api/agent/health` to determine scope
    - Check Vercel status page for platform issues
 
 2. **Triage** (5-15 min):
+
    - Review recent deployments/changes
    - Check external service status (Neon, ZeroDev, Morpho)
    - Review error logs
@@ -1188,6 +1277,7 @@ npm audit  # Check for new vulnerabilities
 ## Support
 
 For deployment issues, contact:
+
 - **Infrastructure**: [DevOps team email]
 - **Smart Contracts**: [Contracts team email]
 - **Frontend**: [Frontend team email]

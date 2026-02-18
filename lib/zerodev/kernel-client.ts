@@ -8,11 +8,11 @@
  *    (will fail with "sudo validator not set" for first UserOp)
  */
 
-import { createPublicClient, http, type Hex } from 'viem';
-import { base } from 'viem/chains';
-import { privateKeyToAccount } from 'viem/accounts';
-import { checkSmartAccountActive, type DelegationStatus } from './client-secure';
-import { CHAIN_CONFIG } from '@/lib/yield-optimizer/config';
+import { createPublicClient, http, type Hex } from "viem";
+import { base } from "viem/chains";
+import { privateKeyToAccount } from "viem/accounts";
+import { checkSmartAccountActive, type DelegationStatus } from "./client-secure";
+import { CHAIN_CONFIG } from "@/lib/yield-optimizer/config";
 
 // EntryPoint V0.7 object (required format for ZeroDev SDK v5)
 const ENTRYPOINT_V07 = {
@@ -32,7 +32,7 @@ const ENTRYPOINT_V07 = {
  * @returns A kernel client ready to call sendUserOperation()
  */
 export async function createDeserializedKernelClient(serializedAccount: string) {
-  console.log('[KernelClient] Creating kernel client from serialized account...');
+  console.log("[KernelClient] Creating kernel client from serialized account...");
 
   // 1. Create public client
   const publicClient = createPublicClient({
@@ -41,9 +41,9 @@ export async function createDeserializedKernelClient(serializedAccount: string) 
   });
 
   // 2. Import ZeroDev SDK
-  const { createKernelAccountClient } = await import('@zerodev/sdk');
-  const { KERNEL_V3_3 } = await import('@zerodev/sdk/constants');
-  const { deserializePermissionAccount } = await import('@zerodev/permissions');
+  const { createKernelAccountClient } = await import("@zerodev/sdk");
+  const { KERNEL_V3_3 } = await import("@zerodev/sdk/constants");
+  const { deserializePermissionAccount } = await import("@zerodev/permissions");
 
   // NOTE: EIP-7702 authorization nonce replay protection is handled by the protocol.
   // The authorization nonce is the EOA's transaction nonce at signing time.
@@ -56,13 +56,14 @@ export async function createDeserializedKernelClient(serializedAccount: string) 
     publicClient,
     ENTRYPOINT_V07,
     KERNEL_V3_3,
-    serializedAccount,
+    serializedAccount
   );
 
-  console.log('[KernelClient] Account deserialized:', kernelAccount.address);
+  console.log("[KernelClient] Account deserialized:", kernelAccount.address);
 
   // 4. Create Kernel account client with bundler
-  const bundlerUrl = process.env.ZERODEV_BUNDLER_URL ||
+  const bundlerUrl =
+    process.env.ZERODEV_BUNDLER_URL ||
     `https://rpc.zerodev.app/api/v3/${process.env.ZERODEV_PROJECT_ID}/chain/8453`;
 
   const kernelClient = await createKernelAccountClient({
@@ -71,7 +72,7 @@ export async function createDeserializedKernelClient(serializedAccount: string) 
     bundlerTransport: http(bundlerUrl),
   });
 
-  console.log('[KernelClient] Kernel client created from deserialized account');
+  console.log("[KernelClient] Kernel client created from deserialized account");
   return kernelClient;
 }
 
@@ -115,11 +116,13 @@ export async function createSessionKernelClient(params: CreateSessionKernelClien
   });
 
   // 3. Import ZeroDev SDK (dynamic to avoid bundling issues)
-  const { createKernelAccount, createKernelAccountClient } = await import('@zerodev/sdk');
-  const { KERNEL_V3_3 } = await import('@zerodev/sdk/constants');
-  const { toPermissionValidator } = await import('@zerodev/permissions');
-  const { toCallPolicy, CallPolicyVersion, toGasPolicy, toRateLimitPolicy } = await import('@zerodev/permissions/policies');
-  const { toECDSASigner } = await import('@zerodev/permissions/signers');
+  const { createKernelAccount, createKernelAccountClient } = await import("@zerodev/sdk");
+  const { KERNEL_V3_3 } = await import("@zerodev/sdk/constants");
+  const { toPermissionValidator } = await import("@zerodev/permissions");
+  const { toCallPolicy, CallPolicyVersion, toGasPolicy, toRateLimitPolicy } = await import(
+    "@zerodev/permissions/policies"
+  );
+  const { toECDSASigner } = await import("@zerodev/permissions/signers");
 
   // 4. Convert session key to ModularSigner
   const sessionSigner = await toECDSASigner({ signer: sessionKeySigner });
@@ -127,8 +130,8 @@ export async function createSessionKernelClient(params: CreateSessionKernelClien
   // 5. Build policy — requires explicit permissions
   if (params.permissions.length === 0) {
     throw new Error(
-      'Session key requires explicit permissions. No permissions provided — ' +
-      'user must re-register with approved vaults to generate scoped CallPolicy.'
+      "Session key requires explicit permissions. No permissions provided — " +
+        "user must re-register with approved vaults to generate scoped CallPolicy."
     );
   }
 
@@ -159,7 +162,7 @@ export async function createSessionKernelClient(params: CreateSessionKernelClien
   // 6.5. Check delegation status on-chain
   const delegationStatus = await checkSmartAccountActive(params.smartAccountAddress);
 
-  console.log('[KernelClient] Delegation status:', {
+  console.log("[KernelClient] Delegation status:", {
     address: params.smartAccountAddress,
     ...delegationStatus,
   });
@@ -176,7 +179,7 @@ export async function createSessionKernelClient(params: CreateSessionKernelClien
 
   if (delegationStatus.active && delegationStatus.isDelegation) {
     // Delegation IS on-chain — verify it points to the correct Kernel V3.3 implementation
-    const { KernelVersionToAddressesMap } = await import('@zerodev/sdk/constants');
+    const { KernelVersionToAddressesMap } = await import("@zerodev/sdk/constants");
     const expectedImpl = KernelVersionToAddressesMap[KERNEL_V3_3].accountImplementationAddress;
     if (delegationStatus.implementationAddress?.toLowerCase() !== expectedImpl.toLowerCase()) {
       throw new Error(
@@ -190,7 +193,9 @@ export async function createSessionKernelClient(params: CreateSessionKernelClien
     if (params.eip7702SignedAuth) {
       accountOptions.eip7702Auth = deserializeSignedAuth(params.eip7702SignedAuth);
     }
-    console.log('[KernelClient] ✓ Delegation active & verified, isEip7702=' + !!params.eip7702SignedAuth);
+    console.log(
+      "[KernelClient] ✓ Delegation active & verified, isEip7702=" + !!params.eip7702SignedAuth
+    );
   } else if (params.eip7702SignedAuth) {
     // Delegation NOT on-chain — first UserOp must include Type 4 auth via bundler.
     // We intentionally omit eip7702Account: the SDK falls back to addressToEmptyAccount()
@@ -198,10 +203,10 @@ export async function createSessionKernelClient(params: CreateSessionKernelClien
     // This matches ZeroDev's deserializePermissionAccount pattern exactly.
     // The session key signs through plugins.regular (permissionValidator), not sudo.
     accountOptions.eip7702Auth = deserializeSignedAuth(params.eip7702SignedAuth);
-    console.log('[KernelClient] Delegation not on-chain, passing eip7702Auth (no eip7702Account)');
+    console.log("[KernelClient] Delegation not on-chain, passing eip7702Auth (no eip7702Account)");
   } else {
     throw new Error(
-      'Delegation not active on-chain and no eip7702Auth stored. User must re-register.'
+      "Delegation not active on-chain and no eip7702Auth stored. User must re-register."
     );
   }
 
@@ -209,16 +214,17 @@ export async function createSessionKernelClient(params: CreateSessionKernelClien
 
   // Verify the kernel account address matches what was stored
   if (kernelAccount.address.toLowerCase() !== params.smartAccountAddress.toLowerCase()) {
-    console.error('[KernelClient] ⚠️ Address mismatch!', {
+    console.error("[KernelClient] ⚠️ Address mismatch!", {
       computed: kernelAccount.address,
       stored: params.smartAccountAddress,
     });
   } else {
-    console.log('[KernelClient] ✓ Address verified:', kernelAccount.address);
+    console.log("[KernelClient] ✓ Address verified:", kernelAccount.address);
   }
 
   // 8. Create Kernel account client with bundler
-  const bundlerUrl = process.env.ZERODEV_BUNDLER_URL ||
+  const bundlerUrl =
+    process.env.ZERODEV_BUNDLER_URL ||
     `https://rpc.zerodev.app/api/v3/${process.env.ZERODEV_PROJECT_ID}/chain/8453`;
 
   const kernelClient = await createKernelAccountClient({
@@ -252,7 +258,7 @@ export async function verifyDelegationAfterExecution(
   const status = await checkSmartAccountActive(address);
 
   if (!status.active || !status.isDelegation) {
-    console.error('[KernelClient] CRITICAL: Delegation not active after UserOp!', {
+    console.error("[KernelClient] CRITICAL: Delegation not active after UserOp!", {
       address,
       txHash,
       status,
@@ -260,7 +266,7 @@ export async function verifyDelegationAfterExecution(
     return false;
   }
 
-  console.log('[KernelClient] ✓ Delegation confirmed after execution:', {
+  console.log("[KernelClient] ✓ Delegation confirmed after execution:", {
     address,
     implementationAddress: status.implementationAddress,
   });

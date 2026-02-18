@@ -98,22 +98,24 @@ export async function getAaveOpportunities(): Promise<YieldOpportunity[]> {
     // Try DeFi Llama API first (no RPC needed, cached)
     const llamaPool = await getAaveUsdcPool();
     if (llamaPool) {
-      return [{
-        id: "aave-usdc-base",
-        protocol: "aave",
-        name: "Aave V3 USDC",
-        asset: "USDC",
-        apy: llamaPool.apy,
-        tvl: BigInt(Math.round(llamaPool.tvlUsd * 1e6)), // Convert USD to USDC units (6 decimals)
-        address: AAVE_POOL,
-        riskScore: 0.2,
-        liquidityDepth: BigInt(Math.round(llamaPool.tvlUsd * 1e6)),
-        metadata: {
-          aTokenAddress: AAVE_AUSDC,
-          isVault: false,
-          source: "defillama",
+      return [
+        {
+          id: "aave-usdc-base",
+          protocol: "aave",
+          name: "Aave V3 USDC",
+          asset: "USDC",
+          apy: llamaPool.apy,
+          tvl: BigInt(Math.round(llamaPool.tvlUsd * 1e6)), // Convert USD to USDC units (6 decimals)
+          address: AAVE_POOL,
+          riskScore: 0.2,
+          liquidityDepth: BigInt(Math.round(llamaPool.tvlUsd * 1e6)),
+          metadata: {
+            aTokenAddress: AAVE_AUSDC,
+            isVault: false,
+            source: "defillama",
+          },
         },
-      }];
+      ];
     }
 
     // Fallback to RPC if DeFi Llama unavailable
@@ -128,28 +130,30 @@ export async function getAaveOpportunities(): Promise<YieldOpportunity[]> {
     const liquidityRate = (reserveData as readonly bigint[])[2];
     const apy = Number(liquidityRate) / 1e27;
 
-    const tvl = await baseClient.readContract({
+    const tvl = (await baseClient.readContract({
       address: AAVE_AUSDC,
       abi: ERC20_ABI,
       functionName: "totalSupply",
-    }) as bigint;
+    })) as bigint;
 
-    return [{
-      id: "aave-usdc-base",
-      protocol: "aave",
-      name: "Aave V3 USDC",
-      asset: "USDC",
-      apy,
-      tvl,
-      address: AAVE_POOL,
-      riskScore: 0.2,
-      liquidityDepth: tvl,
-      metadata: {
-        aTokenAddress: AAVE_AUSDC,
-        isVault: false,
-        source: "rpc",
+    return [
+      {
+        id: "aave-usdc-base",
+        protocol: "aave",
+        name: "Aave V3 USDC",
+        asset: "USDC",
+        apy,
+        tvl,
+        address: AAVE_POOL,
+        riskScore: 0.2,
+        liquidityDepth: tvl,
+        metadata: {
+          aTokenAddress: AAVE_AUSDC,
+          isVault: false,
+          source: "rpc",
+        },
       },
-    }];
+    ];
   } catch (error) {
     console.error("Failed to fetch Aave opportunities:", error);
     return [];

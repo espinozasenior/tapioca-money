@@ -1,5 +1,13 @@
 // Morpho Blue Protocol Integration (viem-based with simulation SDK)
-import { createPublicClient, http, parseUnits, formatUnits, encodeFunctionData, keccak256, encodeAbiParameters } from "viem";
+import {
+  createPublicClient,
+  http,
+  parseUnits,
+  formatUnits,
+  encodeFunctionData,
+  keccak256,
+  encodeAbiParameters,
+} from "viem";
 import { base } from "viem/chains";
 import type { YieldOpportunity, Position } from "../types";
 import { MORPHO_BLUE_BASE } from "../types";
@@ -10,7 +18,7 @@ import {
   sharesToAssets,
   calculateSupplyApy,
   previewSupply,
-  type SupplyPreview
+  type SupplyPreview,
 } from "./morpho-simulation";
 import { calculateRiskScore } from "@/lib/morpho/risk-scoring";
 
@@ -233,34 +241,37 @@ export function buildMorphoSupplyData(
  */
 export async function getMorphoOpportunities(): Promise<YieldOpportunity[]> {
   // Fetch live vault data from Morpho API (cached via Redis, 5 min TTL)
-  const vaults = await morphoClient.fetchVaults(CHAIN_CONFIG.chainId, 'USDC');
+  const vaults = await morphoClient.fetchVaults(CHAIN_CONFIG.chainId, "USDC");
 
   if (vaults.length === 0) {
     // Fallback to simulation-based APY if API fails
     const simState = createSimulationState();
     const apy = calculateSupplyApy(simState);
     const marketId = getMarketId(MORPHO_USDC_MARKET_PARAMS);
-    const market = simState.tryGetMarket(marketId as unknown as import("@morpho-org/blue-sdk").MarketId);
+    const market = simState.tryGetMarket(
+      marketId as unknown as import("@morpho-org/blue-sdk").MarketId
+    );
     const tvl = market?.totalSupplyAssets || 0n;
 
-    return [{
-      id: "morpho-usdc",
-      protocol: "morpho" as const,
-      name: "Morpho USDC Lending",
-      asset: "USDC",
-      apy,
-      tvl,
-      address: MORPHO_BLUE_BASE,
-      riskScore: 0.15, // Direct Morpho Blue market - low risk
-      liquidityDepth: tvl,
-      metadata: { marketParams: MORPHO_USDC_MARKET_PARAMS }
-    }];
+    return [
+      {
+        id: "morpho-usdc",
+        protocol: "morpho" as const,
+        name: "Morpho USDC Lending",
+        asset: "USDC",
+        apy,
+        tvl,
+        address: MORPHO_BLUE_BASE,
+        riskScore: 0.15, // Direct Morpho Blue market - low risk
+        liquidityDepth: tvl,
+        metadata: { marketParams: MORPHO_USDC_MARKET_PARAMS },
+      },
+    ];
   }
 
   // Filter out vaults with RED warnings or restricted depositor access (whitelisted: false)
-  const safeVaults = vaults.filter((vault) =>
-    !vault.warnings?.some((w: any) => w.level === "RED") &&
-    vault.whitelisted !== false
+  const safeVaults = vaults.filter(
+    (vault) => !vault.warnings?.some((w: any) => w.level === "RED") && vault.whitelisted !== false
   );
 
   return safeVaults.map((vault) => ({
@@ -285,7 +296,7 @@ export async function getMorphoOpportunities(): Promise<YieldOpportunity[]> {
       managementFee: vault.managementFee,
       liquidityUsd: vault.liquidityUsd,
       totalAssetsUsd: vault.totalAssetsUsd,
-    }
+    },
   }));
 }
 
@@ -303,12 +314,12 @@ export async function getMorphoPosition(userAddress: `0x${string}`): Promise<Pos
   // With batch.multicall enabled on the client, concurrent readContract calls
   // are automatically batched into single eth_call via Multicall3
   try {
-    const vaults = await morphoClient.fetchVaults(CHAIN_CONFIG.chainId, 'USDC');
+    const vaults = await morphoClient.fetchVaults(CHAIN_CONFIG.chainId, "USDC");
     if (vaults.length === 0) return positions;
 
     // Phase 1: batch all balanceOf calls (auto-batched by viem into 1 multicall)
     const balanceResults = await Promise.allSettled(
-      vaults.map(vault =>
+      vaults.map((vault) =>
         client.readContract({
           address: vault.address,
           abi: ERC4626_VAULT_ABI,
@@ -335,7 +346,7 @@ export async function getMorphoPosition(userAddress: `0x${string}`): Promise<Pos
 
     // Phase 2: batch convertToAssets calls only for vaults with balances
     const assetResults = await Promise.allSettled(
-      vaultsWithBalance.map(v =>
+      vaultsWithBalance.map((v) =>
         client.readContract({
           address: v.address,
           abi: ERC4626_VAULT_ABI,
@@ -369,17 +380,19 @@ export async function getMorphoPosition(userAddress: `0x${string}`): Promise<Pos
  * Get user's position in direct Morpho Blue market (legacy)
  * Not typically used anymore as deposits go to ERC4626 vaults
  */
-export async function getMorphoDirectPosition(userAddress: `0x${string}`): Promise<Position | null> {
+export async function getMorphoDirectPosition(
+  userAddress: `0x${string}`
+): Promise<Position | null> {
   try {
     const marketId = getMarketId(MORPHO_USDC_MARKET_PARAMS);
 
     // Fetch position directly from contract
-    const positionData = await client.readContract({
+    const positionData = (await client.readContract({
       address: PROTOCOLS.morpho.core,
       abi: MORPHO_BLUE_ABI,
       functionName: "position",
       args: [marketId, userAddress],
-    }) as readonly [bigint, bigint, bigint];
+    })) as readonly [bigint, bigint, bigint];
 
     const [supplyShares, borrowShares, collateral] = positionData;
 
@@ -411,15 +424,17 @@ export async function getMorphoDirectPosition(userAddress: `0x${string}`): Promi
  * Preview a supply operation before executing
  * Returns expected shares, APY, and price impact
  */
-export function previewMorphoSupply(
-  userAddress: `0x${string}`,
-  amount: bigint
-): SupplyPreview {
+export function previewMorphoSupply(userAddress: `0x${string}`, amount: bigint): SupplyPreview {
   return previewSupply(userAddress, amount);
 }
 
 // Re-export simulation utilities for external use
-export { previewSupply, createSimulationState, sharesToAssets, calculateSupplyApy } from "./morpho-simulation";
+export {
+  previewSupply,
+  createSimulationState,
+  sharesToAssets,
+  calculateSupplyApy,
+} from "./morpho-simulation";
 
 /**
  * Build deposit transaction with approval + supply
@@ -467,13 +482,7 @@ export function buildMorphoDepositTx(
       data: encodeFunctionData({
         abi: MORPHO_BLUE_ABI,
         functionName: "supply",
-        args: [
-          MORPHO_USDC_MARKET_PARAMS,
-          amount,
-          0n,
-          userAddress,
-          "0x" as `0x${string}`,
-        ],
+        args: [MORPHO_USDC_MARKET_PARAMS, amount, 0n, userAddress, "0x" as `0x${string}`],
       }),
     },
   };
@@ -521,14 +530,7 @@ export function buildMorphoWithdrawTx(
     data: encodeFunctionData({
       abi: MORPHO_BLUE_ABI,
       functionName: "withdraw",
-      args: [
-        MORPHO_USDC_MARKET_PARAMS,
-        assets || 0n,
-        shares || 0n,
-        userAddress,
-        userAddress,
-      ],
+      args: [MORPHO_USDC_MARKET_PARAMS, assets || 0n, shares || 0n, userAddress, userAddress],
     }),
   };
 }
-

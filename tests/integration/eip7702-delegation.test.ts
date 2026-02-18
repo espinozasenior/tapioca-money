@@ -14,29 +14,29 @@
  * Environment: Base mainnet via production .env
  */
 
-import { describe, test, expect, vi } from 'vitest';
-import { createPublicClient, http, parseAbi, encodeFunctionData } from 'viem';
-import { base } from 'viem/chains';
+import { describe, test, expect, vi } from "vitest";
+import { createPublicClient, http, parseAbi, encodeFunctionData } from "viem";
+import { base } from "viem/chains";
 
 // ─── Delegation Verification Tests ──────────────────────────────────────────
 // These test the designator parsing logic directly without mocking viem,
 // by testing the bytecode pattern matching in isolation.
 
-describe('checkSmartAccountActive — Delegation Designator Verification', () => {
+describe("checkSmartAccountActive — Delegation Designator Verification", () => {
   // Helper: simulate the designator parsing logic from checkSmartAccountActive
   function parseDelegationBytecode(code: string | undefined) {
-    if (!code || code === '0x') {
+    if (!code || code === "0x") {
       return { active: false, isDelegation: false };
     }
-    if (code.startsWith('0xef0100') && code.length === 48) {
-      const implementationAddress = ('0x' + code.slice(8)) as `0x${string}`;
+    if (code.startsWith("0xef0100") && code.length === 48) {
+      const implementationAddress = ("0x" + code.slice(8)) as `0x${string}`;
       return { active: true, isDelegation: true, implementationAddress };
     }
     return { active: true, isDelegation: false };
   }
 
-  test('1. Valid EIP-7702 delegation returns correct DelegationStatus', () => {
-    const kernelAddr = 'aabbccddaabbccddaabbccddaabbccddaabbccdd';
+  test("1. Valid EIP-7702 delegation returns correct DelegationStatus", () => {
+    const kernelAddr = "aabbccddaabbccddaabbccddaabbccddaabbccdd";
     const result = parseDelegationBytecode(`0xef0100${kernelAddr}`);
 
     expect(result.active).toBe(true);
@@ -44,8 +44,8 @@ describe('checkSmartAccountActive — Delegation Designator Verification', () =>
     expect(result.implementationAddress?.toLowerCase()).toBe(`0x${kernelAddr}`);
   });
 
-  test('2. Wrong delegation target detected', () => {
-    const wrongAddr = '0000000000000000000000000000000000000001';
+  test("2. Wrong delegation target detected", () => {
+    const wrongAddr = "0000000000000000000000000000000000000001";
     const result = parseDelegationBytecode(`0xef0100${wrongAddr}`);
 
     expect(result.active).toBe(true);
@@ -53,22 +53,22 @@ describe('checkSmartAccountActive — Delegation Designator Verification', () =>
     expect(result.implementationAddress).toBe(`0x${wrongAddr}`);
   });
 
-  test('3. No bytecode (not delegated) returns inactive', () => {
-    expect(parseDelegationBytecode('0x')).toEqual({ active: false, isDelegation: false });
+  test("3. No bytecode (not delegated) returns inactive", () => {
+    expect(parseDelegationBytecode("0x")).toEqual({ active: false, isDelegation: false });
     expect(parseDelegationBytecode(undefined)).toEqual({ active: false, isDelegation: false });
   });
 
-  test('4. Regular contract bytecode (not 0xef0100) returns non-delegation', () => {
-    const result = parseDelegationBytecode('0x6080604052348015600f57600080fd5b50');
+  test("4. Regular contract bytecode (not 0xef0100) returns non-delegation", () => {
+    const result = parseDelegationBytecode("0x6080604052348015600f57600080fd5b50");
 
     expect(result.active).toBe(true);
     expect(result.isDelegation).toBe(false);
-    expect(result).not.toHaveProperty('implementationAddress');
+    expect(result).not.toHaveProperty("implementationAddress");
   });
 
-  test('4b. Designator with wrong length rejected', () => {
+  test("4b. Designator with wrong length rejected", () => {
     // Too short — only 10 hex chars after prefix instead of 40
-    const result = parseDelegationBytecode('0xef01001234567890');
+    const result = parseDelegationBytecode("0xef01001234567890");
     expect(result.isDelegation).toBe(false);
     expect(result.active).toBe(true); // Has bytecode, just not a valid delegation
   });
@@ -76,141 +76,133 @@ describe('checkSmartAccountActive — Delegation Designator Verification', () =>
 
 // ─── Permission Slot Tests ──────────────────────────────────────────────────
 
-describe('Kernel Client — Permission Validator Slot', () => {
-  test('5. permissionValidator is in regular slot, not sudo', async () => {
+describe("Kernel Client — Permission Validator Slot", () => {
+  test("5. permissionValidator is in regular slot, not sudo", async () => {
     // Read the source file and verify the pattern
-    const fs = await import('fs');
-    const kernelClientSource = fs.readFileSync(
-      'lib/zerodev/kernel-client.ts',
-      'utf-8'
-    );
+    const fs = await import("fs");
+    const kernelClientSource = fs.readFileSync("lib/zerodev/kernel-client.ts", "utf-8");
 
     // Verify regular slot is used
-    expect(kernelClientSource).toContain('regular: permissionValidator');
+    expect(kernelClientSource).toContain("regular: permissionValidator");
 
     // Verify sudo slot is NOT used with permissionValidator
-    expect(kernelClientSource).not.toContain('sudo: permissionValidator');
+    expect(kernelClientSource).not.toContain("sudo: permissionValidator");
   });
 
-  test('6. CallPolicy permissions include all vault selectors', () => {
+  test("6. CallPolicy permissions include all vault selectors", () => {
     // Verify the function selectors match expected ERC-4626 + ERC-20 operations
     const EXPECTED_SELECTORS = {
-      REDEEM: '0xba087652',   // redeem(uint256,address,address)
-      DEPOSIT: '0x6e553f65',  // deposit(uint256,address)
-      WITHDRAW: '0xb460af94', // withdraw(uint256,address,address)
-      APPROVE: '0x095ea7b3',  // approve(address,uint256)
+      REDEEM: "0xba087652", // redeem(uint256,address,address)
+      DEPOSIT: "0x6e553f65", // deposit(uint256,address)
+      WITHDRAW: "0xb460af94", // withdraw(uint256,address,address)
+      APPROVE: "0x095ea7b3", // approve(address,uint256)
     };
 
     // Verify against actual Solidity function selectors
     const redeemSelector = encodeFunctionData({
-      abi: parseAbi(['function redeem(uint256,address,address) returns (uint256)']),
-      functionName: 'redeem',
-      args: [0n, '0x0000000000000000000000000000000000000000', '0x0000000000000000000000000000000000000000'],
+      abi: parseAbi(["function redeem(uint256,address,address) returns (uint256)"]),
+      functionName: "redeem",
+      args: [
+        0n,
+        "0x0000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000",
+      ],
     }).slice(0, 10);
 
     const depositSelector = encodeFunctionData({
-      abi: parseAbi(['function deposit(uint256,address) returns (uint256)']),
-      functionName: 'deposit',
-      args: [0n, '0x0000000000000000000000000000000000000000'],
+      abi: parseAbi(["function deposit(uint256,address) returns (uint256)"]),
+      functionName: "deposit",
+      args: [0n, "0x0000000000000000000000000000000000000000"],
     }).slice(0, 10);
 
     expect(redeemSelector).toBe(EXPECTED_SELECTORS.REDEEM);
     expect(depositSelector).toBe(EXPECTED_SELECTORS.DEPOSIT);
   });
 
-  test('7. No sudo policy - error thrown when no permissions provided', async () => {
-    const fs = await import('fs');
-    const kernelClientSource = fs.readFileSync(
-      'lib/zerodev/kernel-client.ts',
-      'utf-8'
-    );
+  test("7. No sudo policy - error thrown when no permissions provided", async () => {
+    const fs = await import("fs");
+    const kernelClientSource = fs.readFileSync("lib/zerodev/kernel-client.ts", "utf-8");
 
     // Verify that toSudoPolicy is NOT used (security fix)
-    expect(kernelClientSource).not.toContain('toSudoPolicy');
+    expect(kernelClientSource).not.toContain("toSudoPolicy");
 
     // Verify that we throw an error when no permissions provided
-    expect(kernelClientSource).toContain('params.permissions.length === 0');
-    expect(kernelClientSource).toContain('Session key requires explicit permissions');
-    expect(kernelClientSource).toContain('toCallPolicy');
+    expect(kernelClientSource).toContain("params.permissions.length === 0");
+    expect(kernelClientSource).toContain("Session key requires explicit permissions");
+    expect(kernelClientSource).toContain("toCallPolicy");
   });
 });
 
 // ─── Rebalance Call Building Tests ──────────────────────────────────────────
 
-describe('buildRebalanceCalls — previewRedeem & No MAX_UINT256', () => {
-  const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
-  const MAX_UINT256 = BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
+describe("buildRebalanceCalls — previewRedeem & No MAX_UINT256", () => {
+  const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+  const MAX_UINT256 = BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
-  test('8. buildRebalanceCalls uses previewRedeem for deposit amount', async () => {
+  test("8. buildRebalanceCalls uses previewRedeem for deposit amount", async () => {
     // Use a real Morpho vault on Base mainnet
     const publicClient = createPublicClient({ chain: base, transport: http() });
 
     // Morpho Blue USDC vault on Base (Gauntlet USDC Core)
-    const testVault = '0xc1256Ae5FF1cf2719D4937adb3bbCCab2E00A2Ca' as `0x${string}`;
+    const testVault = "0xc1256Ae5FF1cf2719D4937adb3bbCCab2E00A2Ca" as `0x${string}`;
     // Use larger share amount to ensure non-zero result (1e18 shares)
-    const testShares = BigInt('1000000000000000000');
+    const testShares = BigInt("1000000000000000000");
 
     let previewResult: bigint;
     try {
       previewResult = await publicClient.readContract({
         address: testVault,
-        abi: parseAbi(['function previewRedeem(uint256 shares) view returns (uint256)']),
-        functionName: 'previewRedeem',
+        abi: parseAbi(["function previewRedeem(uint256 shares) view returns (uint256)"]),
+        functionName: "previewRedeem",
         args: [testShares],
       });
     } catch {
       // If vault doesn't exist or RPC fails, skip gracefully
-      console.log('Skipping test 8: could not call previewRedeem on vault');
+      console.log("Skipping test 8: could not call previewRedeem on vault");
       return;
     }
 
     // previewRedeem should return a non-zero asset amount for non-zero shares
     expect(previewResult).toBeGreaterThanOrEqual(0n);
     // The function is callable — that's the key verification
-    expect(typeof previewResult).toBe('bigint');
+    expect(typeof previewResult).toBe("bigint");
   });
 
-  test('9. Deposit call does NOT use MAX_UINT256', async () => {
-    const fs = await import('fs');
-    const rebalanceSource = fs.readFileSync(
-      'lib/agent/rebalance-executor.ts',
-      'utf-8'
-    );
+  test("9. Deposit call does NOT use MAX_UINT256", async () => {
+    const fs = await import("fs");
+    const rebalanceSource = fs.readFileSync("lib/agent/rebalance-executor.ts", "utf-8");
 
     // Verify MAX_UINT256 is NOT used in the deposit args
     // The old code had: args: [MAX_UINT256, params.userAddress]
     // The new code should use depositAmount
-    expect(rebalanceSource).toContain('args: [depositAmount, params.userAddress]');
+    expect(rebalanceSource).toContain("args: [depositAmount, params.userAddress]");
     expect(rebalanceSource).not.toMatch(/deposit.*args:\s*\[MAX_UINT256/);
   });
 
-  test('10. Approve call uses exact amount, not MAX_UINT256', async () => {
-    const fs = await import('fs');
-    const rebalanceSource = fs.readFileSync(
-      'lib/agent/rebalance-executor.ts',
-      'utf-8'
-    );
+  test("10. Approve call uses exact amount, not MAX_UINT256", async () => {
+    const fs = await import("fs");
+    const rebalanceSource = fs.readFileSync("lib/agent/rebalance-executor.ts", "utf-8");
 
     // Verify approve uses depositAmount
-    expect(rebalanceSource).toContain('args: [params.toVault, depositAmount]');
+    expect(rebalanceSource).toContain("args: [params.toVault, depositAmount]");
   });
 
-  test('11. Full rebalance calls structure is correct', async () => {
+  test("11. Full rebalance calls structure is correct", async () => {
     // Import with mocked previewRedeem
-    const { buildRebalanceCalls } = await import('@/lib/agent/rebalance-executor');
+    const { buildRebalanceCalls } = await import("@/lib/agent/rebalance-executor");
 
     const testParams = {
-      fromVault: '0xc1256Ae5FF1cf2719D4937adb3bbCCab2E00A2Ca' as `0x${string}`,
-      toVault: '0xBEEF01735c132Ada46AA9aA9B6290e06dF3A3b40' as `0x${string}`,
+      fromVault: "0xc1256Ae5FF1cf2719D4937adb3bbCCab2E00A2Ca" as `0x${string}`,
+      toVault: "0xBEEF01735c132Ada46AA9aA9B6290e06dF3A3b40" as `0x${string}`,
       shares: 1000000n,
-      userAddress: '0x1234567890123456789012345678901234567890' as `0x${string}`,
+      userAddress: "0x1234567890123456789012345678901234567890" as `0x${string}`,
     };
 
     let calls;
     try {
       calls = await buildRebalanceCalls(testParams);
     } catch {
-      console.log('Skipping test 11: previewRedeem call failed (RPC issue)');
+      console.log("Skipping test 11: previewRedeem call failed (RPC issue)");
       return;
     }
 
@@ -219,18 +211,18 @@ describe('buildRebalanceCalls — previewRedeem & No MAX_UINT256', () => {
 
     // Step 1: Redeem from source vault
     expect(calls[0].to).toBe(testParams.fromVault);
-    expect(calls[0].data.startsWith('0xba087652')).toBe(true); // redeem selector
+    expect(calls[0].data.startsWith("0xba087652")).toBe(true); // redeem selector
 
     // Step 2: Approve USDC on destination vault
     expect(calls[1].to.toLowerCase()).toBe(USDC_ADDRESS.toLowerCase());
-    expect(calls[1].data.startsWith('0x095ea7b3')).toBe(true); // approve selector
+    expect(calls[1].data.startsWith("0x095ea7b3")).toBe(true); // approve selector
 
     // Step 3: Deposit to destination vault
     expect(calls[2].to).toBe(testParams.toVault);
-    expect(calls[2].data.startsWith('0x6e553f65')).toBe(true); // deposit selector
+    expect(calls[2].data.startsWith("0x6e553f65")).toBe(true); // deposit selector
 
     // Verify no MAX_UINT256 in any call data
-    const maxUint256Hex = 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+    const maxUint256Hex = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
     calls.forEach((call, i) => {
       expect(call.data).not.toContain(maxUint256Hex);
     });
@@ -239,228 +231,206 @@ describe('buildRebalanceCalls — previewRedeem & No MAX_UINT256', () => {
 
 // ─── Undelegation Tests ─────────────────────────────────────────────────────
 
-describe('undelegateEoa — On-chain Delegation Removal', () => {
-  test('12. undelegateEoa signs authorization with contractAddress = address(0)', async () => {
-    const { undelegateEoa } = await import('@/lib/zerodev/client-secure');
+describe("undelegateEoa — On-chain Delegation Removal", () => {
+  test("12. undelegateEoa signs authorization with contractAddress = address(0)", async () => {
+    const { undelegateEoa } = await import("@/lib/zerodev/client-secure");
 
     const mockWalletClient = {
       signAuthorization: vi.fn().mockResolvedValue({
-        r: '0x1234',
-        s: '0x5678',
+        r: "0x1234",
+        s: "0x5678",
         yParity: 0,
       }),
-      sendTransaction: vi.fn().mockResolvedValue('0xtxhash123'),
+      sendTransaction: vi.fn().mockResolvedValue("0xtxhash123"),
     };
 
     const txHash = await undelegateEoa(
-      '0x1234567890123456789012345678901234567890',
-      mockWalletClient,
+      "0x1234567890123456789012345678901234567890",
+      mockWalletClient
     );
 
     // Verify signAuthorization called with address(0)
     expect(mockWalletClient.signAuthorization).toHaveBeenCalledWith({
-      contractAddress: '0x0000000000000000000000000000000000000000',
+      contractAddress: "0x0000000000000000000000000000000000000000",
     });
 
     // Verify sendTransaction called with authorizationList
     expect(mockWalletClient.sendTransaction).toHaveBeenCalledWith({
-      to: '0x1234567890123456789012345678901234567890',
-      authorizationList: [{ r: '0x1234', s: '0x5678', yParity: 0 }],
+      to: "0x1234567890123456789012345678901234567890",
+      authorizationList: [{ r: "0x1234", s: "0x5678", yParity: 0 }],
     });
 
-    expect(txHash).toBe('0xtxhash123');
+    expect(txHash).toBe("0xtxhash123");
   });
 
-  test('13. undelegateEoa function exists and is exported', async () => {
-    const clientSecure = await import('@/lib/zerodev/client-secure');
-    expect(typeof clientSecure.undelegateEoa).toBe('function');
+  test("13. undelegateEoa function exists and is exported", async () => {
+    const clientSecure = await import("@/lib/zerodev/client-secure");
+    expect(typeof clientSecure.undelegateEoa).toBe("function");
   });
 });
 
 // ─── Signer Consistency Tests ───────────────────────────────────────────────
 
-describe('Signer Consistency — Kernel Version & EntryPoint', () => {
-  test('14. Kernel version is KERNEL_V3_3 across all key files', async () => {
-    const fs = await import('fs');
+describe("Signer Consistency — Kernel Version & EntryPoint", () => {
+  test("14. Kernel version is KERNEL_V3_3 across all key files", async () => {
+    const fs = await import("fs");
 
-    const files = [
-      'lib/zerodev/kernel-client.ts',
-      'lib/zerodev/transfer-session.ts',
-    ];
+    const files = ["lib/zerodev/kernel-client.ts", "lib/zerodev/transfer-session.ts"];
 
     for (const file of files) {
-      const source = fs.readFileSync(file, 'utf-8');
-      expect(source).toContain('KERNEL_V3_3');
-      expect(source).not.toContain('KERNEL_V3_1');
+      const source = fs.readFileSync(file, "utf-8");
+      expect(source).toContain("KERNEL_V3_3");
+      expect(source).not.toContain("KERNEL_V3_1");
     }
   });
 
-  test('15. EntryPoint V0.7 address is consistent', async () => {
-    const fs = await import('fs');
-    const ENTRYPOINT_ADDRESS = '0x0000000071727De22E5E9d8BAf0edAc6f37da032';
+  test("15. EntryPoint V0.7 address is consistent", async () => {
+    const fs = await import("fs");
+    const ENTRYPOINT_ADDRESS = "0x0000000071727De22E5E9d8BAf0edAc6f37da032";
 
-    const files = [
-      'lib/zerodev/kernel-client.ts',
-      'lib/zerodev/transfer-session.ts',
-    ];
+    const files = ["lib/zerodev/kernel-client.ts", "lib/zerodev/transfer-session.ts"];
 
     for (const file of files) {
-      const source = fs.readFileSync(file, 'utf-8');
+      const source = fs.readFileSync(file, "utf-8");
       expect(source).toContain(ENTRYPOINT_ADDRESS);
     }
   });
 
-  test('15b. eip7702SignedAuth is accepted by all executors (legacy)', async () => {
-    const fs = await import('fs');
+  test("15b. eip7702SignedAuth is accepted by all executors (legacy)", async () => {
+    const fs = await import("fs");
 
     // transfer-executor should now accept eip7702SignedAuth
-    const transferExecSource = fs.readFileSync(
-      'lib/zerodev/transfer-executor.ts',
-      'utf-8'
-    );
-    expect(transferExecSource).toContain('eip7702SignedAuth');
+    const transferExecSource = fs.readFileSync("lib/zerodev/transfer-executor.ts", "utf-8");
+    expect(transferExecSource).toContain("eip7702SignedAuth");
 
     // deposit-executor should accept eip7702SignedAuth
-    const depositExecSource = fs.readFileSync(
-      'lib/zerodev/deposit-executor.ts',
-      'utf-8'
-    );
-    expect(depositExecSource).toContain('eip7702SignedAuth');
+    const depositExecSource = fs.readFileSync("lib/zerodev/deposit-executor.ts", "utf-8");
+    expect(depositExecSource).toContain("eip7702SignedAuth");
 
     // rebalance-executor should accept eip7702SignedAuth
-    const rebalanceExecSource = fs.readFileSync(
-      'lib/agent/rebalance-executor.ts',
-      'utf-8'
-    );
-    expect(rebalanceExecSource).toContain('eip7702SignedAuth');
+    const rebalanceExecSource = fs.readFileSync("lib/agent/rebalance-executor.ts", "utf-8");
+    expect(rebalanceExecSource).toContain("eip7702SignedAuth");
   });
 
-  test('15c. serializedAccount is accepted by all executors (new pattern)', async () => {
-    const fs = await import('fs');
+  test("15c. serializedAccount is accepted by all executors (new pattern)", async () => {
+    const fs = await import("fs");
 
     const executorFiles = [
-      'lib/zerodev/transfer-executor.ts',
-      'lib/zerodev/deposit-executor.ts',
-      'lib/zerodev/vault-executor.ts',
-      'lib/agent/rebalance-executor.ts',
+      "lib/zerodev/transfer-executor.ts",
+      "lib/zerodev/deposit-executor.ts",
+      "lib/zerodev/vault-executor.ts",
+      "lib/agent/rebalance-executor.ts",
     ];
 
     for (const file of executorFiles) {
-      const source = fs.readFileSync(file, 'utf-8');
+      const source = fs.readFileSync(file, "utf-8");
       // Each executor should accept serializedAccount
-      expect(source).toContain('serializedAccount');
+      expect(source).toContain("serializedAccount");
       // Each executor should use createDeserializedKernelClient when serializedAccount is provided
-      expect(source).toContain('createDeserializedKernelClient');
+      expect(source).toContain("createDeserializedKernelClient");
     }
   });
 });
 
 // ─── UserOp Error Handling Tests ────────────────────────────────────────────
 
-describe('UserOp Formation — Error Handling', () => {
-  test('17. Paymaster error is caught and returned gracefully', async () => {
-    const fs = await import('fs');
-    const rebalanceSource = fs.readFileSync(
-      'lib/agent/rebalance-executor.ts',
-      'utf-8'
-    );
+describe("UserOp Formation — Error Handling", () => {
+  test("17. Paymaster error is caught and returned gracefully", async () => {
+    const fs = await import("fs");
+    const rebalanceSource = fs.readFileSync("lib/agent/rebalance-executor.ts", "utf-8");
 
     // Verify paymaster error handling exists
-    expect(rebalanceSource).toContain("includes('paymaster')");
-    expect(rebalanceSource).toContain('Gas sponsorship failed');
+    expect(rebalanceSource).toMatch(/includes\(["']paymaster["']\)/);
+    expect(rebalanceSource).toContain("Gas sponsorship failed");
   });
 
-  test('18. Nonce error is caught and returned gracefully', async () => {
-    const fs = await import('fs');
-    const rebalanceSource = fs.readFileSync(
-      'lib/agent/rebalance-executor.ts',
-      'utf-8'
-    );
+  test("18. Nonce error is caught and returned gracefully", async () => {
+    const fs = await import("fs");
+    const rebalanceSource = fs.readFileSync("lib/agent/rebalance-executor.ts", "utf-8");
 
     // Verify nonce error handling exists
-    expect(rebalanceSource).toContain("includes('nonce')");
-    expect(rebalanceSource).toContain('nonce error');
+    expect(rebalanceSource).toMatch(/includes\(["']nonce["']\)/);
+    expect(rebalanceSource).toContain("nonce error");
   });
 });
 
 // ─── Pre-Execution Delegation Check Tests ───────────────────────────────────
 
-describe('Pre-Execution Delegation Checks', () => {
-  test('16. executeRebalance checks delegation before execution', async () => {
-    const fs = await import('fs');
-    const rebalanceSource = fs.readFileSync(
-      'lib/agent/rebalance-executor.ts',
-      'utf-8'
-    );
+describe("Pre-Execution Delegation Checks", () => {
+  test("16. executeRebalance checks delegation before execution", async () => {
+    const fs = await import("fs");
+    const rebalanceSource = fs.readFileSync("lib/agent/rebalance-executor.ts", "utf-8");
 
     // Verify delegation check happens before building calls
-    const delegationCheckIndex = rebalanceSource.indexOf('checkSmartAccountActive(smartAccountAddress)');
-    const buildCallsIndex = rebalanceSource.indexOf('buildRebalanceCalls(params)');
+    const delegationCheckIndex = rebalanceSource.indexOf(
+      "checkSmartAccountActive(smartAccountAddress)"
+    );
+    const buildCallsIndex = rebalanceSource.indexOf("buildRebalanceCalls(params)");
 
     expect(delegationCheckIndex).toBeGreaterThan(-1);
     expect(buildCallsIndex).toBeGreaterThan(-1);
     expect(delegationCheckIndex).toBeLessThan(buildCallsIndex);
 
     // Verify it checks for inactive delegation
-    expect(rebalanceSource).toContain('delegation not active');
+    expect(rebalanceSource).toContain("delegation not active");
   });
 
-  test('19. verifyDelegationAfterExecution exists and is exported', async () => {
-    const kernelClient = await import('@/lib/zerodev/kernel-client');
-    expect(typeof kernelClient.verifyDelegationAfterExecution).toBe('function');
+  test("19. verifyDelegationAfterExecution exists and is exported", async () => {
+    const kernelClient = await import("@/lib/zerodev/kernel-client");
+    expect(typeof kernelClient.verifyDelegationAfterExecution).toBe("function");
   });
 });
 
 // ─── DelegationStatus Type Tests ────────────────────────────────────────────
 
-describe('DelegationStatus Type Contract', () => {
-  test('DelegationStatus interface is exported', async () => {
-    const { checkSmartAccountActive } = await import('@/lib/zerodev/client-secure');
+describe("DelegationStatus Type Contract", () => {
+  test("DelegationStatus interface is exported", async () => {
+    const { checkSmartAccountActive } = await import("@/lib/zerodev/client-secure");
     // The function should exist and be callable
-    expect(typeof checkSmartAccountActive).toBe('function');
+    expect(typeof checkSmartAccountActive).toBe("function");
   });
 });
 
 // ─── Serialize/Deserialize Pattern Tests ────────────────────────────────────
 
-describe('Serialize/Deserialize Kernel Account Pattern', () => {
-  test('20. createDeserializedKernelClient is exported from kernel-client', async () => {
-    const kernelClient = await import('@/lib/zerodev/kernel-client');
-    expect(typeof kernelClient.createDeserializedKernelClient).toBe('function');
+describe("Serialize/Deserialize Kernel Account Pattern", () => {
+  test("20. createDeserializedKernelClient is exported from kernel-client", async () => {
+    const kernelClient = await import("@/lib/zerodev/kernel-client");
+    expect(typeof kernelClient.createDeserializedKernelClient).toBe("function");
   });
 
-  test('21. createAndSerializeAccount exists in client-secure', async () => {
-    const fs = await import('fs');
-    const source = fs.readFileSync('lib/zerodev/client-secure.ts', 'utf-8');
+  test("21. createAndSerializeAccount exists in client-secure", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("lib/zerodev/client-secure.ts", "utf-8");
     // Internal function used by registerAgentSecure
-    expect(source).toContain('async function createAndSerializeAccount');
-    expect(source).toContain('serializePermissionAccount');
+    expect(source).toContain("async function createAndSerializeAccount");
+    expect(source).toContain("serializePermissionAccount");
   });
 
-  test('22. serializePermissionAccount is used in client-secure', async () => {
-    const fs = await import('fs');
-    const source = fs.readFileSync('lib/zerodev/client-secure.ts', 'utf-8');
+  test("22. serializePermissionAccount is used in client-secure", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("lib/zerodev/client-secure.ts", "utf-8");
 
-    expect(source).toContain('serializePermissionAccount');
-    expect(source).toContain('createKernelAccount');
-    expect(source).toContain('toPermissionValidator');
+    expect(source).toContain("serializePermissionAccount");
+    expect(source).toContain("createKernelAccount");
+    expect(source).toContain("toPermissionValidator");
   });
 
-  test('23. deserializePermissionAccount is used in kernel-client', async () => {
-    const fs = await import('fs');
-    const source = fs.readFileSync('lib/zerodev/kernel-client.ts', 'utf-8');
+  test("23. deserializePermissionAccount is used in kernel-client", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("lib/zerodev/kernel-client.ts", "utf-8");
 
-    expect(source).toContain('deserializePermissionAccount');
-    expect(source).toContain('KERNEL_V3_3');
-    expect(source).toContain('ENTRYPOINT_V07');
+    expect(source).toContain("deserializePermissionAccount");
+    expect(source).toContain("KERNEL_V3_3");
+    expect(source).toContain("ENTRYPOINT_V07");
   });
 
-  test('24. session-encryption handles serializedAccount field', async () => {
-    const fs = await import('fs');
-    const source = fs.readFileSync('lib/security/session-encryption.ts', 'utf-8');
+  test("24. session-encryption handles serializedAccount field", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("lib/security/session-encryption.ts", "utf-8");
 
     // Type includes serializedAccount
-    expect(source).toContain('serializedAccount');
+    expect(source).toContain("serializedAccount");
 
     // encryptAuthorization encrypts serializedAccount
     expect(source).toMatch(/serializedAccount.*encrypt/s);
@@ -469,26 +439,26 @@ describe('Serialize/Deserialize Kernel Account Pattern', () => {
     expect(source).toMatch(/serializedAccount.*decrypt/s);
   });
 
-  test('25. Executors prefer serializedAccount over legacy sessionPrivateKey', async () => {
-    const fs = await import('fs');
+  test("25. Executors prefer serializedAccount over legacy sessionPrivateKey", async () => {
+    const fs = await import("fs");
 
     // All executors should check serializedAccount FIRST
     const executors = [
-      'lib/zerodev/transfer-executor.ts',
-      'lib/zerodev/deposit-executor.ts',
-      'lib/zerodev/vault-executor.ts',
-      'lib/agent/rebalance-executor.ts',
+      "lib/zerodev/transfer-executor.ts",
+      "lib/zerodev/deposit-executor.ts",
+      "lib/zerodev/vault-executor.ts",
+      "lib/agent/rebalance-executor.ts",
     ];
 
     for (const file of executors) {
-      const source = fs.readFileSync(file, 'utf-8');
+      const source = fs.readFileSync(file, "utf-8");
 
       // Each executor must contain serializedAccount and sessionPrivateKey
-      expect(source).toContain('serializedAccount');
-      expect(source).toContain('sessionPrivateKey');
+      expect(source).toContain("serializedAccount");
+      expect(source).toContain("sessionPrivateKey");
 
       // createDeserializedKernelClient should appear (new pattern)
-      expect(source).toContain('createDeserializedKernelClient');
+      expect(source).toContain("createDeserializedKernelClient");
     }
   });
 });

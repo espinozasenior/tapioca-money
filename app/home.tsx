@@ -20,7 +20,7 @@ export function HomeContent() {
 
   // Debug logging (only when state changes)
   useEffect(() => {
-    console.log('[Home] State:', {
+    console.log("[Home] State:", {
       ready,
       authenticated,
       walletReady,
@@ -28,7 +28,7 @@ export function HomeContent() {
       status,
       hasWallet: !!wallet,
       isLoggedIn,
-      isLoading
+      isLoading,
     });
   }, [ready, authenticated, walletReady, authReady, status, wallet, isLoggedIn, isLoading]);
 
@@ -40,9 +40,9 @@ export function HomeContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           address: walletAddress,
-          email: user?.email
+          email: user?.email,
         }),
-      }).catch(err => console.error("Failed to sync user to Postgres:", err));
+      }).catch((err) => console.error("Failed to sync user to Postgres:", err));
     }
   }, [isLoggedIn, walletAddress, user?.email]);
 

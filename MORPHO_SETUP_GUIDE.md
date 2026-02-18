@@ -5,6 +5,7 @@ This guide walks you through completing the USDC yield integration on Base Sepol
 ## 🎯 Current Status
 
 ✅ **Completed:**
+
 - Morpho Blue SDK integrated (`@morpho-org/blue-sdk`)
 - Custom addresses registered for Base Sepolia
 - Market parameters configured (supply-only USDC market)
@@ -17,6 +18,7 @@ This guide walks you through completing the USDC yield integration on Base Sepol
 - Comprehensive documentation
 
 ⚠️ **Requires User Action:**
+
 1. Install Morpho Bundler SDK package
 2. Deploy test market on Base Sepolia (or use mainnet)
 3. Fund wallet with Sepolia ETH and test USDC
@@ -41,16 +43,19 @@ pnpm add @morpho-org/bundler-sdk-viem
 ### Option A: Deploy Your Own Market
 
 1. **Get Sepolia ETH**:
+
    - Visit [Base Sepolia Faucet](https://www.base.org/faucet)
    - Request testnet ETH for gas
 
 2. **Set up deployer private key**:
+
    ```bash
    # Add to .env
    DEPLOYER_PRIVATE_KEY=0x...your-private-key
    ```
 
 3. **Run deployment script**:
+
    ```bash
    pnpm tsx scripts/deploy-morpho-market.ts
    ```
@@ -64,11 +69,13 @@ pnpm add @morpho-org/bundler-sdk-viem
 If you want to test with real Morpho markets:
 
 1. **Update `.env`**:
+
    ```bash
    NEXT_PUBLIC_CHAIN_ID=base
    ```
 
 2. **Update `lib/yield-optimizer/config.ts`**:
+
    ```typescript
    export const CHAIN_CONFIG = {
      chainId: 8453, // Base mainnet
@@ -78,10 +85,12 @@ If you want to test with real Morpho markets:
    ```
 
 3. **Update SDK registration**:
+
    ```typescript
    registerCustomAddresses({
      addresses: {
-       8453: { // Base mainnet
+       8453: {
+         // Base mainnet
          morpho: "0xBBBBBbbBBb9cC5e90e3b3Af64bdAF62C37EEFFCb",
          // ... other addresses from Morpho docs
        },
@@ -101,15 +110,18 @@ If you want to test with real Morpho markets:
 ### A. Test Deposit Flow
 
 1. **Start dev server**:
+
    ```bash
    pnpm dev
    ```
 
 2. **Login to app**:
+
    - Use Crossmint authentication
    - Ensure wallet has USDC balance
 
 3. **Navigate to "Earn Yield"**:
+
    - Should see Morpho USDC opportunity with live APY
    - Click deposit button
 
@@ -122,10 +134,12 @@ If you want to test with real Morpho markets:
 ### B. Test Withdrawal Flow
 
 1. **Go to "My Positions" tab**:
+
    - Should see your active Morpho position
    - Shows shares, assets, and current APY
 
 2. **Click "Exit Position"**:
+
    - Withdrawal transaction is built
    - Single transaction (no approval needed)
    - USDC returns to wallet
@@ -153,26 +167,26 @@ If you want to test with real Morpho markets:
 graph TD
     A[User] --> B[Earn Yield Component]
     B --> C{Action?}
-    
+
     C -->|Deposit| D[POST /api/optimize]
     C -->|Withdraw| E[POST /api/withdraw]
-    
+
     D --> F[buildDepositTransaction]
     E --> G[buildWithdrawTransaction]
-    
+
     F --> H[Morpho Protocol Adapter]
     G --> H
-    
+
     H --> I[Morpho Blue SDK]
     I --> J[Market.fetch]
     I --> K[Position.fetch]
-    
+
     J --> L[Live APY & TVL]
     K --> M[User Position Data]
-    
+
     F --> N[Crossmint Wallet]
     G --> N
-    
+
     N --> O[Base Sepolia Network]
     O --> P[Morpho Blue Core Contract]
 ```
@@ -186,6 +200,7 @@ graph TD
 **Cause:** Test market not deployed on Base Sepolia.
 
 **Solutions:**
+
 1. Run deployment script (Step 2A above)
 2. Switch to Base mainnet (Step 2B)
 3. Check if market was created successfully on explorer
@@ -199,11 +214,13 @@ graph TD
 ### Issue: "Transaction reverted"
 
 **Causes:**
+
 - Insufficient USDC balance
 - Market params incorrect
 - Contract not approved
 
 **Debug:**
+
 1. Check USDC balance in wallet
 2. Verify market params in config match deployed market
 3. Check approval transaction succeeded before supply
@@ -213,6 +230,7 @@ graph TD
 **Cause:** Market has no activity or SDK fetch failed.
 
 **Solutions:**
+
 1. Check console for errors
 2. Verify market exists on-chain
 3. Add fallback APY estimate if needed
@@ -222,17 +240,21 @@ graph TD
 ## 📁 Modified Files Summary
 
 ### New Files
+
 1. `scripts/deploy-morpho-market.ts` - Market deployment script
 2. `app/api/withdraw/route.ts` - Withdrawal API endpoint
 3. `MORPHO_SETUP_GUIDE.md` - This file
 
 ### Modified Files
+
 1. `lib/yield-optimizer/config.ts`
+
    - Added SDK address registration
    - Added `MORPHO_USDC_MARKET_PARAMS`
    - Added IRM address to protocols config
 
 2. `lib/yield-optimizer/protocols/morpho.ts`
+
    - Imported Morpho Blue SDK
    - Refactored `findActiveUsdcMarket()` to use SDK
    - Updated `getMorphoOpportunities()` with live APY
@@ -240,11 +262,13 @@ graph TD
    - Updated transaction builders
 
 3. `lib/yield-optimizer/executor.ts`
+
    - Updated imports for refactored Morpho functions
    - Implemented `buildWithdrawTransaction()` with full logic
    - Added Aave withdrawal support
 
 4. `components/earn-yield/PositionsList.tsx`
+
    - Updated `handleExit()` to use `/api/withdraw` endpoint
    - Removed unused import
    - Added proper shares handling
@@ -262,23 +286,27 @@ graph TD
 Once the basic integration is working:
 
 ### 1. Enable Aave Protocol
+
 - Find Base Sepolia Aave v3 deployment (if available)
 - Update config with pool addresses
 - Enable in protocols config
 - Test deposits/withdrawals
 
 ### 2. Enable Moonwell Protocol
+
 - Requires Base mainnet (not on Sepolia)
 - Update config with Moonwell addresses
 - Enable in protocols config
 
 ### 3. Add Auto-Rebalancing
+
 - Integrate GOAT SDK for autonomous execution
 - Create cron endpoint for periodic optimization
 - Add server-side transaction signing
 - Set rebalance thresholds
 
 ### 4. Production Deployment
+
 - Switch to Base mainnet
 - Set up proper RPC provider (Alchemy, Infura)
 - Configure production environment variables
@@ -286,6 +314,7 @@ Once the basic integration is working:
 - Set up analytics tracking
 
 ### 5. Enhanced Features
+
 - Historical APY charts
 - Position performance tracking
 - Multiple asset support (USDT, DAI, etc.)
@@ -297,16 +326,19 @@ Once the basic integration is working:
 ## 📚 Resources
 
 ### Morpho Documentation
+
 - [Morpho Blue Docs](https://docs.morpho.org)
 - [Blue SDK Documentation](https://legacy.docs.morpho.org/sdks/blue-sdk/)
 - [Contract Addresses](https://docs.morpho.org/get-started/resources/addresses/)
 
 ### Base Network
+
 - [Base Sepolia Faucet](https://www.base.org/faucet)
 - [Base Sepolia Explorer](https://sepolia.basescan.org)
 - [Base Documentation](https://docs.base.org)
 
 ### Crossmint
+
 - [Crossmint SDK Docs](https://docs.crossmint.com)
 - [EVM Wallet Guide](https://docs.crossmint.com/wallets/evm)
 

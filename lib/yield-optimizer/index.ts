@@ -31,7 +31,7 @@ export async function optimize(
 ): Promise<RebalanceDecision> {
   const [opportunities, currentPositions] = await Promise.all([
     getAllOpportunities(),
-    getCurrentPosition(userAddress),  // Now returns Position[]
+    getCurrentPosition(userAddress), // Now returns Position[]
   ]);
 
   return evaluateRebalance(currentPositions, opportunities, usdcBalance);

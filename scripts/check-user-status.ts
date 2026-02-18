@@ -3,7 +3,7 @@
  * Usage: pnpm tsx scripts/check-user-status.ts <wallet_address>
  */
 
-import { neon } from '@neondatabase/serverless';
+import { neon } from "@neondatabase/serverless";
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -54,7 +54,10 @@ async function checkUserStatus(walletAddress: string) {
       WHERE user_id = ${user.id}
     `;
 
-    console.log("\n  User Strategies:", strategies.length > 0 ? "✅ Configured" : "⚠️  Not configured");
+    console.log(
+      "\n  User Strategies:",
+      strategies.length > 0 ? "✅ Configured" : "⚠️  Not configured"
+    );
 
     // Check agent actions
     const actions = await sql`
@@ -75,7 +78,6 @@ async function checkUserStatus(walletAddress: string) {
     console.log("  autoOptimizeEnabled:", autoOptimizeEnabled);
     console.log("  isRegistered:", isRegistered);
     console.log("  status:", isRegistered ? "active" : "inactive");
-
   } catch (error: any) {
     console.error("❌ Error:", error.message);
     console.error(error);

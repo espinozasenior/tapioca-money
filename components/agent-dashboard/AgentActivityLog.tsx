@@ -14,14 +14,14 @@ export function AgentActivityLog({ address }: AgentActivityLogProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="p-4 bg-red-50 text-red-600 rounded-lg">
+      <div className="rounded-lg bg-red-50 p-4 text-red-600">
         Failed to load activity: {error.message}
       </div>
     );
@@ -29,22 +29,18 @@ export function AgentActivityLog({ address }: AgentActivityLogProps) {
 
   if (!data || data.activities.length === 0) {
     return (
-      <div className="text-center p-8 text-gray-500">
+      <div className="p-8 text-center text-gray-500">
         <p className="text-lg">No agent activity yet</p>
-        <p className="text-sm mt-2">
-          Enable auto-optimize to let the agent manage your yield
-        </p>
+        <p className="mt-2 text-sm">Enable auto-optimize to let the agent manage your yield</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-4 flex items-center justify-between">
         <h3 className="text-lg font-semibold">Agent Activity</h3>
-        <span className="text-sm text-gray-500">
-          {data.total} total actions
-        </span>
+        <span className="text-sm text-gray-500">{data.total} total actions</span>
       </div>
 
       <div className="space-y-3">
@@ -73,7 +69,8 @@ function ActivityCard({ activity, isExpanded, onToggle }: ActivityCardProps) {
     failed: "bg-red-100 text-red-800 border-red-200",
     pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
   };
-  const statusColor = statusColors[activity.status as string] || "bg-gray-100 text-gray-800 border-gray-200";
+  const statusColor =
+    statusColors[activity.status as string] || "bg-gray-100 text-gray-800 border-gray-200";
 
   const metadata = activity.metadata || {};
   const apyImprovement = metadata.apyImprovement || 0;
@@ -82,7 +79,7 @@ function ActivityCard({ activity, isExpanded, onToggle }: ActivityCardProps) {
 
   return (
     <div
-      className={`border rounded-lg p-4 cursor-pointer transition-all ${
+      className={`cursor-pointer rounded-lg border p-4 transition-all ${
         isExpanded ? "shadow-md" : "hover:shadow-sm"
       }`}
       onClick={onToggle}
@@ -90,11 +87,11 @@ function ActivityCard({ activity, isExpanded, onToggle }: ActivityCardProps) {
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <span className={`px-2 py-1 rounded text-xs font-medium ${statusColor} border`}>
+            <span className={`rounded px-2 py-1 text-xs font-medium ${statusColor} border`}>
               {activity.status}
             </span>
             <span className="text-sm font-medium">
-              {activity.actionType === 'rebalance' ? '🔄 Rebalance' : activity.actionType}
+              {activity.actionType === "rebalance" ? "🔄 Rebalance" : activity.actionType}
             </span>
             {activity.fromProtocol && activity.toProtocol && (
               <span className="text-sm text-gray-600">
@@ -103,44 +100,42 @@ function ActivityCard({ activity, isExpanded, onToggle }: ActivityCardProps) {
             )}
           </div>
 
-          <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-            <span>
-              {new Date(activity.createdAt).toLocaleString()}
-            </span>
+          <div className="mt-2 flex items-center gap-4 text-sm text-gray-500">
+            <span>{new Date(activity.createdAt).toLocaleString()}</span>
             {activity.amountUsdc && (
               <span className="font-medium">
                 ${parseFloat(activity.amountUsdc).toFixed(2)} USDC
               </span>
             )}
             {apyImprovement > 0 && (
-              <span className="text-green-600 font-medium">
+              <span className="font-medium text-green-600">
                 +{(apyImprovement * 100).toFixed(2)}% APY
               </span>
             )}
           </div>
         </div>
 
-        <div className="text-gray-400">
-          {isExpanded ? "▲" : "▼"}
-        </div>
+        <div className="text-gray-400">{isExpanded ? "▲" : "▼"}</div>
       </div>
 
       {isExpanded && (
-        <div className="mt-4 pt-4 border-t space-y-2 text-sm">
-          {activity.txHash && activity.txHash !== '0x0000000000000000000000000000000000000000000000000000000000000000' && (
-            <div className="flex justify-between">
-              <span className="text-gray-600">Transaction:</span>
-              <a
-                href={`https://basescan.org/tx/${activity.txHash}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline font-mono"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {activity.txHash.slice(0, 10)}...{activity.txHash.slice(-8)}
-              </a>
-            </div>
-          )}
+        <div className="mt-4 space-y-2 border-t pt-4 text-sm">
+          {activity.txHash &&
+            activity.txHash !==
+              "0x0000000000000000000000000000000000000000000000000000000000000000" && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Transaction:</span>
+                <a
+                  href={`https://basescan.org/tx/${activity.txHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-blue-600 hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {activity.txHash.slice(0, 10)}...{activity.txHash.slice(-8)}
+                </a>
+              </div>
+            )}
 
           {fromApy > 0 && toApy > 0 && (
             <>
@@ -172,13 +167,13 @@ function ActivityCard({ activity, isExpanded, onToggle }: ActivityCardProps) {
           )}
 
           {activity.errorMessage && (
-            <div className="mt-2 p-2 bg-red-50 text-red-700 rounded text-xs">
+            <div className="mt-2 rounded bg-red-50 p-2 text-xs text-red-700">
               <span className="font-semibold">Error:</span> {activity.errorMessage}
             </div>
           )}
 
           {metadata.reason && (
-            <div className="mt-2 p-2 bg-gray-50 text-gray-700 rounded text-xs">
+            <div className="mt-2 rounded bg-gray-50 p-2 text-xs text-gray-700">
               {metadata.reason}
             </div>
           )}

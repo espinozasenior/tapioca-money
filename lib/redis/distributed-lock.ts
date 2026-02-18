@@ -8,10 +8,10 @@
  * acceptable since the fallback runs in a single process anyway.
  */
 
-import { getCacheInterface } from './client';
-import { randomUUID } from 'crypto';
+import { getCacheInterface } from "./client";
+import { randomUUID } from "crypto";
 
-const LOCK_PREFIX = 'lock:rebalance';
+const LOCK_PREFIX = "lock:rebalance";
 const DEFAULT_LOCK_TTL = 300; // 5 minutes
 
 export interface LockResult {
@@ -49,10 +49,7 @@ export async function acquireUserLock(
  * Release a previously acquired lock.
  * Only releases if the lockId matches (prevents releasing another process's lock).
  */
-export async function releaseUserLock(
-  userAddress: string,
-  lockId: string
-): Promise<void> {
+export async function releaseUserLock(userAddress: string, lockId: string): Promise<void> {
   const cache = await getCacheInterface();
   const key = `${LOCK_PREFIX}:${userAddress.toLowerCase()}`;
 

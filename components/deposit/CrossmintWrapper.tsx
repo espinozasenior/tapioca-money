@@ -1,8 +1,5 @@
 import React from "react";
-import {
-  CrossmintCheckoutProvider,
-  CrossmintProvider,
-} from "@crossmint/client-sdk-react-ui";
+import { CrossmintCheckoutProvider, CrossmintProvider } from "@crossmint/client-sdk-react-ui";
 import { Checkout } from "./Checkout";
 
 const CLIENT_API_KEY_CONSOLE_FUND = process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY;

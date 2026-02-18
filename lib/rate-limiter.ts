@@ -51,7 +51,7 @@ export function checkTransferRateLimit(
   const attempts = transferAttempts.get(userAddress.toLowerCase()) || [];
 
   // Filter to only attempts within the time window
-  const recentAttempts = attempts.filter(a => a.timestamp > windowStart);
+  const recentAttempts = attempts.filter((a) => a.timestamp > windowStart);
 
   // Update the cache with filtered attempts
   transferAttempts.set(userAddress.toLowerCase(), recentAttempts);
@@ -65,12 +65,13 @@ export function checkTransferRateLimit(
   }
 
   // Check daily transfer count
-  const successfulTransfers = recentAttempts.filter(a => a.success).length;
+  const successfulTransfers = recentAttempts.filter((a) => a.success).length;
 
   if (successfulTransfers >= config.maxTransfersPerDay) {
-    const oldestAttempt = recentAttempts.reduce((oldest, a) =>
-      a.timestamp < oldest.timestamp ? a : oldest
-    , recentAttempts[0]);
+    const oldestAttempt = recentAttempts.reduce(
+      (oldest, a) => (a.timestamp < oldest.timestamp ? a : oldest),
+      recentAttempts[0]
+    );
 
     const resetTime = oldestAttempt.timestamp + config.windowMs;
 
@@ -98,11 +99,7 @@ export function checkTransferRateLimit(
  * @param amount - Transfer amount in USDC
  * @param success - Whether the transfer succeeded
  */
-export function recordTransferAttempt(
-  userAddress: string,
-  amount: number,
-  success: boolean
-): void {
+export function recordTransferAttempt(userAddress: string, amount: number, success: boolean): void {
   const attempts = transferAttempts.get(userAddress.toLowerCase()) || [];
 
   attempts.push({
@@ -114,8 +111,8 @@ export function recordTransferAttempt(
   transferAttempts.set(userAddress.toLowerCase(), attempts);
 
   // Clean up old entries (keep last 30 days)
-  const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-  const cleaned = attempts.filter(a => a.timestamp > thirtyDaysAgo);
+  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const cleaned = attempts.filter((a) => a.timestamp > thirtyDaysAgo);
   transferAttempts.set(userAddress.toLowerCase(), cleaned);
 }
 
@@ -143,7 +140,7 @@ export function getUserTransferHistory(
   const windowStart = now - config.windowMs;
 
   const attempts = transferAttempts.get(userAddress.toLowerCase()) || [];
-  return attempts.filter(a => a.timestamp > windowStart);
+  return attempts.filter((a) => a.timestamp > windowStart);
 }
 
 /**
@@ -151,10 +148,10 @@ export function getUserTransferHistory(
  * Should be called periodically (e.g., via cron)
  */
 export function cleanupExpiredRateLimits(): void {
-  const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
 
   for (const [address, attempts] of transferAttempts.entries()) {
-    const cleaned = attempts.filter(a => a.timestamp > thirtyDaysAgo);
+    const cleaned = attempts.filter((a) => a.timestamp > thirtyDaysAgo);
 
     if (cleaned.length === 0) {
       transferAttempts.delete(address);

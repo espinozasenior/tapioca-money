@@ -9,7 +9,7 @@
  * the user is delegating to the correct contract.
  */
 
-import { KERNEL_V3_3, KernelVersionToAddressesMap } from '@zerodev/sdk/constants';
+import { KERNEL_V3_3, KernelVersionToAddressesMap } from "@zerodev/sdk/constants";
 
 /**
  * Get the expected Kernel V3.3 implementation address.

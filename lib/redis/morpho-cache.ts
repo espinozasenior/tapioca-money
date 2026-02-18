@@ -11,14 +11,14 @@
  * With caching: ~20 requests per cycle instead of 20,000
  */
 
-import { getCacheInterface } from './client';
-import type { MorphoVault, MorphoUserPosition } from '@/lib/morpho/api-client';
+import { getCacheInterface } from "./client";
+import type { MorphoVault, MorphoUserPosition } from "@/lib/morpho/api-client";
 
 // Cache key prefixes
 const CACHE_KEYS = {
-  VAULTS: 'morpho:vaults',
-  USER_POSITIONS: 'morpho:positions',
-  BEST_VAULT: 'morpho:best',
+  VAULTS: "morpho:vaults",
+  USER_POSITIONS: "morpho:positions",
+  BEST_VAULT: "morpho:best",
 };
 
 // Cache TTLs in seconds
@@ -45,11 +45,7 @@ function userPositionsCacheKey(userAddress: string, chainId: number): string {
 /**
  * Build cache key for best vault
  */
-function bestVaultCacheKey(
-  chainId: number,
-  assetSymbol: string,
-  minLiquidity: number
-): string {
+function bestVaultCacheKey(chainId: number, assetSymbol: string, minLiquidity: number): string {
   return `${CACHE_KEYS.BEST_VAULT}:${chainId}:${assetSymbol.toLowerCase()}:${minLiquidity}`;
 }
 
@@ -66,13 +62,13 @@ export async function getCachedVaults(
   try {
     const cached = await cache.get(key);
     if (cached) {
-      console.log('[MorphoCache] Hit: vaults', { chainId, assetSymbol });
+      console.log("[MorphoCache] Hit: vaults", { chainId, assetSymbol });
       return JSON.parse(cached);
     }
-    console.log('[MorphoCache] Miss: vaults', { chainId, assetSymbol });
+    console.log("[MorphoCache] Miss: vaults", { chainId, assetSymbol });
     return null;
   } catch (error: any) {
-    console.error('[MorphoCache] Error reading vaults cache:', error.message);
+    console.error("[MorphoCache] Error reading vaults cache:", error.message);
     return null;
   }
 }
@@ -90,13 +86,13 @@ export async function setCachedVaults(
 
   try {
     await cache.set(key, JSON.stringify(vaults), CACHE_TTL.VAULTS);
-    console.log('[MorphoCache] Set: vaults', {
+    console.log("[MorphoCache] Set: vaults", {
       chainId,
       assetSymbol,
       count: vaults.length,
     });
   } catch (error: any) {
-    console.error('[MorphoCache] Error caching vaults:', error.message);
+    console.error("[MorphoCache] Error caching vaults:", error.message);
   }
 }
 
@@ -113,13 +109,13 @@ export async function getCachedUserPositions(
   try {
     const cached = await cache.get(key);
     if (cached) {
-      console.log('[MorphoCache] Hit: positions', { userAddress, chainId });
+      console.log("[MorphoCache] Hit: positions", { userAddress, chainId });
       return JSON.parse(cached);
     }
-    console.log('[MorphoCache] Miss: positions', { userAddress, chainId });
+    console.log("[MorphoCache] Miss: positions", { userAddress, chainId });
     return null;
   } catch (error: any) {
-    console.error('[MorphoCache] Error reading positions cache:', error.message);
+    console.error("[MorphoCache] Error reading positions cache:", error.message);
     return null;
   }
 }
@@ -137,13 +133,13 @@ export async function setCachedUserPositions(
 
   try {
     await cache.set(key, JSON.stringify(positions), CACHE_TTL.USER_POSITIONS);
-    console.log('[MorphoCache] Set: positions', {
+    console.log("[MorphoCache] Set: positions", {
       userAddress,
       chainId,
       count: positions.length,
     });
   } catch (error: any) {
-    console.error('[MorphoCache] Error caching positions:', error.message);
+    console.error("[MorphoCache] Error caching positions:", error.message);
   }
 }
 
@@ -161,7 +157,7 @@ export async function getCachedBestVault(
   try {
     const cached = await cache.get(key);
     if (cached) {
-      console.log('[MorphoCache] Hit: bestVault', {
+      console.log("[MorphoCache] Hit: bestVault", {
         chainId,
         assetSymbol,
         minLiquidityUsd,
@@ -170,7 +166,7 @@ export async function getCachedBestVault(
     }
     return null;
   } catch (error: any) {
-    console.error('[MorphoCache] Error reading best vault cache:', error.message);
+    console.error("[MorphoCache] Error reading best vault cache:", error.message);
     return null;
   }
 }
@@ -190,32 +186,29 @@ export async function setCachedBestVault(
   try {
     if (vault) {
       await cache.set(key, JSON.stringify(vault), CACHE_TTL.BEST_VAULT);
-      console.log('[MorphoCache] Set: bestVault', {
+      console.log("[MorphoCache] Set: bestVault", {
         chainId,
         assetSymbol,
         vault: vault.name,
       });
     }
   } catch (error: any) {
-    console.error('[MorphoCache] Error caching best vault:', error.message);
+    console.error("[MorphoCache] Error caching best vault:", error.message);
   }
 }
 
 /**
  * Invalidate user positions cache (call after rebalance)
  */
-export async function invalidateUserPositions(
-  userAddress: string,
-  chainId: number
-): Promise<void> {
+export async function invalidateUserPositions(userAddress: string, chainId: number): Promise<void> {
   const cache = await getCacheInterface();
   const key = userPositionsCacheKey(userAddress, chainId);
 
   try {
     await cache.del(key);
-    console.log('[MorphoCache] Invalidated: positions', { userAddress, chainId });
+    console.log("[MorphoCache] Invalidated: positions", { userAddress, chainId });
   } catch (error: any) {
-    console.error('[MorphoCache] Error invalidating positions:', error.message);
+    console.error("[MorphoCache] Error invalidating positions:", error.message);
   }
 }
 
@@ -225,6 +218,6 @@ export async function invalidateUserPositions(
 export async function invalidateChainCache(chainId: number): Promise<void> {
   // Note: This is a simple implementation. In production, you might want to
   // use Redis SCAN to find and delete all keys matching the pattern.
-  console.log('[MorphoCache] Chain cache invalidation requested for', chainId);
+  console.log("[MorphoCache] Chain cache invalidation requested for", chainId);
   // Implementation would require Redis SCAN command
 }

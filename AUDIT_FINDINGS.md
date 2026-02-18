@@ -25,6 +25,7 @@
 **Severity:** MEDIUM
 **Component:** API Routes
 **Affected Files:**
+
 - `app/api/agent/cron/route.ts`
 - `app/api/transfer/send/route.ts`
 - `app/api/agent/generate-session-key/route.ts`
@@ -36,6 +37,7 @@ The application lacks rate limiting on endpoints that can be abused. The cron en
 **Proof of Concept:**
 
 An attacker could:
+
 1. Brute-force the `CRON_SECRET` via repeated requests to `/api/agent/cron`
 2. Spam `/api/transfer/send` to exhaust Bundler resources
 3. Generate excessive session keys via `/api/agent/generate-session-key`
@@ -56,6 +58,7 @@ done
 - **Resource Exhaustion:** Unauthorized transaction processing
 
 **Current Controls:**
+
 - ✅ Timing-safe secret comparison prevents timing attacks
 - ❌ No request rate limiting
 - ❌ No per-user quota limits
@@ -67,17 +70,17 @@ Implement Redis-based rate limiting on critical endpoints:
 
 ```typescript
 // lib/rate-limiter.ts (NEW FILE)
-import { getCacheInterface } from '@/lib/redis/client';
+import { getCacheInterface } from "@/lib/redis/client";
 
 export interface RateLimitConfig {
   maxRequests: number;
-  windowMs: number;  // milliseconds
+  windowMs: number; // milliseconds
 }
 
 const LIMITS: Record<string, RateLimitConfig> = {
-  cron: { maxRequests: 1, windowMs: 60000 },        // 1 per minute globally
-  transfer: { maxRequests: 10, windowMs: 60000 },   // 10 per minute per user
-  sessionKey: { maxRequests: 5, windowMs: 60000 },  // 5 per minute per user
+  cron: { maxRequests: 1, windowMs: 60000 }, // 1 per minute globally
+  transfer: { maxRequests: 10, windowMs: 60000 }, // 10 per minute per user
+  sessionKey: { maxRequests: 5, windowMs: 60000 }, // 5 per minute per user
 };
 
 export async function checkRateLimit(
@@ -119,11 +122,11 @@ export async function checkRateLimit(
 // app/api/agent/cron/route.ts (MODIFIED)
 export async function POST(request: NextRequest) {
   // Check rate limit
-  const cronLimit = await checkRateLimit('cron', 'global');
+  const cronLimit = await checkRateLimit("cron", "global");
   if (!cronLimit.allowed) {
     return NextResponse.json(
-      { error: 'Too many cron requests, retry in ' + cronLimit.retryAfter + 's' },
-      { status: 429, headers: { 'Retry-After': String(cronLimit.retryAfter) } }
+      { error: "Too many cron requests, retry in " + cronLimit.retryAfter + "s" },
+      { status: 429, headers: { "Retry-After": String(cronLimit.retryAfter) } }
     );
   }
 
@@ -142,11 +145,11 @@ export async function POST(request: NextRequest) {
   }
 
   // Check per-user rate limit
-  const transferLimit = await checkRateLimit('transfer', address);
+  const transferLimit = await checkRateLimit("transfer", address);
   if (!transferLimit.allowed) {
     return NextResponse.json(
-      { error: 'Too many transfers, try again in ' + transferLimit.retryAfter + 's' },
-      { status: 429, headers: { 'Retry-After': String(transferLimit.retryAfter) } }
+      { error: "Too many transfers, try again in " + transferLimit.retryAfter + "s" },
+      { status: 429, headers: { "Retry-After": String(transferLimit.retryAfter) } }
     );
   }
 
@@ -158,43 +161,43 @@ export async function POST(request: NextRequest) {
 
 ```typescript
 // tests/integration/rate-limiting.test.ts
-import { describe, it, expect, beforeEach } from 'vitest';
-import { checkRateLimit } from '@/lib/rate-limiter';
+import { describe, it, expect, beforeEach } from "vitest";
+import { checkRateLimit } from "@/lib/rate-limiter";
 
-describe('Rate Limiting', () => {
+describe("Rate Limiting", () => {
   beforeEach(async () => {
     const cache = await getCacheInterface();
     // Clear all rate limit keys
-    await cache.del('ratelimit:cron:global');
-    await cache.del('ratelimit:transfer:user1');
+    await cache.del("ratelimit:cron:global");
+    await cache.del("ratelimit:transfer:user1");
   });
 
-  it('should allow first request', async () => {
-    const result = await checkRateLimit('transfer', 'user1');
+  it("should allow first request", async () => {
+    const result = await checkRateLimit("transfer", "user1");
     expect(result.allowed).toBe(true);
     expect(result.remaining).toBe(9);
   });
 
-  it('should block after limit exceeded', async () => {
+  it("should block after limit exceeded", async () => {
     for (let i = 0; i < 10; i++) {
-      await checkRateLimit('transfer', 'user1');
+      await checkRateLimit("transfer", "user1");
     }
-    const result = await checkRateLimit('transfer', 'user1');
+    const result = await checkRateLimit("transfer", "user1");
     expect(result.allowed).toBe(false);
     expect(result.retryAfter).toBeGreaterThan(0);
   });
 
-  it('should reset after window expires', async () => {
-    const result1 = await checkRateLimit('cron', 'global');
+  it("should reset after window expires", async () => {
+    const result1 = await checkRateLimit("cron", "global");
     expect(result1.allowed).toBe(true);
 
-    const result2 = await checkRateLimit('cron', 'global');
+    const result2 = await checkRateLimit("cron", "global");
     expect(result2.allowed).toBe(false);
 
     // Simulate TTL expiry by waiting 1.1 seconds
-    await new Promise(resolve => setTimeout(resolve, 1100));
+    await new Promise((resolve) => setTimeout(resolve, 1100));
 
-    const result3 = await checkRateLimit('cron', 'global');
+    const result3 = await checkRateLimit("cron", "global");
     expect(result3.allowed).toBe(true);
   });
 });
@@ -218,6 +221,7 @@ describe('Rate Limiting', () => {
 **Severity:** MEDIUM
 **Component:** Session Key Management
 **Affected Files:**
+
 - `app/api/agent/generate-session-key/route.ts` (Line 30)
 - `lib/zerodev/transfer-session.ts` (Line 110)
 
@@ -362,6 +366,7 @@ describe('Session Key Expiry', () => {
 **Severity:** LOW
 **Component:** ZeroDev Bundler Configuration
 **Affected Files:**
+
 - `lib/zerodev/vault-executor.ts` (Lines 124-125)
 - `lib/zerodev/transfer-executor.ts` (Lines 124-125)
 - `lib/agent/rebalance-executor.ts` (Lines 203-204)
@@ -373,7 +378,8 @@ The bundler URL is constructed from environment variables without explicit valid
 **Current Code:**
 
 ```typescript
-const bundlerUrl = process.env.ZERODEV_BUNDLER_URL ||
+const bundlerUrl =
+  process.env.ZERODEV_BUNDLER_URL ||
   `https://rpc.zerodev.app/api/v2/bundler/${process.env.ZERODEV_PROJECT_ID}`;
 ```
 
@@ -399,33 +405,28 @@ export interface BundlerConfig {
   trusted: boolean;
 }
 
-const TRUSTED_BUNDLERS = [
-  'https://rpc.zerodev.app',
-  'https://bundler.zerodev.app',
-];
+const TRUSTED_BUNDLERS = ["https://rpc.zerodev.app", "https://bundler.zerodev.app"];
 
 export function validateBundlerUrl(url: string): BundlerConfig {
   try {
     const parsed = new URL(url);
 
     // Enforce HTTPS
-    if (parsed.protocol !== 'https:') {
-      throw new Error('Bundler URL must use HTTPS');
+    if (parsed.protocol !== "https:") {
+      throw new Error("Bundler URL must use HTTPS");
     }
 
     // Check if trusted
-    const trusted = TRUSTED_BUNDLERS.some(
-      trusted => url.startsWith(trusted)
-    );
+    const trusted = TRUSTED_BUNDLERS.some((trusted) => url.startsWith(trusted));
 
     // Allow localhost for testing
-    const isLocalhost = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1';
-    const allowLocalhost = process.env.NODE_ENV === 'development';
+    const isLocalhost = parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
+    const allowLocalhost = process.env.NODE_ENV === "development";
 
     if (!trusted && !(isLocalhost && allowLocalhost)) {
       console.warn(`[Security] Untrusted bundler URL: ${url}`);
-      if (process.env.STRICT_BUNDLER_VALIDATION === 'true') {
-        throw new Error('Untrusted bundler URL and STRICT_BUNDLER_VALIDATION is enabled');
+      if (process.env.STRICT_BUNDLER_VALIDATION === "true") {
+        throw new Error("Untrusted bundler URL and STRICT_BUNDLER_VALIDATION is enabled");
       }
     }
 
@@ -436,12 +437,13 @@ export function validateBundlerUrl(url: string): BundlerConfig {
 }
 
 export function getBundlerUrl(): string {
-  const url = process.env.ZERODEV_BUNDLER_URL ||
+  const url =
+    process.env.ZERODEV_BUNDLER_URL ||
     `https://rpc.zerodev.app/api/v2/bundler/${process.env.ZERODEV_PROJECT_ID}`;
 
   const config = validateBundlerUrl(url);
-  if (!config.trusted && process.env.NODE_ENV === 'production') {
-    throw new Error('Custom bundler URLs not allowed in production');
+  if (!config.trusted && process.env.NODE_ENV === "production") {
+    throw new Error("Custom bundler URLs not allowed in production");
   }
 
   return config.url;
@@ -452,35 +454,35 @@ export function getBundlerUrl(): string {
 
 ```typescript
 // lib/zerodev/vault-executor.ts (MODIFIED)
-import { getBundlerUrl } from '@/lib/zerodev/bundler-config';
+import { getBundlerUrl } from "@/lib/zerodev/bundler-config";
 
-const bundlerUrl = getBundlerUrl();  // Now includes validation
+const bundlerUrl = getBundlerUrl(); // Now includes validation
 ```
 
 **Testing:**
 
 ```typescript
 // tests/unit/bundler-config.test.ts
-describe('Bundler URL Validation', () => {
-  it('should accept ZeroDev bundler URLs', () => {
-    const result = validateBundlerUrl('https://rpc.zerodev.app/api/v2/bundler/123');
+describe("Bundler URL Validation", () => {
+  it("should accept ZeroDev bundler URLs", () => {
+    const result = validateBundlerUrl("https://rpc.zerodev.app/api/v2/bundler/123");
     expect(result.trusted).toBe(true);
   });
 
-  it('should reject HTTP URLs', () => {
-    expect(() => validateBundlerUrl('http://rpc.zerodev.app/...')).toThrow('HTTPS');
+  it("should reject HTTP URLs", () => {
+    expect(() => validateBundlerUrl("http://rpc.zerodev.app/...")).toThrow("HTTPS");
   });
 
-  it('should warn on untrusted URLs', () => {
-    const consoleSpy = vi.spyOn(console, 'warn');
-    validateBundlerUrl('https://attacker.com/bundler');
+  it("should warn on untrusted URLs", () => {
+    const consoleSpy = vi.spyOn(console, "warn");
+    validateBundlerUrl("https://attacker.com/bundler");
     expect(consoleSpy).toHaveBeenCalled();
   });
 
-  it('should allow localhost in development', () => {
-    process.env.NODE_ENV = 'development';
-    const result = validateBundlerUrl('https://localhost:3000');
-    expect(result.url).toBe('https://localhost:3000');
+  it("should allow localhost in development", () => {
+    process.env.NODE_ENV = "development";
+    const result = validateBundlerUrl("https://localhost:3000");
+    expect(result.url).toBe("https://localhost:3000");
   });
 });
 ```
@@ -504,6 +506,7 @@ describe('Bundler URL Validation', () => {
 **Severity:** LOW
 **Component:** Gasless Transfer Session Keys
 **Affected Files:**
+
 - `lib/zerodev/transfer-session.ts` (Line 110)
 
 **Description:**
@@ -519,10 +522,10 @@ const expiry = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60; // 30 days
 
 **Comparison:**
 
-| Session Type | Current Expiry | Recommended |
-|---|---|---|
-| Agent (Morpho vaults) | 7 days | 3 days |
-| Transfer (USDC only) | 30 days | 7 days |
+| Session Type          | Current Expiry | Recommended |
+| --------------------- | -------------- | ----------- |
+| Agent (Morpho vaults) | 7 days         | 3 days      |
+| Transfer (USDC only)  | 30 days        | 7 days      |
 
 **Mitigation:**
 
@@ -535,6 +538,7 @@ While transfer keys have limited scope (USDC transfers under $500), reducing exp
 ```
 
 **Risk Level:** LOW
+
 - ✅ Limited to $500 transfers
 - ✅ Restricted to USDC only
 - ✅ Requires user authentication to enable
@@ -551,6 +555,7 @@ While transfer keys have limited scope (USDC transfers under $500), reducing exp
 **Not Critical But Recommended:**
 
 Create a secrets rotation policy for:
+
 - `DATABASE_ENCRYPTION_KEY` - Rotate quarterly
 - `CRON_SECRET` - Rotate monthly
 - Privy API credentials - Rotate per Privy recommendations
@@ -584,7 +589,7 @@ export async function rotateEncryptionKey() {
 ```typescript
 // lib/audit/logger.ts (NEW)
 export async function logSecurityEvent(event: {
-  type: 'auth_success' | 'auth_failure' | 'key_generated' | 'key_revoked' | 'transaction_executed';
+  type: "auth_success" | "auth_failure" | "key_generated" | "key_revoked" | "transaction_executed";
   userId: string;
   details: Record<string, any>;
   timestamp: Date;
@@ -611,12 +616,12 @@ export async function logSecurityEvent(event: {
 
 ## Summary of Findings
 
-| Issue | Severity | Type | Status |
-|-------|----------|------|--------|
-| Missing Rate Limiting | MEDIUM | Vulnerability | RECOMMENDED FIX |
-| Session Key Expiry (7→3 days) | MEDIUM | Best Practice | RECOMMENDED FIX |
-| Bundler URL Validation | LOW | Enhancement | OPTIONAL |
-| Transfer Key Expiry (30→7 days) | LOW | Consistency | OPTIONAL |
+| Issue                           | Severity | Type          | Status          |
+| ------------------------------- | -------- | ------------- | --------------- |
+| Missing Rate Limiting           | MEDIUM   | Vulnerability | RECOMMENDED FIX |
+| Session Key Expiry (7→3 days)   | MEDIUM   | Best Practice | RECOMMENDED FIX |
+| Bundler URL Validation          | LOW      | Enhancement   | OPTIONAL        |
+| Transfer Key Expiry (30→7 days) | LOW      | Consistency   | OPTIONAL        |
 
 **Overall Security Posture:** ✅ STRONG
 
@@ -627,14 +632,17 @@ The application has **no critical vulnerabilities**. Recommended fixes address d
 ## Implementation Priority
 
 ### Phase 1 (Week 1) - Critical
+
 - ✅ Rate limiting implementation
 - ✅ Session key expiry reduction (7→3 days)
 
 ### Phase 2 (Week 2-3) - Enhancement
+
 - ✅ Bundler URL validation
 - ✅ Audit logging setup
 
 ### Phase 3 (Month 2) - Operations
+
 - ✅ Secrets rotation policy
 - ✅ Security monitoring dashboards
 
@@ -650,4 +658,3 @@ The application has **no critical vulnerabilities**. Recommended fixes address d
 - [ ] End-to-end testing of auto-optimize with new 3-day expiry
 - [ ] Documentation updated with security procedures
 - [ ] Team training on new security features
-

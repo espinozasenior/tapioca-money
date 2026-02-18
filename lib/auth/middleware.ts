@@ -8,8 +8,8 @@
  * verifying the JWT claims match the requested wallet address.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { PrivyClient } from '@privy-io/node';
+import { NextRequest, NextResponse } from "next/server";
+import { PrivyClient } from "@privy-io/node";
 
 const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
 const PRIVY_APP_SECRET = process.env.PRIVY_APP_SECRET;
@@ -20,7 +20,7 @@ let privyClient: PrivyClient | null = null;
 function getPrivyClient(): PrivyClient {
   if (!privyClient) {
     if (!PRIVY_APP_ID || !PRIVY_APP_SECRET) {
-      throw new Error('PRIVY_APP_ID and PRIVY_APP_SECRET must be configured');
+      throw new Error("PRIVY_APP_ID and PRIVY_APP_SECRET must be configured");
     }
     privyClient = new PrivyClient({ appId: PRIVY_APP_ID, appSecret: PRIVY_APP_SECRET });
   }
@@ -44,7 +44,7 @@ function extractWalletAddress(linkedAccounts: any[]): string | null {
 
   // Find embedded wallet (prioritize over external wallets)
   const embeddedWallet = linkedAccounts.find(
-    (account) => account.type === 'wallet' && account.chainType === 'ethereum'
+    (account) => account.type === "wallet" && account.chainType === "ethereum"
   );
 
   if (embeddedWallet?.address) {
@@ -52,9 +52,7 @@ function extractWalletAddress(linkedAccounts: any[]): string | null {
   }
 
   // Fallback to any wallet
-  const anyWallet = linkedAccounts.find(
-    (account) => account.type === 'wallet' && account.address
-  );
+  const anyWallet = linkedAccounts.find((account) => account.type === "wallet" && account.address);
 
   return anyWallet?.address?.toLowerCase() || null;
 }
@@ -65,17 +63,15 @@ function extractWalletAddress(linkedAccounts: any[]): string | null {
  * @param request - NextRequest object
  * @returns AuthResult with user info or error
  */
-export async function authenticateRequest(
-  request: NextRequest
-): Promise<AuthResult> {
+export async function authenticateRequest(request: NextRequest): Promise<AuthResult> {
   try {
     // Extract token from Authorization header
-    const authHeader = request.headers.get('authorization');
+    const authHeader = request.headers.get("authorization");
 
-    if (!authHeader?.startsWith('Bearer ')) {
+    if (!authHeader?.startsWith("Bearer ")) {
       return {
         authenticated: false,
-        error: 'Missing or invalid Authorization header',
+        error: "Missing or invalid Authorization header",
       };
     }
 
@@ -84,7 +80,7 @@ export async function authenticateRequest(
     if (!token) {
       return {
         authenticated: false,
-        error: 'Missing access token',
+        error: "Missing access token",
       };
     }
 
@@ -102,11 +98,11 @@ export async function authenticateRequest(
       walletAddress: walletAddress || undefined,
     };
   } catch (error: any) {
-    console.error('[Auth] Token verification failed:', error.message);
+    console.error("[Auth] Token verification failed:", error.message);
 
     return {
       authenticated: false,
-      error: error.message || 'Authentication failed',
+      error: error.message || "Authentication failed",
     };
   }
 }
@@ -131,7 +127,7 @@ export async function requireAuthForAddress(
   if (!authResult.walletAddress) {
     return {
       authenticated: false,
-      error: 'No wallet linked to account',
+      error: "No wallet linked to account",
     };
   }
 
@@ -146,7 +142,7 @@ export async function requireAuthForAddress(
 
     return {
       authenticated: false,
-      error: 'Address does not belong to authenticated user',
+      error: "Address does not belong to authenticated user",
     };
   }
 
@@ -156,13 +152,13 @@ export async function requireAuthForAddress(
 /**
  * Create unauthorized response
  */
-export function unauthorizedResponse(message: string = 'Unauthorized'): NextResponse {
+export function unauthorizedResponse(message: string = "Unauthorized"): NextResponse {
   return NextResponse.json({ error: message }, { status: 401 });
 }
 
 /**
  * Create forbidden response (authenticated but not authorized for resource)
  */
-export function forbiddenResponse(message: string = 'Forbidden'): NextResponse {
+export function forbiddenResponse(message: string = "Forbidden"): NextResponse {
   return NextResponse.json({ error: message }, { status: 403 });
 }

@@ -4,27 +4,24 @@
  * POST /api/transfer/send - Execute gasless USDC transfer
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
+import { NextRequest, NextResponse } from "next/server";
+import { neon } from "@neondatabase/serverless";
 import {
   executeGaslessTransfer,
   validateTransferParams,
   type GaslessTransferParams,
-} from '@/lib/zerodev/transfer-executor';
+} from "@/lib/zerodev/transfer-executor";
 import {
   validateTransferSession,
   type TransferSessionAuthorization,
-} from '@/lib/zerodev/transfer-session';
-import {
-  checkTransferRateLimit,
-  recordTransferAttempt,
-} from '@/lib/rate-limiter';
-import { decryptAuthorization } from '@/lib/security/session-encryption';
+} from "@/lib/zerodev/transfer-session";
+import { checkTransferRateLimit, recordTransferAttempt } from "@/lib/rate-limiter";
+import { decryptAuthorization } from "@/lib/security/session-encryption";
 import {
   requireAuthForAddress,
   unauthorizedResponse,
   forbiddenResponse,
-} from '@/lib/auth/middleware';
+} from "@/lib/auth/middleware";
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -39,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     if (!address || !recipient || !amount) {
       return NextResponse.json(
-        { error: 'Missing required fields: address, recipient, amount' },
+        { error: "Missing required fields: address, recipient, amount" },
         { status: 400 }
       );
     }
@@ -47,16 +44,16 @@ export async function POST(request: NextRequest) {
     // SECURITY: Verify authenticated user owns the sender address
     const authResult = await requireAuthForAddress(request, address);
     if (!authResult.authenticated) {
-      if (authResult.error === 'Address does not belong to authenticated user') {
+      if (authResult.error === "Address does not belong to authenticated user") {
         return forbiddenResponse(authResult.error);
       }
       return unauthorizedResponse(authResult.error);
     }
 
-    console.log('[API] Processing gasless transfer...');
-    console.log('[API] From:', address);
-    console.log('[API] To:', recipient);
-    console.log('[API] Amount:', amount, 'USDC');
+    console.log("[API] Processing gasless transfer...");
+    console.log("[API] From:", address);
+    console.log("[API] To:", recipient);
+    console.log("[API] Amount:", amount, "USDC");
 
     // 1. Get user and transfer authorization from database
     const users = await sql`
@@ -66,17 +63,14 @@ export async function POST(request: NextRequest) {
     `;
 
     if (users.length === 0) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     const encryptedAuth = users[0].transfer_authorization as TransferSessionAuthorization | null;
 
     if (!encryptedAuth) {
       return NextResponse.json(
-        { error: 'Gasless transfers not enabled. Please enable in settings.' },
+        { error: "Gasless transfers not enabled. Please enable in settings." },
         { status: 403 }
       );
     }
@@ -90,7 +84,7 @@ export async function POST(request: NextRequest) {
     if (!sessionValidation.valid) {
       return NextResponse.json(
         {
-          error: 'Transfer session invalid or expired',
+          error: "Transfer session invalid or expired",
           reason: sessionValidation.reason,
         },
         { status: 403 }
@@ -104,7 +98,7 @@ export async function POST(request: NextRequest) {
     if (!rateLimitCheck.allowed) {
       return NextResponse.json(
         {
-          error: 'Rate limit exceeded',
+          error: "Rate limit exceeded",
           reason: rateLimitCheck.reason,
           attemptsRemaining: rateLimitCheck.attemptsRemaining,
           resetTime: rateLimitCheck.resetTime,
@@ -123,10 +117,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!paramsValidation.valid) {
-      return NextResponse.json(
-        { error: paramsValidation.error },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: paramsValidation.error }, { status: 400 });
     }
 
     // 5. Execute gasless transfer
@@ -169,7 +160,7 @@ export async function POST(request: NextRequest) {
         )
       `;
 
-      console.log('[API] ✓ Transfer successful:', result.hash);
+      console.log("[API] ✓ Transfer successful:", result.hash);
 
       return NextResponse.json({
         success: true,
@@ -193,7 +184,7 @@ export async function POST(request: NextRequest) {
           'transfer',
           'failed',
           ${amount},
-          ${result.error || 'Unknown error'},
+          ${result.error || "Unknown error"},
           ${JSON.stringify({
             recipient,
             smartAccountAddress: transferAuth.smartAccountAddress,
@@ -201,23 +192,22 @@ export async function POST(request: NextRequest) {
         )
       `;
 
-      console.error('[API] ✗ Transfer failed:', result.error);
+      console.error("[API] ✗ Transfer failed:", result.error);
 
       return NextResponse.json(
         {
           success: false,
-          error: result.error || 'Transfer failed',
+          error: result.error || "Transfer failed",
         },
         { status: 500 }
       );
     }
-
   } catch (error: any) {
-    console.error('[API] Gasless transfer error:', error);
+    console.error("[API] Gasless transfer error:", error);
     return NextResponse.json(
       {
         success: false,
-        error: 'Internal server error',
+        error: "Internal server error",
         details: error.message,
       },
       { status: 500 }

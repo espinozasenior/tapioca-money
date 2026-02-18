@@ -1,7 +1,7 @@
-import type { YieldOpportunity, Position } from '../yield-optimizer/types';
+import type { YieldOpportunity, Position } from "../yield-optimizer/types";
 
 export interface ProtocolAdapter {
-  readonly protocol: 'morpho' | 'aave' | 'moonwell';
+  readonly protocol: "morpho" | "aave" | "moonwell";
 
   readonly name: string;
 
@@ -14,14 +14,14 @@ export interface ProtocolAdapter {
   buildDepositCalls(
     amount: bigint,
     userAddress: `0x${string}`,
-    vaultAddress: `0x${string}`,
+    vaultAddress: `0x${string}`
   ): Promise<{ to: `0x${string}`; data: `0x${string}`; value: bigint }[]>;
 
   buildWithdrawCalls(
     userAddress: `0x${string}`,
     vaultAddress: `0x${string}`,
     shares?: bigint,
-    assets?: bigint,
+    assets?: bigint
   ): Promise<{ to: `0x${string}`; data: `0x${string}`; value: bigint }[]>;
 }
 
@@ -41,32 +41,30 @@ export class ProtocolRegistry {
   }
 
   getEnabled(): ProtocolAdapter[] {
-    return this.getAll().filter(a => a.enabled);
+    return this.getAll().filter((a) => a.enabled);
   }
 
   async getAllOpportunities(): Promise<YieldOpportunity[]> {
-    const results = await Promise.allSettled(
-      this.getEnabled().map(a => a.getOpportunities())
-    );
+    const results = await Promise.allSettled(this.getEnabled().map((a) => a.getOpportunities()));
     return results
-      .filter((r): r is PromiseFulfilledResult<YieldOpportunity[]> => r.status === 'fulfilled')
-      .flatMap(r => r.value);
+      .filter((r): r is PromiseFulfilledResult<YieldOpportunity[]> => r.status === "fulfilled")
+      .flatMap((r) => r.value);
   }
 
   async getAllPositions(userAddress: `0x${string}`): Promise<Position[]> {
     const results = await Promise.allSettled(
-      this.getEnabled().map(a => a.getPositions(userAddress))
+      this.getEnabled().map((a) => a.getPositions(userAddress))
     );
     return results
-      .filter((r): r is PromiseFulfilledResult<Position[]> => r.status === 'fulfilled')
-      .flatMap(r => r.value);
+      .filter((r): r is PromiseFulfilledResult<Position[]> => r.status === "fulfilled")
+      .flatMap((r) => r.value);
   }
 }
 
 // Singleton registry with all protocol adapters
-import { MorphoAdapter } from './morpho-adapter';
-import { AaveAdapter } from './aave-adapter';
-import { MoonwellAdapter } from './moonwell-adapter';
+import { MorphoAdapter } from "./morpho-adapter";
+import { AaveAdapter } from "./aave-adapter";
+import { MoonwellAdapter } from "./moonwell-adapter";
 
 export const protocolRegistry = new ProtocolRegistry();
 protocolRegistry.register(new MorphoAdapter());

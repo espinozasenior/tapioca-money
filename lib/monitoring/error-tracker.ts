@@ -3,23 +3,23 @@
  * Logs errors with severity levels and provides metrics
  */
 
-import { neon } from '@neondatabase/serverless';
+import { neon } from "@neondatabase/serverless";
 
 export enum ErrorSeverity {
-  LOW = 'low',
-  MEDIUM = 'medium',
-  HIGH = 'high',
-  CRITICAL = 'critical',
+  LOW = "low",
+  MEDIUM = "medium",
+  HIGH = "high",
+  CRITICAL = "critical",
 }
 
 export type ErrorCategory =
-  | 'simulation'
-  | 'execution'
-  | 'database'
-  | 'api'
-  | 'zerodev'
-  | 'authorization'
-  | 'gas_estimation';
+  | "simulation"
+  | "execution"
+  | "database"
+  | "api"
+  | "zerodev"
+  | "authorization"
+  | "gas_estimation";
 
 export interface ErrorLog {
   id: string;
@@ -52,7 +52,7 @@ class ErrorStore {
     // Log to console for debugging
     const prefix = `[${error.severity.toUpperCase()}] [${error.category}]`;
     if (error.severity === ErrorSeverity.CRITICAL || error.severity === ErrorSeverity.HIGH) {
-      console.error(prefix, error.message, error.metadata || '');
+      console.error(prefix, error.message, error.metadata || "");
     } else {
       console.warn(prefix, error.message);
     }
@@ -64,14 +64,14 @@ class ErrorStore {
 
   getByCategory(category: ErrorCategory, limit: number = 50): ErrorLog[] {
     return this.errors
-      .filter(e => e.category === category)
+      .filter((e) => e.category === category)
       .slice(-limit)
       .reverse();
   }
 
   getBySeverity(severity: ErrorSeverity, limit: number = 50): ErrorLog[] {
     return this.errors
-      .filter(e => e.severity === severity)
+      .filter((e) => e.severity === severity)
       .slice(-limit)
       .reverse();
   }
@@ -79,7 +79,7 @@ class ErrorStore {
   getErrorRate(windowMinutes: number): number {
     const windowMs = windowMinutes * 60 * 1000;
     const cutoff = Date.now() - windowMs;
-    const recentErrors = this.errors.filter(e => e.timestamp >= cutoff);
+    const recentErrors = this.errors.filter((e) => e.timestamp >= cutoff);
     return recentErrors.length / windowMinutes; // Errors per minute
   }
 
@@ -121,7 +121,7 @@ async function persistErrorToDatabase(error: ErrorLog): Promise<void> {
       VALUES (
         ${userId},
         ${`error_${error.category}`},
-        ${'failed'},
+        ${"failed"},
         ${error.message},
         ${JSON.stringify({
           severity: error.severity,
@@ -134,7 +134,7 @@ async function persistErrorToDatabase(error: ErrorLog): Promise<void> {
     `;
   } catch (dbError) {
     // Best-effort persistence — never let DB failures break error tracking
-    console.error('[ErrorTracker] Failed to persist error to database:', dbError);
+    console.error("[ErrorTracker] Failed to persist error to database:", dbError);
   }
 }
 
@@ -147,7 +147,7 @@ export class ErrorTracker {
   /**
    * Log an error with context
    */
-  static async logError(error: Omit<ErrorLog, 'id' | 'timestamp'>): Promise<void> {
+  static async logError(error: Omit<ErrorLog, "id" | "timestamp">): Promise<void> {
     const errorLog: ErrorLog = {
       id: `err_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       timestamp: Date.now(),
@@ -270,7 +270,7 @@ export class ErrorTracker {
         WHERE action_type LIKE 'error_%'
           AND created_at >= NOW() - INTERVAL '1 minute' * ${windowMinutes}
       `;
-      return parseInt(result[0]?.count ?? '0') / windowMinutes;
+      return parseInt(result[0]?.count ?? "0") / windowMinutes;
     } catch {
       return 0;
     }
@@ -283,26 +283,26 @@ export class ErrorTracker {
 export function categorizeError(error: Error): ErrorCategory {
   const message = error.message.toLowerCase();
 
-  if (message.includes('simulation') || message.includes('estimate')) {
-    return 'simulation';
+  if (message.includes("simulation") || message.includes("estimate")) {
+    return "simulation";
   }
-  if (message.includes('zerodev') || message.includes('bundler')) {
-    return 'zerodev';
+  if (message.includes("zerodev") || message.includes("bundler")) {
+    return "zerodev";
   }
-  if (message.includes('authorization') || message.includes('7702')) {
-    return 'authorization';
+  if (message.includes("authorization") || message.includes("7702")) {
+    return "authorization";
   }
-  if (message.includes('database') || message.includes('sql')) {
-    return 'database';
+  if (message.includes("database") || message.includes("sql")) {
+    return "database";
   }
-  if (message.includes('gas')) {
-    return 'gas_estimation';
+  if (message.includes("gas")) {
+    return "gas_estimation";
   }
-  if (message.includes('api') || message.includes('fetch')) {
-    return 'api';
+  if (message.includes("api") || message.includes("fetch")) {
+    return "api";
   }
 
-  return 'execution';
+  return "execution";
 }
 
 /**
@@ -312,29 +312,21 @@ export function getSeverity(error: Error, category: ErrorCategory): ErrorSeverit
   const message = error.message.toLowerCase();
 
   // Critical errors
-  if (
-    category === 'database' ||
-    message.includes('critical') ||
-    message.includes('fatal')
-  ) {
+  if (category === "database" || message.includes("critical") || message.includes("fatal")) {
     return ErrorSeverity.CRITICAL;
   }
 
   // High severity
   if (
-    category === 'authorization' ||
-    category === 'execution' ||
-    message.includes('failed to execute')
+    category === "authorization" ||
+    category === "execution" ||
+    message.includes("failed to execute")
   ) {
     return ErrorSeverity.HIGH;
   }
 
   // Medium severity
-  if (
-    category === 'zerodev' ||
-    category === 'gas_estimation' ||
-    message.includes('timeout')
-  ) {
+  if (category === "zerodev" || category === "gas_estimation" || message.includes("timeout")) {
     return ErrorSeverity.MEDIUM;
   }
 

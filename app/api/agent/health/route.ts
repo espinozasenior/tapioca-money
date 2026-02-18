@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { neon } from '@neondatabase/serverless';
+import { neon } from "@neondatabase/serverless";
 import { ErrorTracker } from "@/lib/monitoring/error-tracker";
 
 const sql = neon(process.env.DATABASE_URL!);
 
-type HealthStatus = 'healthy' | 'degraded' | 'down';
-type ServiceStatus = 'up' | 'down';
+type HealthStatus = "healthy" | "degraded" | "down";
+type ServiceStatus = "up" | "down";
 
 /**
  * GET /api/agent/health
@@ -17,23 +17,23 @@ export async function GET(request: NextRequest) {
     zerodev: ServiceStatus;
     morphoApi: ServiceStatus;
   } = {
-    database: 'down',
-    zerodev: 'down',
-    morphoApi: 'down',
+    database: "down",
+    zerodev: "down",
+    morphoApi: "down",
   };
 
-  let overallStatus: HealthStatus = 'healthy';
+  let overallStatus: HealthStatus = "healthy";
   const startTime = Date.now();
 
   try {
     // 1. Check Database
     try {
       await sql`SELECT 1 as test`;
-      checks.database = 'up';
+      checks.database = "up";
     } catch (error) {
-      console.error('[Health] Database check failed:', error);
-      checks.database = 'down';
-      overallStatus = 'down';
+      console.error("[Health] Database check failed:", error);
+      checks.database = "down";
+      overallStatus = "down";
     }
 
     // 2. Check ZeroDev Bundler API
@@ -41,51 +41,52 @@ export async function GET(request: NextRequest) {
       const projectId = process.env.ZERODEV_PROJECT_ID;
       if (projectId) {
         // Simple bundler availability check
-        const bundlerUrl = process.env.ZERODEV_BUNDLER_URL ||
+        const bundlerUrl =
+          process.env.ZERODEV_BUNDLER_URL ||
           `https://rpc.zerodev.app/api/v3/${projectId}/chain/8453`;
         const response = await fetch(bundlerUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            jsonrpc: '2.0',
+            jsonrpc: "2.0",
             id: 1,
-            method: 'eth_chainId',
-            params: []
+            method: "eth_chainId",
+            params: [],
           }),
           signal: AbortSignal.timeout(5000), // 5 second timeout
         });
-        checks.zerodev = response.ok ? 'up' : 'down';
+        checks.zerodev = response.ok ? "up" : "down";
         if (!response.ok) {
-          overallStatus = overallStatus === 'down' ? 'down' : 'degraded';
+          overallStatus = overallStatus === "down" ? "down" : "degraded";
         }
       } else {
-        checks.zerodev = 'down';
-        overallStatus = 'degraded';
+        checks.zerodev = "down";
+        overallStatus = "degraded";
       }
     } catch (error) {
-      console.error('[Health] ZeroDev check failed:', error);
-      checks.zerodev = 'down';
-      overallStatus = overallStatus === 'down' ? 'down' : 'degraded';
+      console.error("[Health] ZeroDev check failed:", error);
+      checks.zerodev = "down";
+      overallStatus = overallStatus === "down" ? "down" : "degraded";
     }
 
     // 3. Check Morpho API
     try {
-      const response = await fetch('https://api.morpho.org/graphql', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("https://api.morpho.org/graphql", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          query: '{ __typename }',
+          query: "{ __typename }",
         }),
         signal: AbortSignal.timeout(5000),
       });
-      checks.morphoApi = response.ok ? 'up' : 'down';
+      checks.morphoApi = response.ok ? "up" : "down";
       if (!response.ok) {
-        overallStatus = overallStatus === 'down' ? 'down' : 'degraded';
+        overallStatus = overallStatus === "down" ? "down" : "degraded";
       }
     } catch (error) {
-      console.error('[Health] Morpho API check failed:', error);
-      checks.morphoApi = 'down';
-      overallStatus = overallStatus === 'down' ? 'down' : 'degraded';
+      console.error("[Health] Morpho API check failed:", error);
+      checks.morphoApi = "down";
+      overallStatus = overallStatus === "down" ? "down" : "degraded";
     }
 
     // 4. Get metrics (if database is up)
@@ -96,7 +97,7 @@ export async function GET(request: NextRequest) {
       averageLatency: 0,
     };
 
-    if (checks.database === 'up') {
+    if (checks.database === "up") {
       try {
         // Active users
         const activeUsersResult = await sql`
@@ -117,8 +118,8 @@ export async function GET(request: NextRequest) {
             AND created_at >= NOW() - INTERVAL '24 hours'
         `;
 
-        const total = parseInt(rebalancesResult[0].total || '0');
-        const successful = parseInt(rebalancesResult[0].successful || '0');
+        const total = parseInt(rebalancesResult[0].total || "0");
+        const successful = parseInt(rebalancesResult[0].successful || "0");
 
         metrics.rebalancesLast24h = total;
         metrics.successRate = total > 0 ? (successful / total) * 100 : 100;
@@ -140,8 +141,8 @@ export async function GET(request: NextRequest) {
           WHERE auto_optimize_enabled = true
         `;
         const delegationMetrics = {
-          activeDelegations: parseInt(delegationResult[0]?.delegated ?? '0'),
-          expiredDelegations: parseInt(delegationResult[0]?.expired ?? '0'),
+          activeDelegations: parseInt(delegationResult[0]?.delegated ?? "0"),
+          expiredDelegations: parseInt(delegationResult[0]?.expired ?? "0"),
         };
 
         // Persisted error metrics (survives cold starts)
@@ -157,9 +158,9 @@ export async function GET(request: NextRequest) {
           WHERE action_type LIKE 'error_%'
         `;
         const errorMetrics = {
-          errorsLastHour: parseInt(errorMetricsResult[0]?.errors_1h ?? '0'),
-          errorsLast24h: parseInt(errorMetricsResult[0]?.errors_24h ?? '0'),
-          criticalLast24h: parseInt(errorMetricsResult[0]?.critical_24h ?? '0'),
+          errorsLastHour: parseInt(errorMetricsResult[0]?.errors_1h ?? "0"),
+          errorsLast24h: parseInt(errorMetricsResult[0]?.errors_24h ?? "0"),
+          criticalLast24h: parseInt(errorMetricsResult[0]?.critical_24h ?? "0"),
         };
 
         // Average latency (mock for now)
@@ -181,9 +182,8 @@ export async function GET(request: NextRequest) {
           services: checks,
           timestamp: new Date().toISOString(),
         });
-
       } catch (error) {
-        console.error('[Health] Metrics calculation failed:', error);
+        console.error("[Health] Metrics calculation failed:", error);
         // Return basic health without metrics
       }
     }
@@ -196,14 +196,16 @@ export async function GET(request: NextRequest) {
       services: checks,
       timestamp: new Date().toISOString(),
     });
-
   } catch (error: any) {
-    console.error('[Health] Health check failed:', error);
-    return NextResponse.json({
-      status: 'down' as HealthStatus,
-      error: error.message,
-      services: checks,
-      timestamp: new Date().toISOString(),
-    }, { status: 503 });
+    console.error("[Health] Health check failed:", error);
+    return NextResponse.json(
+      {
+        status: "down" as HealthStatus,
+        error: error.message,
+        services: checks,
+        timestamp: new Date().toISOString(),
+      },
+      { status: 503 }
+    );
   }
 }

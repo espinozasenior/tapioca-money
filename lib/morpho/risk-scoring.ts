@@ -53,8 +53,7 @@ export function calculateRiskScore(vault: {
   }
 
   // 3. Curator Reputation (0-0.2)
-  const curatorNames =
-    vault.curators?.items?.map((c) => c.name?.toLowerCase() || "") || [];
+  const curatorNames = vault.curators?.items?.map((c) => c.name?.toLowerCase() || "") || [];
   const hasTrustedCurator = curatorNames.some((name) =>
     TRUSTED_CURATORS.some((trusted) => name.includes(trusted))
   );
@@ -146,8 +145,7 @@ export function getRiskBreakdown(vault: {
     reasoning.push("Vault is whitelisted by Morpho ✓");
   }
 
-  const curatorNames =
-    vault.curators?.items?.map((c) => c.name?.toLowerCase() || "") || [];
+  const curatorNames = vault.curators?.items?.map((c) => c.name?.toLowerCase() || "") || [];
   const hasTrustedCurator = curatorNames.some((name) =>
     TRUSTED_CURATORS.some((trusted) => name.includes(trusted))
   );
@@ -157,9 +155,7 @@ export function getRiskBreakdown(vault: {
     reasoning.push("Curator information unknown");
   } else if (!hasTrustedCurator) {
     factors.curator = 0.2;
-    reasoning.push(
-      `Curator "${curatorNames[0] || "Unknown"}" is not widely recognized`
-    );
+    reasoning.push(`Curator "${curatorNames[0] || "Unknown"}" is not widely recognized`);
   } else {
     reasoning.push(`Curated by trusted team: ${curatorNames[0]}`);
   }
@@ -187,26 +183,18 @@ export function getRiskBreakdown(vault: {
     const liquidityRatio = vault.liquidityUsd / vault.totalAssetsUsd;
     if (liquidityRatio < 0.1) {
       factors.liquidity = 0.15;
-      reasoning.push(
-        `Low liquidity: only ${(liquidityRatio * 100).toFixed(0)}% available`
-      );
+      reasoning.push(`Low liquidity: only ${(liquidityRatio * 100).toFixed(0)}% available`);
     } else if (liquidityRatio < 0.3) {
       factors.liquidity = 0.08;
-      reasoning.push(
-        `Moderate liquidity: ${(liquidityRatio * 100).toFixed(0)}% available`
-      );
+      reasoning.push(`Moderate liquidity: ${(liquidityRatio * 100).toFixed(0)}% available`);
     } else {
-      reasoning.push(
-        `Good liquidity: ${(liquidityRatio * 100).toFixed(0)}% available`
-      );
+      reasoning.push(`Good liquidity: ${(liquidityRatio * 100).toFixed(0)}% available`);
     }
   }
 
   if ((vault.totalAssetsUsd ?? 0) < 100000) {
     factors.size = 0.1;
-    reasoning.push(
-      `Small TVL: $${((vault.totalAssetsUsd ?? 0) / 1000).toFixed(0)}k (less tested)`
-    );
+    reasoning.push(`Small TVL: $${((vault.totalAssetsUsd ?? 0) / 1000).toFixed(0)}k (less tested)`);
   } else if ((vault.totalAssetsUsd ?? 0) < 1000000) {
     reasoning.push(`Moderate TVL: $${((vault.totalAssetsUsd ?? 0) / 1000000).toFixed(1)}m`);
   } else {

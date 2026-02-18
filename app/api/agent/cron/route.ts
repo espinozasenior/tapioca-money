@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { neon } from '@neondatabase/serverless';
+import { neon } from "@neondatabase/serverless";
 import { YieldDecisionEngine } from "@/lib/agent/decision-engine";
 import { executeRebalance } from "@/lib/agent/rebalance-executor";
 import { formatUnits } from "viem";
-import { decryptAuthorization } from '@/lib/security/session-encryption';
-import { timingSafeEqual } from 'crypto';
-import { isSessionRevoked } from '@/lib/security/session-revocation';
-import { acquireUserLock, releaseUserLock } from '@/lib/redis/distributed-lock';
-import { getUserOpCount, incrementUserOpCount } from '@/lib/redis/rate-limiter';
+import { decryptAuthorization } from "@/lib/security/session-encryption";
+import { timingSafeEqual } from "crypto";
+import { isSessionRevoked } from "@/lib/security/session-revocation";
+import { acquireUserLock, releaseUserLock } from "@/lib/redis/distributed-lock";
+import { getUserOpCount, incrementUserOpCount } from "@/lib/redis/rate-limiter";
 
 const sql = neon(process.env.DATABASE_URL!);
 
 // Parallel processing configuration
-const BATCH_SIZE = parseInt(process.env.CRON_BATCH_SIZE || '50', 10);
-const CONCURRENCY = parseInt(process.env.CRON_CONCURRENCY || '10', 10);
+const BATCH_SIZE = parseInt(process.env.CRON_BATCH_SIZE || "50", 10);
+const CONCURRENCY = parseInt(process.env.CRON_CONCURRENCY || "10", 10);
 const USEROP_DAILY_LIMIT = 90;
 const CRON_USEROP_RESERVE = 3;
 
@@ -27,7 +27,9 @@ async function processUsersInParallel(
   summary: CronSummary,
   targetedVaults?: string[] | null
 ): Promise<void> {
-  console.log(`[Cron] Processing ${users.length} users in batches of ${BATCH_SIZE} with concurrency ${CONCURRENCY}`);
+  console.log(
+    `[Cron] Processing ${users.length} users in batches of ${BATCH_SIZE} with concurrency ${CONCURRENCY}`
+  );
 
   // Process in batches
   for (let i = 0; i < users.length; i += BATCH_SIZE) {
@@ -53,8 +55,8 @@ async function processUsersInParallel(
             summary.skipped++;
             summary.details.push({
               address: user.wallet_address,
-              action: 'skipped',
-              reason: 'Rebalance already in progress (locked)',
+              action: "skipped",
+              reason: "Rebalance already in progress (locked)",
             });
             return;
           }
@@ -66,8 +68,8 @@ async function processUsersInParallel(
             summary.errors++;
             summary.details.push({
               address: user.wallet_address,
-              action: 'error',
-              reason: error.message || 'Unknown error during processing',
+              action: "error",
+              reason: error.message || "Unknown error during processing",
             });
             console.error(`[Cron] Error processing user ${user.wallet_address}:`, error.message);
           } finally {
@@ -90,8 +92,8 @@ function verifySecret(provided: string | null, expected: string | undefined): bo
 
   // Ensure both strings are the same length for timingSafeEqual
   // Use a constant-time comparison even for length check
-  const providedBuf = Buffer.from(provided, 'utf8');
-  const expectedBuf = Buffer.from(expected, 'utf8');
+  const providedBuf = Buffer.from(provided, "utf8");
+  const expectedBuf = Buffer.from(expected, "utf8");
 
   // If lengths differ, still do a comparison to avoid timing leak
   if (providedBuf.length !== expectedBuf.length) {
@@ -115,7 +117,7 @@ interface CronSummary {
   errors: number;
   details: Array<{
     address: string;
-    action: 'rebalanced' | 'skipped' | 'error';
+    action: "rebalanced" | "skipped" | "error";
     reason: string;
     apyImprovement?: number;
     taskId?: string;
@@ -137,7 +139,10 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   // 1. Verify CRON_SECRET using timing-safe comparison
-  const cronSecret = request.headers.get("x-cron-secret") || request.headers.get("authorization")?.replace("Bearer ", "") || null;
+  const cronSecret =
+    request.headers.get("x-cron-secret") ||
+    request.headers.get("authorization")?.replace("Bearer ", "") ||
+    null;
 
   if (!verifySecret(cronSecret, process.env.CRON_SECRET)) {
     console.error("[Cron] Unauthorized attempt - invalid secret");
@@ -156,22 +161,25 @@ export async function POST(request: NextRequest) {
 
   try {
     // Pre-flight safety check: verify USDC price feed is healthy
-    const { isRebalanceSafe } = await import('@/lib/oracles/chainlink');
+    const { isRebalanceSafe } = await import("@/lib/oracles/chainlink");
     const safetyCheck = await isRebalanceSafe();
     if (!safetyCheck.safe) {
-      console.error('[Cron] Safety check FAILED:', safetyCheck.reason);
-      return NextResponse.json({
-        success: false,
-        error: `Rebalancing blocked by safety check: ${safetyCheck.reason}`,
-        summary,
-      }, { status: 503 });
+      console.error("[Cron] Safety check FAILED:", safetyCheck.reason);
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Rebalancing blocked by safety check: ${safetyCheck.reason}`,
+          summary,
+        },
+        { status: 503 }
+      );
     }
-    console.log('[Cron] Safety check passed: USDC price feed healthy');
+    console.log("[Cron] Safety check passed: USDC price feed healthy");
 
     // Check for targeted rebalance mode (triggered by APY monitor)
     const url = new URL(request.url);
-    const targetedVaultsParam = url.searchParams.get('targetedVaults');
-    const targetedVaults = targetedVaultsParam ? targetedVaultsParam.split(',') : null;
+    const targetedVaultsParam = url.searchParams.get("targetedVaults");
+    const targetedVaults = targetedVaultsParam ? targetedVaultsParam.split(",") : null;
     if (targetedVaults) {
       console.log(`[Cron] Targeted rebalance mode: ${targetedVaults.length} vaults affected`);
     }
@@ -195,12 +203,7 @@ export async function POST(request: NextRequest) {
     // 3. Process users in parallel batches (90% time reduction)
     // Old sequential: 83 min for 10k users
     // New parallel: ~8 min for 10k users
-    await processUsersInParallel(
-      activeUsers,
-      processUserRebalance,
-      summary,
-      targetedVaults
-    );
+    await processUsersInParallel(activeUsers, processUserRebalance, summary, targetedVaults);
 
     const duration = Date.now() - startTime;
     console.log(`[Cron] Cycle complete in ${duration}ms:`, {
@@ -215,14 +218,16 @@ export async function POST(request: NextRequest) {
       summary,
       duration,
     });
-
   } catch (error: any) {
     console.error("[Cron] Fatal error:", error);
-    return NextResponse.json({
-      success: false,
-      error: error.message || "Cron execution failed",
-      summary,
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message || "Cron execution failed",
+        summary,
+      },
+      { status: 500 }
+    );
   }
 }
 
@@ -241,12 +246,12 @@ async function processUserRebalance(
   console.log(`[Cron] Processing ${userAddress}...`);
 
   // 1. Validate session key
-  if (!encryptedAuthorization || encryptedAuthorization.type !== 'zerodev-7702-session') {
+  if (!encryptedAuthorization || encryptedAuthorization.type !== "zerodev-7702-session") {
     summary.skipped++;
     summary.details.push({
       address: userAddress,
-      action: 'skipped',
-      reason: 'No valid ZeroDev session key found',
+      action: "skipped",
+      reason: "No valid ZeroDev session key found",
     });
     console.log(`[Cron] Skipped ${userAddress}: No session key`);
     return;
@@ -260,8 +265,8 @@ async function processUserRebalance(
     summary.skipped++;
     summary.details.push({
       address: userAddress,
-      action: 'skipped',
-      reason: 'Session key expired',
+      action: "skipped",
+      reason: "Session key expired",
     });
     console.log(`[Cron] Skipped ${userAddress}: Session expired`);
     return;
@@ -272,8 +277,8 @@ async function processUserRebalance(
     summary.skipped++;
     summary.details.push({
       address: userAddress,
-      action: 'skipped',
-      reason: 'Session key has been revoked',
+      action: "skipped",
+      reason: "Session key has been revoked",
     });
     console.log(`[Cron] Skipped ${userAddress}: Session revoked`);
     return;
@@ -288,7 +293,7 @@ async function processUserRebalance(
     summary.skipped++;
     summary.details.push({
       address: userAddress,
-      action: 'skipped',
+      action: "skipped",
       reason: decision.reason,
       apyImprovement: decision.apyImprovement,
     });
@@ -297,11 +302,11 @@ async function processUserRebalance(
   }
 
   // 4. Check simulation mode
-  const simulationMode = process.env.AGENT_SIMULATION_MODE === 'true';
+  const simulationMode = process.env.AGENT_SIMULATION_MODE === "true";
 
   if (simulationMode) {
     // Simulation mode - just log
-    console.log('[SIMULATION] Would execute rebalance:', {
+    console.log("[SIMULATION] Would execute rebalance:", {
       user: userAddress,
       from: decision.currentVault?.name,
       to: decision.targetVault?.name,
@@ -312,8 +317,8 @@ async function processUserRebalance(
     summary.skipped++;
     summary.details.push({
       address: userAddress,
-      action: 'skipped',
-      reason: '[SIMULATION] Rebalance simulated only',
+      action: "skipped",
+      reason: "[SIMULATION] Rebalance simulated only",
       apyImprovement: decision.apyImprovement,
     });
     return;
@@ -324,26 +329,23 @@ async function processUserRebalance(
     summary.skipped++;
     summary.details.push({
       address: userAddress,
-      action: 'skipped',
+      action: "skipped",
       reason: `UserOp budget low (${opsUsed}/${USEROP_DAILY_LIMIT} used)`,
     });
-    console.log(`[Cron] Skipping rebalance for ${userAddress}: budget low (${opsUsed}/${USEROP_DAILY_LIMIT} used)`);
+    console.log(
+      `[Cron] Skipping rebalance for ${userAddress}: budget low (${opsUsed}/${USEROP_DAILY_LIMIT} used)`
+    );
     return;
   }
 
   // 5. Real execution via ZeroDev (using session key - no agent wallet needed!)
-  const result = await executeRebalanceTransaction(
-    userId,
-    userAddress,
-    authorization,
-    decision
-  );
+  const result = await executeRebalanceTransaction(userId, userAddress, authorization, decision);
 
   if (result.success) {
     summary.rebalanced++;
     summary.details.push({
       address: userAddress,
-      action: 'rebalanced',
+      action: "rebalanced",
       reason: decision.reason,
       apyImprovement: decision.apyImprovement,
       taskId: result.taskId,
@@ -354,8 +356,8 @@ async function processUserRebalance(
     summary.errors++;
     summary.details.push({
       address: userAddress,
-      action: 'error',
-      reason: result.error || 'Execution failed',
+      action: "error",
+      reason: result.error || "Execution failed",
     });
     console.error(`[Cron] ✗ Failed ${userAddress}:`, result.error);
   }
@@ -376,8 +378,12 @@ async function executeRebalanceTransaction(
       throw new Error("Invalid rebalance decision - missing vault data");
     }
 
-    console.log(`[Rebalance] Executing: ${decision.currentVault.name} → ${decision.targetVault.name}`);
-    console.log(`[Rebalance] APY: ${(decision.currentVault.apy * 100).toFixed(2)}% → ${(decision.targetVault.apy * 100).toFixed(2)}%`);
+    console.log(
+      `[Rebalance] Executing: ${decision.currentVault.name} → ${decision.targetVault.name}`
+    );
+    console.log(
+      `[Rebalance] APY: ${(decision.currentVault.apy * 100).toFixed(2)}% → ${(decision.targetVault.apy * 100).toFixed(2)}%`
+    );
 
     // 1. Get session data from stored authorization
     const serializedAccount = authorization.serializedAccount;
@@ -386,7 +392,9 @@ async function executeRebalanceTransaction(
     const smartAccountAddress = authorization.eoaAddress;
 
     if (!serializedAccount && !sessionPrivateKey) {
-      throw new Error('No serializedAccount or sessionPrivateKey in authorization. User must re-register.');
+      throw new Error(
+        "No serializedAccount or sessionPrivateKey in authorization. User must re-register."
+      );
     }
 
     // 2. Build rebalance parameters
@@ -409,39 +417,26 @@ async function executeRebalanceTransaction(
       sessionPrivateKey as `0x${string}`,
       approvedVaults,
       eip7702SignedAuth,
-      serializedAccount,
+      serializedAccount
     );
 
-    const taskId = executionResult.taskId || `zerodev_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const taskId =
+      executionResult.taskId || `zerodev_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     // 4. Log result to database
     if (executionResult.success) {
-      await logRebalanceAction(
-        userId,
-        userAddress,
-        decision,
-        taskId,
-        'success'
-      );
+      await logRebalanceAction(userId, userAddress, decision, taskId, "success");
 
       return {
         success: true,
         taskId,
       };
     } else {
-      throw new Error(executionResult.error || 'Execution failed');
+      throw new Error(executionResult.error || "Execution failed");
     }
-
   } catch (error: any) {
     // Log failure to database
-    await logRebalanceAction(
-      userId,
-      userAddress,
-      decision,
-      undefined,
-      'failed',
-      error.message
-    );
+    await logRebalanceAction(userId, userAddress, decision, undefined, "failed", error.message);
 
     return {
       success: false,
@@ -458,7 +453,7 @@ async function logRebalanceAction(
   userAddress: string,
   decision: any,
   taskId: string | undefined,
-  status: 'pending' | 'success' | 'failed',
+  status: "pending" | "success" | "failed",
   errorMessage?: string
 ): Promise<void> {
   const metadata = {
@@ -511,8 +506,8 @@ async function logSimulatedAction(
     userId,
     userAddress,
     decision,
-    'simulation_' + Date.now(),
-    'success',
+    "simulation_" + Date.now(),
+    "success",
     undefined
   );
 }

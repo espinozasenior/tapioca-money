@@ -1,16 +1,17 @@
-import { encodeFunctionData, parseAbi, createPublicClient, http, type Hex } from 'viem';
-import { base } from 'viem/chains';
-import { createDeserializedKernelClient, createSessionKernelClient } from '../zerodev/kernel-client';
-import { checkSmartAccountActive } from '../zerodev/client-secure';
+import { encodeFunctionData, parseAbi, createPublicClient, http, type Hex } from "viem";
+import { base } from "viem/chains";
+import {
+  createDeserializedKernelClient,
+  createSessionKernelClient,
+} from "../zerodev/kernel-client";
+import { checkSmartAccountActive } from "../zerodev/client-secure";
 
 const VAULT_ABI = parseAbi([
-  'function redeem(uint256 shares, address receiver, address owner) returns (uint256 assets)',
-  'function deposit(uint256 assets, address receiver) returns (uint256 shares)',
+  "function redeem(uint256 shares, address receiver, address owner) returns (uint256 assets)",
+  "function deposit(uint256 assets, address receiver) returns (uint256 shares)",
 ]);
 
-const ERC20_ABI = parseAbi([
-  'function approve(address spender, uint256 amount) returns (bool)',
-]);
+const ERC20_ABI = parseAbi(["function approve(address spender, uint256 amount) returns (bool)"]);
 
 const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
 const MAX_UINT256 = BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
@@ -18,11 +19,11 @@ const MAX_UINT256 = BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffff
 // Function selectors for scoped permissions
 const FUNCTION_SELECTORS = {
   // ERC4626 Vault operations
-  REDEEM: "0xba087652" as Hex,   // redeem(uint256,address,address)
-  DEPOSIT: "0x6e553f65" as Hex,  // deposit(uint256,address)
+  REDEEM: "0xba087652" as Hex, // redeem(uint256,address,address)
+  DEPOSIT: "0x6e553f65" as Hex, // deposit(uint256,address)
   WITHDRAW: "0xb460af94" as Hex, // withdraw(uint256,address,address)
   // ERC20 operations
-  APPROVE: "0x095ea7b3" as Hex,  // approve(address,uint256)
+  APPROVE: "0x095ea7b3" as Hex, // approve(address,uint256)
   TRANSFER: "0xa9059cbb" as Hex, // transfer(address,uint256)
 };
 
@@ -59,16 +60,18 @@ export async function buildRebalanceCalls(params: RebalanceParams): Promise<Reba
   const publicClient = createPublicClient({ chain: base, transport: http() });
   const expectedAssets = await publicClient.readContract({
     address: params.fromVault,
-    abi: parseAbi(['function previewRedeem(uint256 shares) view returns (uint256)']),
-    functionName: 'previewRedeem',
+    abi: parseAbi(["function previewRedeem(uint256 shares) view returns (uint256)"]),
+    functionName: "previewRedeem",
     args: [params.shares],
   });
 
   // Apply 0.5% slippage buffer to account for rounding and timing differences
-  const depositAmount = expectedAssets * 995n / 1000n;
+  const depositAmount = (expectedAssets * 995n) / 1000n;
 
   if (depositAmount === 0n) {
-    throw new Error(`previewRedeem returned 0 for ${params.shares} shares on vault ${params.fromVault}`);
+    throw new Error(
+      `previewRedeem returned 0 for ${params.shares} shares on vault ${params.fromVault}`
+    );
   }
 
   return [
@@ -77,31 +80,31 @@ export async function buildRebalanceCalls(params: RebalanceParams): Promise<Reba
       to: params.fromVault,
       data: encodeFunctionData({
         abi: VAULT_ABI,
-        functionName: 'redeem',
-        args: [params.shares, params.userAddress, params.userAddress]
+        functionName: "redeem",
+        args: [params.shares, params.userAddress, params.userAddress],
       }),
-      value: BigInt(0)
+      value: BigInt(0),
     },
     // Step 2: Approve destination vault with exact amount (not MAX_UINT256)
     {
       to: USDC_ADDRESS,
       data: encodeFunctionData({
         abi: ERC20_ABI,
-        functionName: 'approve',
-        args: [params.toVault, depositAmount]
+        functionName: "approve",
+        args: [params.toVault, depositAmount],
       }),
-      value: BigInt(0)
+      value: BigInt(0),
     },
     // Step 3: Deposit calculated amount into destination vault
     {
       to: params.toVault,
       data: encodeFunctionData({
         abi: VAULT_ABI,
-        functionName: 'deposit',
-        args: [depositAmount, params.userAddress]
+        functionName: "deposit",
+        args: [depositAmount, params.userAddress],
       }),
-      value: BigInt(0)
-    }
+      value: BigInt(0),
+    },
   ];
 }
 
@@ -137,28 +140,31 @@ export async function executeRebalance(
   sessionPrivateKey: `0x${string}`,
   approvedVaults?: `0x${string}`[],
   eip7702SignedAuth?: any,
-  serializedAccount?: string,
+  serializedAccount?: string
 ): Promise<RebalanceResult> {
   try {
-    console.log('[Rebalance] Starting ZeroDev execution with scoped permissions...');
+    console.log("[Rebalance] Starting ZeroDev execution with scoped permissions...");
 
     // PRE-EXECUTION: Verify EIP-7702 delegation is active on-chain
     const delegationStatus = await checkSmartAccountActive(smartAccountAddress);
     if (!delegationStatus.active) {
-      console.error('[Rebalance] Delegation not active for:', smartAccountAddress);
+      console.error("[Rebalance] Delegation not active for:", smartAccountAddress);
       return {
-        taskId: '',
+        taskId: "",
         success: false,
-        error: 'EIP-7702 delegation not active on-chain. User must re-register.',
+        error: "EIP-7702 delegation not active on-chain. User must re-register.",
       };
     }
     if (delegationStatus.isDelegation) {
-      const { KernelVersionToAddressesMap, KERNEL_V3_3 } = await import('@zerodev/sdk/constants');
+      const { KernelVersionToAddressesMap, KERNEL_V3_3 } = await import("@zerodev/sdk/constants");
       const expectedImpl = KernelVersionToAddressesMap[KERNEL_V3_3].accountImplementationAddress;
       if (delegationStatus.implementationAddress?.toLowerCase() !== expectedImpl.toLowerCase()) {
-        console.error('[Rebalance] Delegation target mismatch:', delegationStatus.implementationAddress);
+        console.error(
+          "[Rebalance] Delegation target mismatch:",
+          delegationStatus.implementationAddress
+        );
         return {
-          taskId: '',
+          taskId: "",
           success: false,
           error: `EIP-7702 delegated to wrong implementation: ${delegationStatus.implementationAddress}`,
         };
@@ -168,14 +174,13 @@ export async function executeRebalance(
     // Create kernel client — prefer deserialized account (new pattern)
     let kernelClient;
     if (serializedAccount) {
-      console.log('[Rebalance] Using deserialized kernel client');
+      console.log("[Rebalance] Using deserialized kernel client");
       kernelClient = await createDeserializedKernelClient(serializedAccount);
     } else {
       // Legacy path
-      console.warn('[Rebalance] Using legacy session key path — user should re-register');
-      const permissions = (approvedVaults && approvedVaults.length > 0)
-        ? buildScopedPermissions(approvedVaults)
-        : [];
+      console.warn("[Rebalance] Using legacy session key path — user should re-register");
+      const permissions =
+        approvedVaults && approvedVaults.length > 0 ? buildScopedPermissions(approvedVaults) : [];
       kernelClient = await createSessionKernelClient({
         smartAccountAddress,
         sessionPrivateKey,
@@ -187,28 +192,32 @@ export async function executeRebalance(
     // Build rebalance calls
     const calls = await buildRebalanceCalls(params);
 
-    console.log('[Rebalance] Executing batch transaction...');
+    console.log("[Rebalance] Executing batch transaction...");
 
     let userOpHash: string;
     try {
       userOpHash = await kernelClient.sendUserOperation({
-        calls: calls.map(call => ({
+        calls: calls.map((call) => ({
           to: call.to,
           value: call.value,
           data: call.data,
         })),
       });
     } catch (sendError: any) {
-      if (sendError.message?.includes('paymaster')) {
-        return { taskId: '', success: false, error: 'Gas sponsorship failed. Paymaster may be out of funds.' };
+      if (sendError.message?.includes("paymaster")) {
+        return {
+          taskId: "",
+          success: false,
+          error: "Gas sponsorship failed. Paymaster may be out of funds.",
+        };
       }
-      if (sendError.message?.includes('nonce')) {
-        return { taskId: '', success: false, error: 'UserOp nonce error. Retry may be needed.' };
+      if (sendError.message?.includes("nonce")) {
+        return { taskId: "", success: false, error: "UserOp nonce error. Retry may be needed." };
       }
       throw sendError;
     }
 
-    console.log('[Rebalance] UserOp submitted:', userOpHash);
+    console.log("[Rebalance] UserOp submitted:", userOpHash);
 
     const receipt = await kernelClient.waitForUserOperationReceipt({
       hash: userOpHash as `0x${string}`,
@@ -216,7 +225,7 @@ export async function executeRebalance(
 
     // Check UserOp execution status
     if (!receipt.success) {
-      console.error('[Rebalance] UserOp REVERTED:', {
+      console.error("[Rebalance] UserOp REVERTED:", {
         hash: userOpHash,
         reason: receipt.reason,
         txHash: receipt.receipt.transactionHash,
@@ -224,32 +233,32 @@ export async function executeRebalance(
       return {
         taskId: receipt.receipt.transactionHash,
         success: false,
-        error: `UserOp reverted on-chain: ${receipt.reason || 'unknown reason'}`,
+        error: `UserOp reverted on-chain: ${receipt.reason || "unknown reason"}`,
       };
     }
 
-    console.log('[Rebalance] Transaction confirmed:', receipt.receipt.transactionHash);
+    console.log("[Rebalance] Transaction confirmed:", receipt.receipt.transactionHash);
 
     // POST-EXECUTION: Verify delegation is still active on-chain
-    const { verifyDelegationAfterExecution } = await import('../zerodev/kernel-client');
+    const { verifyDelegationAfterExecution } = await import("../zerodev/kernel-client");
     const delegationConfirmed = await verifyDelegationAfterExecution(
       smartAccountAddress,
-      receipt.receipt.transactionHash,
+      receipt.receipt.transactionHash
     );
     if (!delegationConfirmed) {
-      console.error('[Rebalance] WARNING: Delegation not confirmed after execution');
+      console.error("[Rebalance] WARNING: Delegation not confirmed after execution");
     }
 
     return {
       taskId: receipt.receipt.transactionHash,
-      success: true
+      success: true,
     };
   } catch (error: any) {
-    console.error('[Rebalance] Execution error:', error);
+    console.error("[Rebalance] Execution error:", error);
     return {
-      taskId: '',
+      taskId: "",
       success: false,
-      error: error.message
+      error: error.message,
     };
   }
 }
@@ -276,20 +285,20 @@ export async function simulateRebalance(
           account: smartAccountAddress,
         });
       } catch (simError: any) {
-        const stepNames = ['redeem', 'approve', 'deposit'];
+        const stepNames = ["redeem", "approve", "deposit"];
         return {
           success: false,
-          error: `Simulation failed at step ${i + 1} (${stepNames[i] || 'unknown'}): ${simError.message}`,
+          error: `Simulation failed at step ${i + 1} (${stepNames[i] || "unknown"}): ${simError.message}`,
         };
       }
     }
 
-    console.log('[Rebalance] Simulation passed:', calls.length, 'calls');
+    console.log("[Rebalance] Simulation passed:", calls.length, "calls");
     return { success: true };
   } catch (error: any) {
     return {
       success: false,
-      error: error.message
+      error: error.message,
     };
   }
 }

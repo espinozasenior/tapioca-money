@@ -3,21 +3,21 @@
  * Tests system behavior under load
  */
 
-import { describe, test, expect, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, beforeEach, afterEach } from "vitest";
+import { seedTestUser, createTestTransferSession, cleanupTestData } from "../helpers/test-setup";
 import {
-  seedTestUser,
-  createTestTransferSession,
-  cleanupTestData,
-} from '../helpers/test-setup';
-import { checkTransferRateLimit, recordTransferAttempt, resetUserRateLimit } from '@/lib/rate-limiter';
+  checkTransferRateLimit,
+  recordTransferAttempt,
+  resetUserRateLimit,
+} from "@/lib/rate-limiter";
 
-describe('Performance & Stress Tests', () => {
+describe("Performance & Stress Tests", () => {
   const testAddresses: string[] = [];
 
   beforeEach(() => {
     // Generate test addresses
     for (let i = 0; i < 10; i++) {
-      const addr = `0x${i.toString().padStart(40, '0')}`;
+      const addr = `0x${i.toString().padStart(40, "0")}`;
       testAddresses.push(addr);
     }
   });
@@ -29,14 +29,14 @@ describe('Performance & Stress Tests', () => {
     }
 
     // Reset rate limits
-    testAddresses.forEach(addr => resetUserRateLimit(addr));
+    testAddresses.forEach((addr) => resetUserRateLimit(addr));
   });
 
-  test('Process 100 users within reasonable time', async () => {
+  test("Process 100 users within reasonable time", async () => {
     // Create 100 test addresses
     const addresses = [];
     for (let i = 0; i < 100; i++) {
-      addresses.push(`0x${i.toString(16).padStart(40, '0')}`);
+      addresses.push(`0x${i.toString(16).padStart(40, "0")}`);
     }
 
     const startTime = Date.now();
@@ -56,10 +56,10 @@ describe('Performance & Stress Tests', () => {
 
     // All users processed
     expect(results.length).toBe(100);
-    expect(results.every(r => r.processed)).toBe(true);
+    expect(results.every((r) => r.processed)).toBe(true);
   });
 
-  test('No memory leaks during batch processing', async () => {
+  test("No memory leaks during batch processing", async () => {
     const initialMemory = process.memoryUsage().heapUsed;
 
     // Process large batch
@@ -67,7 +67,7 @@ describe('Performance & Stress Tests', () => {
     for (let i = 0; i < iterations; i++) {
       // Simulate work
       const data = {
-        address: `0x${i.toString(16).padStart(40, '0')}`,
+        address: `0x${i.toString(16).padStart(40, "0")}`,
         timestamp: Date.now(),
       };
 
@@ -83,56 +83,58 @@ describe('Performance & Stress Tests', () => {
     expect(memoryGrowthMB).toBeLessThan(50);
   });
 
-  test('Rate limiter handles concurrent requests', () => {
-    const userAddress = '0xCONCURRENT_TEST_12345678901234567890';
+  test("Rate limiter handles concurrent requests", () => {
+    const userAddress = "0xCONCURRENT_TEST_12345678901234567890";
 
     // Simulate 10 concurrent transfer checks
-    const concurrentChecks = Array(10).fill(null).map(() =>
-      checkTransferRateLimit(userAddress, 10)
-    );
+    const concurrentChecks = Array(10)
+      .fill(null)
+      .map(() => checkTransferRateLimit(userAddress, 10));
 
     // All should return consistent results
-    const allAllowed = concurrentChecks.every(check => check.allowed === true);
+    const allAllowed = concurrentChecks.every((check) => check.allowed === true);
     expect(allAllowed).toBe(true);
 
     // All should show same attempts remaining
     const firstCheck = concurrentChecks[0];
     const allSame = concurrentChecks.every(
-      check => check.attemptsRemaining === firstCheck.attemptsRemaining
+      (check) => check.attemptsRemaining === firstCheck.attemptsRemaining
     );
     expect(allSame).toBe(true);
   });
 
-  test('Database connection pool handling', async () => {
+  test("Database connection pool handling", async () => {
     // Simulate 50 concurrent database operations
-    const operations = Array(50).fill(null).map(async (_, i) => {
-      const addr = `0x${i.toString(16).padStart(40, '0')}`;
-      try {
-        await seedTestUser(addr, false);
-        return { success: true, address: addr };
-      } catch (error) {
-        return { success: false, address: addr, error };
-      }
-    });
+    const operations = Array(50)
+      .fill(null)
+      .map(async (_, i) => {
+        const addr = `0x${i.toString(16).padStart(40, "0")}`;
+        try {
+          await seedTestUser(addr, false);
+          return { success: true, address: addr };
+        } catch (error) {
+          return { success: false, address: addr, error };
+        }
+      });
 
     const results = await Promise.all(operations);
 
     // Most should succeed (allow for some rate limiting)
-    const successCount = results.filter(r => r.success).length;
+    const successCount = results.filter((r) => r.success).length;
     expect(successCount).toBeGreaterThan(40); // At least 80% success rate
 
     // Cleanup
-    const addresses = results.map(r => r.address);
+    const addresses = results.map((r) => r.address);
     await cleanupTestData(addresses);
   });
 
-  test('Transfer rate limiter scales with user count', () => {
+  test("Transfer rate limiter scales with user count", () => {
     // Test with 1000 different users
     const userCount = 1000;
     const startTime = Date.now();
 
     for (let i = 0; i < userCount; i++) {
-      const addr = `0x${i.toString(16).padStart(40, '0')}`;
+      const addr = `0x${i.toString(16).padStart(40, "0")}`;
       const result = checkTransferRateLimit(addr, 10);
       expect(result.allowed).toBe(true);
     }
@@ -144,11 +146,11 @@ describe('Performance & Stress Tests', () => {
     expect(duration).toBeLessThan(5000);
   });
 
-  test('Session validation performance', async () => {
+  test("Session validation performance", async () => {
     // Create 100 sessions
     const sessions = [];
     for (let i = 0; i < 100; i++) {
-      const addr = `0x${i.toString(16).padStart(40, '0')}`;
+      const addr = `0x${i.toString(16).padStart(40, "0")}`;
       const session = await createTestTransferSession(addr);
       sessions.push(session);
     }
@@ -156,7 +158,7 @@ describe('Performance & Stress Tests', () => {
     const startTime = Date.now();
 
     // Validate all sessions
-    sessions.forEach(session => {
+    sessions.forEach((session) => {
       const now = Math.floor(Date.now() / 1000);
       const isValid = session.expiry > now;
       expect(isValid).toBe(true);
@@ -169,12 +171,12 @@ describe('Performance & Stress Tests', () => {
     expect(duration).toBeLessThan(1000);
 
     // Cleanup
-    const addresses = sessions.map((_, i) => `0x${i.toString(16).padStart(40, '0')}`);
+    const addresses = sessions.map((_, i) => `0x${i.toString(16).padStart(40, "0")}`);
     await cleanupTestData(addresses);
   });
 
-  test('Large transaction batches', async () => {
-    const userAddress = '0xBATCH_TEST_345678901234567890123456';
+  test("Large transaction batches", async () => {
+    const userAddress = "0xBATCH_TEST_345678901234567890123456";
 
     // Record 100 transfers
     const startTime = Date.now();
@@ -193,11 +195,11 @@ describe('Performance & Stress Tests', () => {
     resetUserRateLimit(userAddress);
   });
 
-  test('Parallel session creation', async () => {
+  test("Parallel session creation", async () => {
     // Create 10 sessions in parallel
-    const addresses = Array(10).fill(null).map((_, i) =>
-      `0x${i.toString(16).padStart(40, '0')}`
-    );
+    const addresses = Array(10)
+      .fill(null)
+      .map((_, i) => `0x${i.toString(16).padStart(40, "0")}`);
 
     const startTime = Date.now();
 
@@ -213,7 +215,7 @@ describe('Performance & Stress Tests', () => {
 
     // All sessions created
     expect(sessions.length).toBe(10);
-    expect(sessions.every(s => s !== null)).toBe(true);
+    expect(sessions.every((s) => s !== null)).toBe(true);
 
     // Completed in reasonable time
     expect(duration).toBeLessThan(30000); // 30 seconds

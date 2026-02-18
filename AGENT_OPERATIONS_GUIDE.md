@@ -68,6 +68,7 @@ AGENT_GAS_PRICE_LIMIT_GWEI=50                    # Max gas price
 ```
 
 **Generating CRON_SECRET:**
+
 ```bash
 openssl rand -hex 32
 ```
@@ -137,11 +138,13 @@ vercel --prod
 ### 4. Verify Deployment
 
 **Check Health Endpoint:**
+
 ```bash
 curl https://your-domain.vercel.app/api/agent/health
 ```
 
 Expected response:
+
 ```json
 {
   "status": "healthy",
@@ -159,6 +162,7 @@ Expected response:
 ```
 
 **Trigger Manual Cron Run:**
+
 ```bash
 curl -X POST https://your-domain.vercel.app/api/agent/cron \
   -H "x-cron-secret: YOUR_CRON_SECRET"
@@ -169,12 +173,14 @@ curl -X POST https://your-domain.vercel.app/api/agent/cron \
 ### Enable/Disable Agent Globally
 
 **Disable (Emergency Stop):**
+
 ```bash
 # Set AGENT_SIMULATION_MODE=true in Vercel env vars
 # This will stop real transactions but continue logging
 ```
 
 **Re-enable:**
+
 ```bash
 # Set AGENT_SIMULATION_MODE=false
 ```
@@ -182,16 +188,20 @@ curl -X POST https://your-domain.vercel.app/api/agent/cron \
 ### Adjust Cron Frequency
 
 Edit `vercel.json`:
+
 ```json
 {
-  "crons": [{
-    "path": "/api/agent/cron",
-    "schedule": "*/10 * * * *"  // Every 10 minutes instead of 5
-  }]
+  "crons": [
+    {
+      "path": "/api/agent/cron",
+      "schedule": "*/10 * * * *" // Every 10 minutes instead of 5
+    }
+  ]
 }
 ```
 
 Then redeploy:
+
 ```bash
 vercel --prod
 ```
@@ -199,11 +209,13 @@ vercel --prod
 ### Monitor Agent Activity
 
 **View Recent Logs:**
+
 ```bash
 vercel logs --follow
 ```
 
 **Query Database:**
+
 ```sql
 -- Recent rebalances
 SELECT
@@ -235,6 +247,7 @@ GROUP BY u.wallet_address;
 ### User Management
 
 **Disable Agent for Specific User:**
+
 ```sql
 UPDATE users
 SET auto_optimize_enabled = false
@@ -242,6 +255,7 @@ WHERE wallet_address = '0x...';
 ```
 
 **Check User Status:**
+
 ```bash
 curl "https://your-domain.vercel.app/api/agent/register?address=0x..."
 ```
@@ -251,10 +265,12 @@ curl "https://your-domain.vercel.app/api/agent/register?address=0x..."
 ### Issue: Cron Not Executing
 
 **Symptoms:**
+
 - No entries in `agent_actions` table
 - Vercel logs show no cron invocations
 
 **Solutions:**
+
 1. Check Vercel dashboard → Cron Jobs tab
 2. Verify `vercel.json` is in project root
 3. Ensure cron endpoint returns 200 status
@@ -263,10 +279,12 @@ curl "https://your-domain.vercel.app/api/agent/register?address=0x..."
 ### Issue: All Rebalances Failing
 
 **Symptoms:**
+
 - All actions have status='failed'
 - Error: "Missing Crossmint API Key or Agent Private Key"
 
 **Solutions:**
+
 1. Verify env vars in Vercel:
    ```bash
    vercel env ls
@@ -277,10 +295,12 @@ curl "https://your-domain.vercel.app/api/agent/register?address=0x..."
 ### Issue: Gas Cost Exceeds Gain
 
 **Symptoms:**
+
 - Logs show: "Gas cost exceeds 10% of yearly gain"
 - Many skipped rebalances
 
 **Solutions:**
+
 1. Check current Base network gas prices
 2. Increase `AGENT_GAS_PRICE_LIMIT_GWEI`
 3. Raise user's `min_apy_gain_threshold`
@@ -288,10 +308,12 @@ curl "https://your-domain.vercel.app/api/agent/register?address=0x..."
 ### Issue: Authorization Expired
 
 **Symptoms:**
+
 - Error: "authorization expired"
 - Rebalances fail after working previously
 
 **Solutions:**
+
 1. Users need to re-authorize in the UI
 2. Check authorization expiry in database:
    ```sql
@@ -304,10 +326,12 @@ curl "https://your-domain.vercel.app/api/agent/register?address=0x..."
 ### Issue: Simulation Failures
 
 **Symptoms:**
+
 - Error: "Simulation failed"
 - Status remains 'pending'
 
 **Solutions:**
+
 1. Check user has sufficient balance
 2. Verify protocol contracts are operational
 3. Review Morpho/Aave API status
@@ -318,6 +342,7 @@ curl "https://your-domain.vercel.app/api/agent/register?address=0x..."
 ### Key Metrics to Track
 
 1. **Success Rate**: Should be > 95%
+
    ```sql
    SELECT
      ROUND(100.0 * COUNT(*) FILTER (WHERE status = 'success') / COUNT(*), 2) as success_rate
@@ -327,6 +352,7 @@ curl "https://your-domain.vercel.app/api/agent/register?address=0x..."
    ```
 
 2. **Average Execution Time**: Should be < 30s
+
    ```sql
    SELECT AVG(EXTRACT(EPOCH FROM (created_at - created_at))) as avg_seconds
    FROM agent_actions
@@ -347,16 +373,19 @@ curl "https://your-domain.vercel.app/api/agent/register?address=0x..."
 ### Setting Up Alerts
 
 **Vercel Integration (Recommended):**
+
 - Navigate to Vercel Dashboard → Integrations
 - Add monitoring service (Datadog, Sentry, etc.)
 
 **Custom Alerts:**
 Create a new endpoint `/api/agent/alerts` that:
+
 1. Queries metrics from database
 2. Compares against thresholds
 3. Sends notifications (email, Slack, etc.) if thresholds exceeded
 
 **Example Alert Conditions:**
+
 - Success rate drops below 90%
 - No cron runs in last 10 minutes
 - Error rate exceeds 5%
@@ -365,6 +394,7 @@ Create a new endpoint `/api/agent/alerts` that:
 ## Security Considerations
 
 1. **CRON_SECRET**: Rotate monthly
+
    ```bash
    # Generate new secret
    openssl rand -hex 32
@@ -374,11 +404,13 @@ Create a new endpoint `/api/agent/alerts` that:
    ```
 
 2. **Agent Private Key**: Store in secure vault
+
    - Never commit to git
    - Rotate if compromised
    - Monitor for unauthorized transactions
 
 3. **User Authorization**: Validate expiry
+
    - EIP-7702 authorizations can expire
    - Prompt users to re-authorize
    - Log all authorization changes
@@ -392,6 +424,7 @@ Create a new endpoint `/api/agent/alerts` that:
 ### Database Indexes
 
 Ensure these indexes exist:
+
 ```sql
 CREATE INDEX IF NOT EXISTS idx_users_auto_optimize ON users(auto_optimize_enabled);
 CREATE INDEX IF NOT EXISTS idx_users_wallet ON users(wallet_address);
@@ -409,12 +442,13 @@ CREATE INDEX IF NOT EXISTS idx_agent_actions_created ON agent_actions(created_at
 ### Parallel Processing
 
 Currently, users are processed sequentially. For scale, consider:
+
 ```typescript
 // Process users in batches
 const batchSize = 10;
 for (let i = 0; i < activeUsers.length; i += batchSize) {
   const batch = activeUsers.slice(i, i + batchSize);
-  await Promise.all(batch.map(user => processUserRebalance(user, summary)));
+  await Promise.all(batch.map((user) => processUserRebalance(user, summary)));
 }
 ```
 
@@ -440,16 +474,19 @@ If critical bug detected:
 ## Support & Escalation
 
 **Tier 1 Issues** (User-level):
+
 - Authorization expired → User re-authorizes
 - Low APY gain → Expected behavior
 - Single failed transaction → Retry automatically
 
 **Tier 2 Issues** (System-level):
+
 - Multiple users failing → Check health endpoint
 - Cron not running → Restart Vercel deployment
 - API rate limits → Implement backoff
 
 **Tier 3 Issues** (Critical):
+
 - Database down → Contact Neon support
 - Crossmint API down → Switch to fallback
 - Smart contract bug → Emergency shutdown

@@ -48,6 +48,7 @@ tests/
 ## Test Categories
 
 ### EIP-7702 Delegation (`eip7702-delegation.test.ts`)
+
 - Delegation designator parsing (`0xef0100` + 20-byte address)
 - Permission validator slot verification
 - Rebalance call building (redeem + approve + deposit)
@@ -55,6 +56,7 @@ tests/
 - Serialize/deserialize kernel account pattern
 
 ### Security Hardening (`security-edge-cases.test.ts`)
+
 - Session key revocation via Redis blacklist
 - Distributed lock for concurrent cron prevention
 - Delegation target verification (phishing guard)
@@ -64,6 +66,7 @@ tests/
 - UserOp receipt status checking
 
 ### Property-Based Fuzz Tests (`fuzz-security.test.ts`)
+
 - Delegation designator parsing (500 random inputs)
 - Auth serialization roundtrip (bigint preservation)
 - AES-256-GCM encrypt/decrypt roundtrip + tamper detection
@@ -72,6 +75,7 @@ tests/
 - Rate limiter boundary conditions
 
 ### Cron & Agent (`cron-job.test.ts`, `agent-session.test.ts`)
+
 - Parallel batch processing with distributed locks
 - Session key expiry and revocation checks
 - Simulation mode
@@ -79,16 +83,19 @@ tests/
 - Error isolation (one user failure doesn't cascade)
 
 ### Yield Logic (`decision-engine.test.ts`, `morpho-api.test.ts`)
+
 - APY threshold evaluation
 - Break-even calculation
 - Morpho GraphQL response parsing
 
 ### Transfers (`transfer-session.test.ts`, `gasless-transfer.test.ts`, `rate-limiting.test.ts`)
+
 - Session key creation with restricted permissions
 - Gasless USDC transfer execution
 - Daily limits (20/day), amount limits ($500/transfer)
 
 ### End-to-End & Performance (`e2e-flow.test.ts`, `performance.test.ts`, `edge-cases.test.ts`)
+
 - Full registration → rebalance → verification flow
 - 100-user batch processing benchmarks
 - Network failures, concurrent access, malformed data
@@ -109,6 +116,7 @@ CRON_SECRET=test_secret_12345678901234567890
 ## Coverage Thresholds
 
 Configured in `vitest.config.ts`:
+
 - Lines: 80%
 - Functions: 80%
 - Branches: 75%
@@ -117,6 +125,7 @@ Configured in `vitest.config.ts`:
 ## CI
 
 GitHub Actions runs on every PR to `main` (`.github/workflows/ci.yml`):
+
 1. Type check (`tsc --noEmit`)
 2. Tests (`pnpm test:run`)
 3. Build (`pnpm build`)

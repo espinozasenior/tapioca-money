@@ -7,20 +7,20 @@
  * - DELETE /api/transfer/register - Revoke transfer session
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
+import { NextRequest, NextResponse } from "next/server";
+import { neon } from "@neondatabase/serverless";
 import {
   createTransferSessionKey,
   validateTransferSession,
   type TransferSessionAuthorization,
   type PrivyWalletProvider,
-} from '@/lib/zerodev/transfer-session';
-import { encryptAuthorization } from '@/lib/security/session-encryption';
+} from "@/lib/zerodev/transfer-session";
+import { encryptAuthorization } from "@/lib/security/session-encryption";
 import {
   requireAuthForAddress,
   unauthorizedResponse,
   forbiddenResponse,
-} from '@/lib/auth/middleware';
+} from "@/lib/auth/middleware";
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -31,13 +31,10 @@ const sql = neon(process.env.DATABASE_URL!);
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const address = searchParams.get('address');
+    const address = searchParams.get("address");
 
     if (!address) {
-      return NextResponse.json(
-        { error: 'Address required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Address required" }, { status: 400 });
     }
 
     // Query user from database
@@ -50,7 +47,7 @@ export async function GET(request: NextRequest) {
     if (users.length === 0) {
       return NextResponse.json({
         isEnabled: false,
-        message: 'User not found',
+        message: "User not found",
       });
     }
 
@@ -79,11 +76,10 @@ export async function GET(request: NextRequest) {
       expiry: transferAuth.expiry,
       createdAt: transferAuth.createdAt,
     });
-
   } catch (error: any) {
-    console.error('[API] Transfer status check failed:', error);
+    console.error("[API] Transfer status check failed:", error);
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      { error: "Internal server error", details: error.message },
       { status: 500 }
     );
   }
@@ -99,16 +95,13 @@ export async function POST(request: NextRequest) {
     const { address, privyWallet } = body;
 
     if (!address) {
-      return NextResponse.json(
-        { error: 'Address required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Address required" }, { status: 400 });
     }
 
     // SECURITY: Verify authenticated user owns the requested address
     const authResult = await requireAuthForAddress(request, address);
     if (!authResult.authenticated) {
-      if (authResult.error === 'Address does not belong to authenticated user') {
+      if (authResult.error === "Address does not belong to authenticated user") {
         return forbiddenResponse(authResult.error);
       }
       return unauthorizedResponse(authResult.error);
@@ -117,13 +110,10 @@ export async function POST(request: NextRequest) {
     // Note: In production, privyWallet would be obtained from the authenticated session
     // For now, we accept it in the request body
     if (!privyWallet) {
-      return NextResponse.json(
-        { error: 'Privy wallet required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Privy wallet required" }, { status: 400 });
     }
 
-    console.log('[API] Creating transfer session for:', address);
+    console.log("[API] Creating transfer session for:", address);
 
     // Check if user exists
     const users = await sql`
@@ -133,10 +123,7 @@ export async function POST(request: NextRequest) {
     `;
 
     if (users.length === 0) {
-      return NextResponse.json(
-        { error: 'User not found. Please login first.' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "User not found. Please login first." }, { status: 404 });
     }
 
     const existingAuth = users[0].transfer_authorization as TransferSessionAuthorization | null;
@@ -145,12 +132,12 @@ export async function POST(request: NextRequest) {
     if (existingAuth) {
       const validation = validateTransferSession(existingAuth);
       if (validation.valid) {
-        console.log('[API] Valid transfer session already exists');
+        console.log("[API] Valid transfer session already exists");
         return NextResponse.json({
           success: true,
           smartAccountAddress: existingAuth.smartAccountAddress,
           expiry: existingAuth.expiry,
-          message: 'Transfer session already active',
+          message: "Transfer session already active",
         });
       }
     }
@@ -172,7 +159,7 @@ export async function POST(request: NextRequest) {
       WHERE LOWER(wallet_address) = LOWER(${address})
     `;
 
-    console.log('[API] ✓ Transfer session created:', authorization.smartAccountAddress);
+    console.log("[API] ✓ Transfer session created:", authorization.smartAccountAddress);
 
     return NextResponse.json({
       success: true,
@@ -180,11 +167,10 @@ export async function POST(request: NextRequest) {
       sessionKeyAddress: authorization.sessionKeyAddress,
       expiry: authorization.expiry,
     });
-
   } catch (error: any) {
-    console.error('[API] Transfer session creation failed:', error);
+    console.error("[API] Transfer session creation failed:", error);
     return NextResponse.json(
-      { error: 'Failed to create transfer session', details: error.message },
+      { error: "Failed to create transfer session", details: error.message },
       { status: 500 }
     );
   }
@@ -200,22 +186,19 @@ export async function DELETE(request: NextRequest) {
     const { address } = body;
 
     if (!address) {
-      return NextResponse.json(
-        { error: 'Address required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Address required" }, { status: 400 });
     }
 
     // SECURITY: Verify authenticated user owns the requested address
     const authResult = await requireAuthForAddress(request, address);
     if (!authResult.authenticated) {
-      if (authResult.error === 'Address does not belong to authenticated user') {
+      if (authResult.error === "Address does not belong to authenticated user") {
         return forbiddenResponse(authResult.error);
       }
       return unauthorizedResponse(authResult.error);
     }
 
-    console.log('[API] Revoking transfer session for:', address);
+    console.log("[API] Revoking transfer session for:", address);
 
     // Remove transfer authorization from database
     const result = await sql`
@@ -227,23 +210,19 @@ export async function DELETE(request: NextRequest) {
     `;
 
     if (result.length === 0) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    console.log('[API] ✓ Transfer session revoked');
+    console.log("[API] ✓ Transfer session revoked");
 
     return NextResponse.json({
       success: true,
-      message: 'Transfer session revoked successfully',
+      message: "Transfer session revoked successfully",
     });
-
   } catch (error: any) {
-    console.error('[API] Transfer session revocation failed:', error);
+    console.error("[API] Transfer session revocation failed:", error);
     return NextResponse.json(
-      { error: 'Failed to revoke transfer session', details: error.message },
+      { error: "Failed to revoke transfer session", details: error.message },
       { status: 500 }
     );
   }

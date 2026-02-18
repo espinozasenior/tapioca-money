@@ -46,6 +46,8 @@ export interface YieldPosition {
   yieldId: string;
   protocol: "morpho" | "aave" | "moonwell";
   vaultAddress: `0x${string}`;
+  vaultName?: string;
+  vaultDescription?: string;
   shares: bigint;
   assets: bigint;
   apy: number;
@@ -98,7 +100,11 @@ export function useYields() {
   });
 
   // Find best APY for display
-  const bestApy = query.data?.opportunities?.reduce((best: number, opp: YieldOpportunity) => Math.max(best, opp.apy), 0) ?? 0;
+  const bestApy =
+    query.data?.opportunities?.reduce(
+      (best: number, opp: YieldOpportunity) => Math.max(best, opp.apy),
+      0
+    ) ?? 0;
 
   return {
     yields: query.data?.opportunities ?? [],
@@ -190,7 +196,8 @@ export function useAgent() {
   const status = useQuery({
     queryKey: ["agent-status", address],
     queryFn: async () => {
-      if (!address) return { isRegistered: false, autoOptimizeEnabled: false, hasAuthorization: false };
+      if (!address)
+        return { isRegistered: false, autoOptimizeEnabled: false, hasAuthorization: false };
       const res = await fetch(`/api/agent/register?address=${address}`);
       if (!res.ok) throw new Error("Failed to fetch agent status");
       return res.json();
@@ -226,7 +233,7 @@ export function useAgent() {
         if (!verifyDelegationTarget(implAddress)) {
           throw new Error(
             `Delegation target mismatch! Expected Kernel V3.3 but got ${implAddress}. ` +
-            `This may indicate a compromised SDK. Aborting registration.`
+              `This may indicate a compromised SDK. Aborting registration.`
           );
         }
         console.log("[Agent Registration] Delegation target verified:", implAddress);
@@ -245,8 +252,15 @@ export function useAgent() {
           transport: custom(provider),
         });
 
-        console.log("[Agent Registration] EIP-7702 authorization signed, creating serialized account...");
-        const result = await registerAgentSecure(address as `0x${string}`, accessToken, signedAuth, privyWalletClient);
+        console.log(
+          "[Agent Registration] EIP-7702 authorization signed, creating serialized account..."
+        );
+        const result = await registerAgentSecure(
+          address as `0x${string}`,
+          accessToken,
+          signedAuth,
+          privyWalletClient
+        );
 
         console.log("[Agent Registration] ✅ Secure registration complete!");
         console.log("[Agent Registration] Session key address:", result.sessionKeyAddress);
@@ -279,11 +293,11 @@ export function useAgent() {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           address,
-          autoOptimizeEnabled: enabled
+          autoOptimizeEnabled: enabled,
         }),
       });
 
@@ -365,7 +379,7 @@ export function useVaultExit() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ vaultAddress, shares }),
       });

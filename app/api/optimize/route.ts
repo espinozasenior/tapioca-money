@@ -38,20 +38,29 @@ function transformOpportunity(o: any) {
   };
 }
 
-// Transform position to include legacy compatibility fields and rewards
-function transformPosition(p: any) {
+// Transform position to include legacy compatibility fields, rewards, and vault info
+function transformPosition(p: any, opportunities?: any[]) {
   if (!p) return null;
-  
+
   // Calculate rewards for this position
   const rewards = calculateAccruedRewards(p);
-  
+
+  // Match position to its yield opportunity by vault address for name/description
+  const matchedYield = opportunities?.find(
+    (o: any) =>
+      o.metadata?.vaultAddress?.toLowerCase() === p.vaultAddress?.toLowerCase() ||
+      o.address?.toLowerCase() === p.vaultAddress?.toLowerCase()
+  );
+
   return {
     protocol: p.protocol,
     vaultAddress: p.vaultAddress,
-    apy: p.apy,
+    vaultName: matchedYield?.name ?? p.protocol,
+    vaultDescription: matchedYield?.metadata?.description,
+    apy: matchedYield?.apy ?? p.apy,
     enteredAt: p.enteredAt,
     id: `${p.protocol}-${p.vaultAddress}`,
-    yieldId: `base-usdc-${p.protocol}`,
+    yieldId: matchedYield?.id ?? `${p.protocol}-${p.vaultAddress}`,
     shares: p.shares.toString(),
     assets: p.assets.toString(),
     amount: (Number(p.assets) / 1e6).toFixed(2),
@@ -59,7 +68,10 @@ function transformPosition(p: any) {
     createdAt: new Date(p.enteredAt).toISOString(),
     rewards: {
       totalEarned: rewards.totalEarned.toFixed(2),
-      earnedThisMonth: (rewards.currentMonthlyRate * (Math.min(rewards.daysActive, 30) / 30)).toFixed(2),
+      earnedThisMonth: (
+        rewards.currentMonthlyRate *
+        (Math.min(rewards.daysActive, 30) / 30)
+      ).toFixed(2),
       monthlyRate: rewards.currentMonthlyRate.toFixed(2),
       daysActive: rewards.daysActive,
     },
@@ -96,11 +108,11 @@ export async function GET(request: NextRequest) {
         estimatedSlippage: decision.estimatedSlippage,
         netGain: decision.netGain,
         reason: decision.reason,
-        from: decision.from ? transformPosition(decision.from) : null,
+        from: decision.from ? transformPosition(decision.from, opportunities) : null,
         to: decision.to ? transformOpportunity(decision.to) : null,
       },
       opportunities: transformedOpportunities,
-      positions: currentPositions.map(transformPosition),
+      positions: currentPositions.map((p) => transformPosition(p, opportunities)),
       timestamp: Date.now(),
     });
   } catch (error) {
@@ -129,6 +141,8 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    const opportunities = await getAllOpportunities();
+
     // In production, this would:
     // 1. Build the transaction using GOAT SDK
     // 2. Sign with Crossmint wallet (server-side agent key)
@@ -143,7 +157,7 @@ export async function POST(request: NextRequest) {
         estimatedSlippage: decision.estimatedSlippage,
         netGain: decision.netGain,
         reason: decision.reason,
-        from: decision.from ? transformPosition(decision.from) : null,
+        from: decision.from ? transformPosition(decision.from, opportunities) : null,
         to: decision.to ? transformOpportunity(decision.to) : null,
       },
       message: "Rebalance recommended - client should execute",
