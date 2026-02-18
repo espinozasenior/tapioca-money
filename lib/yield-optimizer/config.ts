@@ -50,7 +50,7 @@ export const PROTOCOLS = {
 
 
 // Morpho USDC Market Parameters (Base Mainnet)
-// Default market params - actual vaults fetched dynamically via morpho-api.ts
+// Default market params - actual vaults fetched dynamically via MorphoClient
 export const MORPHO_USDC_MARKET_PARAMS = {
   loanToken: USDC_ADDRESS,
   collateralToken: USDC_ADDRESS,
@@ -60,7 +60,7 @@ export const MORPHO_USDC_MARKET_PARAMS = {
 } as const;
 
 // Known production USDC vaults on Base Mainnet (fallback if API unavailable)
-// These are curated vaults - fetch dynamically via morpho-api.ts for live data
+// These are curated vaults - fetch dynamically via MorphoClient for live data
 export const KNOWN_USDC_VAULTS = {
   steakhouse: {
     name: "Steakhouse USDC",
@@ -80,4 +80,16 @@ export const ESTIMATED_APYS = {
   morpho: 0.045, // 4.5%
   aave: 0.038,   // 3.8% - mainnet estimate
   moonwell: 0.042, // 4.2% - mainnet estimate
+} as const;
+
+// Shared rebalance thresholds — used by both the UI evaluator and agent decision engine
+export const REBALANCE_THRESHOLDS = {
+  minApyImprovement: 0.005,       // 0.5% minimum APY gain
+  targetedApyImprovement: 0.001,  // 0.1% when APY monitor flags a vault
+  minLiquidityUsd: 100_000,       // $100k minimum vault liquidity
+  slippagePct: 0.001,             // 0.1% slippage estimate for stablecoins
+  executionBufferPct: 0.005,      // 0.5% execution buffer (previewRedeem rounding + timing)
+  // Gas is fully sponsored by ZeroDev paymaster — no user-facing gas cost.
+  // Project cost tracked separately for monitoring, not used in rebalance decisions.
+  projectGasCostUsd: 0.5,         // Approximate project cost per UserOp (monitoring only)
 } as const;

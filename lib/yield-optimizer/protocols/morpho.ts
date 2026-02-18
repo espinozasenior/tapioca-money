@@ -4,7 +4,7 @@ import { base } from "viem/chains";
 import type { YieldOpportunity, Position } from "../types";
 import { MORPHO_BLUE_BASE } from "../types";
 import { CHAIN_CONFIG, PROTOCOLS, MORPHO_USDC_MARKET_PARAMS, USDC_ADDRESS } from "../config";
-import { fetchMorphoUsdcVaults } from "../morpho-api";
+import { morphoClient, type MorphoVault } from "@/lib/morpho/api-client";
 import {
   createSimulationState,
   sharesToAssets,
@@ -232,8 +232,8 @@ export function buildMorphoSupplyData(
  * Get Morpho yield opportunities from production vaults via API
  */
 export async function getMorphoOpportunities(): Promise<YieldOpportunity[]> {
-  // Fetch live vault data from Morpho API
-  const vaults = await fetchMorphoUsdcVaults();
+  // Fetch live vault data from Morpho API (cached via Redis, 5 min TTL)
+  const vaults = await morphoClient.fetchVaults(CHAIN_CONFIG.chainId, 'USDC');
 
   if (vaults.length === 0) {
     // Fallback to simulation-based APY if API fails
@@ -267,14 +267,14 @@ export async function getMorphoOpportunities(): Promise<YieldOpportunity[]> {
     protocol: "morpho" as const,
     name: vault.name,
     asset: "USDC",
-    apy: vault.apy.netApy ?? 0,
+    apy: vault.avgNetApy ?? vault.netApy ?? 0,
     tvl: BigInt(vault.totalAssets),
     address: vault.address,
     riskScore: calculateRiskScore(vault),
     liquidityDepth: BigInt(vault.totalAssets),
     metadata: {
       vaultAddress: vault.address,
-      curator: vault.curator,
+      curator: vault.curators?.items?.[0]?.name,
       isVault: true,
       // Include risk metadata for display
       warnings: vault.warnings,
@@ -302,14 +302,14 @@ export async function getMorphoPosition(userAddress: `0x${string}`): Promise<Pos
   // With batch.multicall enabled on the client, concurrent readContract calls
   // are automatically batched into single eth_call via Multicall3
   try {
-    const vaults = await fetchMorphoUsdcVaults();
+    const vaults = await morphoClient.fetchVaults(CHAIN_CONFIG.chainId, 'USDC');
     if (vaults.length === 0) return positions;
 
     // Phase 1: batch all balanceOf calls (auto-batched by viem into 1 multicall)
     const balanceResults = await Promise.allSettled(
       vaults.map(vault =>
         client.readContract({
-          address: vault.address as `0x${string}`,
+          address: vault.address,
           abi: ERC4626_VAULT_ABI,
           functionName: "balanceOf",
           args: [userAddress],
@@ -323,9 +323,9 @@ export async function getMorphoPosition(userAddress: `0x${string}`): Promise<Pos
       const result = balanceResults[i];
       if (result.status === "fulfilled" && (result.value as bigint) > 0n) {
         vaultsWithBalance.push({
-          address: vaults[i].address as `0x${string}`,
+          address: vaults[i].address,
           shares: result.value as bigint,
-          apy: vaults[i].apy?.netApy ?? 0.045,
+          apy: vaults[i].avgNetApy ?? vaults[i].netApy ?? 0.045,
         });
       }
     }

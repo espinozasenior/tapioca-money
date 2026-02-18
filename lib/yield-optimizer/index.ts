@@ -1,11 +1,8 @@
 // Yield Optimizer - Main Entry Point
 export * from "./types";
 export * from "./strategy/evaluator";
-export * from "./morpho-api";
 
-import { getMorphoOpportunities, getMorphoPosition } from "./protocols/morpho";
-import { getAaveOpportunities, getAavePosition } from "./protocols/aave";
-import { getMoonwellOpportunities, getMoonwellPosition } from "./protocols/moonwell";
+import { protocolRegistry } from "@/lib/protocols/adapter";
 import { evaluateRebalance } from "./strategy/evaluator";
 import type { YieldOpportunity, Position, RebalanceDecision } from "./types";
 
@@ -13,13 +10,8 @@ import type { YieldOpportunity, Position, RebalanceDecision } from "./types";
  * Fetch all yield opportunities across protocols
  */
 export async function getAllOpportunities(): Promise<YieldOpportunity[]> {
-  const [morpho, aave, moonwell] = await Promise.all([
-    getMorphoOpportunities(),
-    getAaveOpportunities(),
-    getMoonwellOpportunities(),
-  ]);
-
-  return [...morpho, ...aave, ...moonwell].sort((a, b) => b.apy - a.apy);
+  const opportunities = await protocolRegistry.getAllOpportunities();
+  return opportunities.sort((a, b) => b.apy - a.apy);
 }
 
 /**
@@ -27,19 +19,7 @@ export async function getAllOpportunities(): Promise<YieldOpportunity[]> {
  * Returns array of positions as users can have multiple vaults
  */
 export async function getCurrentPosition(userAddress: `0x${string}`): Promise<Position[]> {
-  // Check each protocol for existing positions
-  const [morphoPositions, aave, moonwell] = await Promise.all([
-    getMorphoPosition(userAddress),    // Returns Position[] (can be multiple vaults)
-    getAavePosition(userAddress),       // Returns Position | null
-    getMoonwellPosition(userAddress),   // Returns Position | null
-  ]);
-
-  // Flatten all positions from all protocols
-  return [
-    ...morphoPositions,
-    ...(aave ? [aave] : []),
-    ...(moonwell ? [moonwell] : []),
-  ];
+  return protocolRegistry.getAllPositions(userAddress);
 }
 
 /**
