@@ -257,9 +257,10 @@ export async function getMorphoOpportunities(): Promise<YieldOpportunity[]> {
     }];
   }
 
-  // Filter out vaults with RED warnings
+  // Filter out vaults with RED warnings or restricted depositor access (whitelisted: false)
   const safeVaults = vaults.filter((vault) =>
-    !vault.warnings?.some((w: any) => w.level === "RED")
+    !vault.warnings?.some((w: any) => w.level === "RED") &&
+    vault.whitelisted !== false
   );
 
   return safeVaults.map((vault) => ({

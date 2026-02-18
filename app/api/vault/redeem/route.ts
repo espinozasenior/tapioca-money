@@ -125,11 +125,15 @@ export async function POST(request: NextRequest) {
     });
 
     if (!result.success) {
+      let userMessage = result.error || 'Vault redeem failed';
+      if (result.error?.includes('0xace2a47e')) {
+        userMessage =
+          'This vault rejected the redeem (error 0xace2a47e). ' +
+          'The vault may restrict access to agent-operated accounts. ' +
+          'Please redeem directly from your wallet.';
+      }
       console.error("[Vault Redeem] Execution failed:", result.error);
-      return NextResponse.json(
-        { error: result.error || "Vault redeem failed" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: userMessage }, { status: 500 });
     }
 
     console.log("[Vault Redeem] Success:", result.txHash);

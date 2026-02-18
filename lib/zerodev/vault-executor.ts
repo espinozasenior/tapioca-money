@@ -3,8 +3,10 @@
  * Uses user's session key authorization for gasless execution via ZeroDev
  */
 
-import { encodeFunctionData, parseAbi, type Hex } from 'viem';
+import { createPublicClient, encodeFunctionData, http, parseAbi, type Hex } from 'viem';
+import { base } from 'viem/chains';
 import { createDeserializedKernelClient, createSessionKernelClient } from './kernel-client';
+import { CHAIN_CONFIG } from '@/lib/yield-optimizer/config';
 
 const VAULT_ABI = parseAbi([
   'function redeem(uint256 shares, address receiver, address owner) returns (uint256 assets)',
@@ -77,6 +79,32 @@ export async function executeVaultRedeem(
     } else {
       throw new Error('No serializedAccount or sessionPrivateKey provided. User must register.');
     }
+
+    // Pre-flight: simulate vault call directly to catch access control failures early
+    const publicClient = createPublicClient({
+      chain: base,
+      transport: http(CHAIN_CONFIG.rpcUrl),
+    });
+
+    try {
+      await publicClient.simulateContract({
+        account: params.smartAccountAddress,
+        address: params.vaultAddress,
+        abi: VAULT_ABI,
+        functionName: 'redeem',
+        args: [params.shares, params.receiver, params.receiver],
+      });
+    } catch (simError: any) {
+      const reason = simError.shortMessage || simError.message;
+      console.error('[VaultRedeem] Pre-flight vault simulation failed:', reason);
+      return {
+        success: false,
+        error: `Vault rejected the redeem: ${reason}. ` +
+          `This vault may restrict access to agent-operated accounts. ` +
+          `Try redeeming directly from your wallet instead of through the agent.`,
+      };
+    }
+    console.log('[VaultRedeem] Pre-flight simulation passed');
 
     // Build redeem call
     const redeemCallData = encodeFunctionData({
