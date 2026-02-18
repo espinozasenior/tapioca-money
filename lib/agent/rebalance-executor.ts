@@ -293,15 +293,3 @@ export async function simulateRebalance(
     };
   }
 }
-
-/**
- * Estimate gas cost for rebalancing (for decision making)
- */
-export function estimateRebalanceGasCost(): number {
-  // Conservative estimate for 3 transactions on Base:
-  // - Redeem: ~100k gas
-  // - Approve: ~50k gas
-  // - Deposit: ~100k gas
-  // Total: ~250k gas @ 0.1 gwei = ~$0.50
-  return 0.5;
-}

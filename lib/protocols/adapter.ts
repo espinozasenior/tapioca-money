@@ -62,3 +62,13 @@ export class ProtocolRegistry {
       .flatMap(r => r.value);
   }
 }
+
+// Singleton registry with all protocol adapters
+import { MorphoAdapter } from './morpho-adapter';
+import { AaveAdapter } from './aave-adapter';
+import { MoonwellAdapter } from './moonwell-adapter';
+
+export const protocolRegistry = new ProtocolRegistry();
+protocolRegistry.register(new MorphoAdapter());
+protocolRegistry.register(new AaveAdapter());
+protocolRegistry.register(new MoonwellAdapter());

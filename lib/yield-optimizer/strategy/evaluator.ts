@@ -1,10 +1,6 @@
 // Strategy Evaluator - Calculates net yield after costs
 import type { YieldOpportunity, Position, RebalanceDecision } from "../types";
-
-// Configuration
-const MIN_REBALANCE_THRESHOLD = 0.005; // 0.5% APY improvement minimum
-const ESTIMATED_GAS_COST_USD = 0.5; // ~$0.50 in gas on Base
-const ANNUAL_PERIODS = 365; // Daily compounding assumption
+import { REBALANCE_THRESHOLDS } from "../config";
 
 interface CostEstimate {
   gasCostUsd: number;
@@ -13,24 +9,24 @@ interface CostEstimate {
 }
 
 /**
- * Estimate costs for a rebalance transaction
+ * Estimate user-facing costs for a rebalance transaction.
+ * Gas is fully sponsored by ZeroDev paymaster — users pay $0 gas.
+ * Only real costs are slippage and execution buffer (previewRedeem rounding).
  */
 export function estimateCosts(amount: bigint, from: Position | null): CostEstimate {
-  const amountUsd = Number(amount) / 1e6; // USDC has 6 decimals
+  // Slippage estimate (minimal for stablecoins on Base)
+  const slippagePct = REBALANCE_THRESHOLDS.slippagePct;
 
-  // Gas cost as percentage of amount
-  const gasCostPct = amountUsd > 0 ? ESTIMATED_GAS_COST_USD / amountUsd : 0;
+  // Extra slippage if withdrawing from existing position (two legs)
+  const withdrawCostPct = from ? REBALANCE_THRESHOLDS.slippagePct : 0;
 
-  // Slippage estimate (minimal for stablecoins)
-  const slippagePct = 0.001; // 0.1%
-
-  // Extra cost if withdrawing from existing position
-  const withdrawCostPct = from ? 0.001 : 0; // Additional 0.1% for exit
+  // Execution buffer accounts for previewRedeem rounding + timing differences
+  const executionBufferPct = from ? REBALANCE_THRESHOLDS.executionBufferPct : 0;
 
   return {
-    gasCostUsd: ESTIMATED_GAS_COST_USD * (from ? 2 : 1), // Double if rebalancing
+    gasCostUsd: 0, // Gas is fully sponsored by ZeroDev paymaster
     slippagePct,
-    totalCostPct: gasCostPct + slippagePct + withdrawCostPct,
+    totalCostPct: slippagePct + withdrawCostPct + executionBufferPct,
   };
 }
 
@@ -97,14 +93,14 @@ export function evaluateRebalance(
     const netApy = riskAdjustedApy(bestOpportunity) - costs.totalCostPct;
 
     return {
-      shouldRebalance: netApy > MIN_REBALANCE_THRESHOLD,
+      shouldRebalance: netApy > REBALANCE_THRESHOLDS.minApyImprovement,
       from: null,
       to: bestOpportunity,
       estimatedGasCost: BigInt(Math.floor(costs.gasCostUsd * 1e6)),
       estimatedSlippage: costs.slippagePct,
       netGain: netApy,
       reason:
-        netApy > MIN_REBALANCE_THRESHOLD
+        netApy > REBALANCE_THRESHOLDS.minApyImprovement
           ? `Deposit into ${bestOpportunity.name} for ${(netApy * 100).toFixed(2)}% net APY`
           : `Net APY ${(netApy * 100).toFixed(2)}% below threshold`,
     };
@@ -133,15 +129,15 @@ export function evaluateRebalance(
   const netGain = apyImprovement - costs.totalCostPct;
 
   return {
-    shouldRebalance: netGain > MIN_REBALANCE_THRESHOLD,
+    shouldRebalance: netGain > REBALANCE_THRESHOLDS.minApyImprovement,
     from: currentPosition,
     to: bestOpportunity,
     estimatedGasCost: BigInt(Math.floor(costs.gasCostUsd * 1e6)),
     estimatedSlippage: costs.slippagePct,
     netGain,
     reason:
-      netGain > MIN_REBALANCE_THRESHOLD
+      netGain > REBALANCE_THRESHOLDS.minApyImprovement
         ? `Rebalance from ${currentPosition.protocol} to ${bestOpportunity.name}: +${(netGain * 100).toFixed(2)}% net APY`
-        : `Net gain ${(netGain * 100).toFixed(2)}% below ${(MIN_REBALANCE_THRESHOLD * 100).toFixed(1)}% threshold`,
+        : `Net gain ${(netGain * 100).toFixed(2)}% below ${(REBALANCE_THRESHOLDS.minApyImprovement * 100).toFixed(1)}% threshold`,
   };
 }

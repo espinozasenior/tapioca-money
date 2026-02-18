@@ -1,10 +1,8 @@
 import { MorphoClient, MorphoVault, MorphoUserPosition } from '../morpho/api-client';
+import { CHAIN_CONFIG, REBALANCE_THRESHOLDS } from '../yield-optimizer/config';
 
-const CHAIN_ID = 8453; // Base mainnet
+const CHAIN_ID = CHAIN_CONFIG.chainId;
 const ASSET_SYMBOL = 'USDC';
-const MIN_APY_IMPROVEMENT = 0.005; // 0.5% minimum improvement
-const MIN_LIQUIDITY_USD = 100_000; // $100k minimum liquidity
-const GAS_COST_USD = 0.5; // Estimated gas cost in USD for rebalancing
 
 export interface RebalanceDecision {
   shouldRebalance: boolean;
@@ -93,7 +91,7 @@ export class YieldDecisionEngine {
 
       const eligibleVaults = allVaults.filter(
         (vault) =>
-          vault.totalAssetsUsd >= MIN_LIQUIDITY_USD && // Sufficient liquidity
+          vault.totalAssetsUsd >= REBALANCE_THRESHOLDS.minLiquidityUsd && // Sufficient liquidity
           vault.address.toLowerCase() !== currentVaultDetails.address.toLowerCase() // Different vault
       );
 
@@ -126,25 +124,21 @@ export class YieldDecisionEngine {
       const positionValueUsd = currentPosition.assetsUsd;
       const estimatedAnnualGain = positionValueUsd * apyImprovement;
 
-      // 7. Calculate break-even time
-      const breakEvenDays = estimatedAnnualGain > 0 ? (GAS_COST_USD / estimatedAnnualGain) * 365 : Infinity;
+      // 7. Break-even is effectively instant — gas is fully sponsored by ZeroDev paymaster
+      const breakEvenDays = 0;
 
-      // 8. Make decision
+      // 8. Make decision — gates on APY improvement threshold only
       // Use lower threshold for targeted rebalances (APY monitor detected drops)
       const isTargeted = targetedVaults?.some(
         v => v.toLowerCase() === currentVaultDetails.address.toLowerCase()
       );
-      const effectiveThreshold = isTargeted ? 0.001 : MIN_APY_IMPROVEMENT; // 0.1% vs 0.5%
+      const effectiveThreshold = isTargeted ? REBALANCE_THRESHOLDS.targetedApyImprovement : REBALANCE_THRESHOLDS.minApyImprovement;
 
-      const shouldRebalance =
-        apyImprovement >= effectiveThreshold &&
-        breakEvenDays <= 30;
+      const shouldRebalance = apyImprovement >= effectiveThreshold;
 
       const reason = shouldRebalance
-        ? `${isTargeted ? '[TARGETED] ' : ''}Found ${(apyImprovement * 100).toFixed(2)}% APY improvement (${currentApy * 100}% → ${bestApy * 100}%). Estimated gain: $${estimatedAnnualGain.toFixed(2)}/year. Break-even: ${breakEvenDays.toFixed(1)} days.`
-        : apyImprovement < effectiveThreshold
-        ? `APY improvement too small (${(apyImprovement * 100).toFixed(2)}% < ${effectiveThreshold * 100}% threshold)`
-        : `Break-even time too long (${breakEvenDays.toFixed(1)} days > 30 days threshold)`;
+        ? `${isTargeted ? '[TARGETED] ' : ''}Found ${(apyImprovement * 100).toFixed(2)}% APY improvement (${(currentApy * 100).toFixed(2)}% → ${(bestApy * 100).toFixed(2)}%). Estimated gain: $${estimatedAnnualGain.toFixed(2)}/year.`
+        : `APY improvement too small (${(apyImprovement * 100).toFixed(2)}% < ${(effectiveThreshold * 100).toFixed(1)}% threshold)`;
 
       return {
         shouldRebalance,
