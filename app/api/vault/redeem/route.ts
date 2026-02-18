@@ -15,6 +15,7 @@ import {
   unauthorizedResponse,
 } from '@/lib/auth/middleware';
 import { executeVaultRedeem } from '@/lib/zerodev/vault-executor';
+import { incrementUserOpCount } from '@/lib/redis/rate-limiter';
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -131,12 +132,21 @@ export async function POST(request: NextRequest) {
           'This vault rejected the redeem (error 0xace2a47e). ' +
           'The vault may restrict access to agent-operated accounts. ' +
           'Please redeem directly from your wallet.';
+      } else if (
+        result.error?.includes('operation limit') ||
+        result.error?.includes('0x3e4983f6') ||
+        result.error?.includes('AA23')
+      ) {
+        userMessage =
+          'Agent daily operation limit reached. ' +
+          'Please re-register your agent to reset the limit, or try again tomorrow.';
       }
       console.error("[Vault Redeem] Execution failed:", result.error);
       return NextResponse.json({ error: userMessage }, { status: 500 });
     }
 
     console.log("[Vault Redeem] Success:", result.txHash);
+    await incrementUserOpCount(userWalletAddress);
 
     return NextResponse.json({
       success: true,

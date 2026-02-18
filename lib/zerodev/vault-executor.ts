@@ -137,9 +137,16 @@ export async function executeVaultRedeem(
 
   } catch (error: any) {
     console.error('[VaultRedeem] Execution error:', error);
+    const msg: string = error.message || '';
+    const isRateLimit =
+      msg.includes('AA23') ||
+      msg.includes('0x3e4983f6') ||
+      msg.includes('validateUserOp');
     return {
       success: false,
-      error: error.message,
+      error: isRateLimit
+        ? 'Agent daily operation limit reached. Please re-register your agent to reset the limit, or try again tomorrow.'
+        : msg,
     };
   }
 }
