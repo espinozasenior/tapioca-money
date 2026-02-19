@@ -443,6 +443,11 @@ export const server = setupServer(
 **Why**: Tests catch breaking changes and security issues.  
 **Do instead**: Always run `pnpm test:run` before `vercel deploy`.
 
+### ❌ Don't modify database schema via raw SQL
+
+**Why**: Manual SQL changes bypass version control and migration tracking, leading to schema drift and deployment failures.
+**Do instead**: Always use Drizzle ORM (`db/schema.ts`) and generate migrations via `pnpm db:generate`.
+
 ## Code Style
 
 **Style Guide**: [Prettier config](./.prettierrc)
