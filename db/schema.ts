@@ -7,6 +7,7 @@ import {
   jsonb,
   decimal,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -35,6 +36,10 @@ export const users = pgTable(
     ),
     // Index for wallet address lookups (already has unique constraint, but explicit for clarity)
     index("idx_users_wallet_address").on(table.walletAddress),
+    // Case-insensitive unique index to prevent duplicate users with different casing
+    uniqueIndex("users_wallet_address_lower_unique").on(
+      sql`lower(${table.walletAddress})`
+    ),
   ]
 );
 
