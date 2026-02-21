@@ -99,8 +99,8 @@ export function simulateSupply(
   const newState = simulateOperation(operation, simState) as SimulationState;
 
   // Calculate shares received by comparing position before/after
-  const positionBefore = simState.tryGetPosition(marketId, userAddress);
-  const positionAfter = newState.tryGetPosition(marketId, userAddress);
+  const positionBefore = simState.tryGetPosition(userAddress, marketId);
+  const positionAfter = newState.tryGetPosition(userAddress, marketId);
 
   const sharesBefore = positionBefore?.supplyShares || 0n;
   const sharesAfter = positionAfter?.supplyShares || 0n;
