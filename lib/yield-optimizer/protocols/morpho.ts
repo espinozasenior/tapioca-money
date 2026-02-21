@@ -22,11 +22,6 @@ import {
 } from "./morpho-simulation";
 import { calculateRiskScore } from "@/lib/morpho/risk-scoring";
 
-// Morpho Blue ABI (minimal for deposits/withdrawals)
-import { MorphoBlue, MorphoVault as MorphoVaultSDK } from "@morpho-org/blue-sdk-viem";
-import { Time } from "@morpho-org/blue-sdk";
-import { LiquidityLoader } from "@morpho-org/liquidity-sdk-viem";
-
 export const MORPHO_BLUE_ABI = [
   {
     name: "supply",
@@ -225,22 +220,18 @@ export function buildMorphoSupplyData(
   amount: bigint,
   userAddress: `0x${string}`
 ): `0x${string}` {
-  const morpho = new MorphoBlue(client as any);
-  const marketId = getMarketId(marketParams);
-
-  // Use SDK to encode transaction data
-  const data = morpho.supply(
-    {
-      id: marketId,
-      onBehalf: userAddress,
-      assets: amount,
-    },
-    {
-      // Optional: simulate before encoding
-      skipSimulation: true,
-    }
-  );
-
+  // Encode using viem's encodeFunctionData
+  const data = encodeFunctionData({
+    abi: MORPHO_BLUE_ABI,
+    functionName: "supply",
+    args: [
+      marketParams,
+      amount,
+      0n, // shares (0 = use assets amount)
+      userAddress,
+      "0x" as `0x${string}`, // empty data bytes
+    ],
+  });
   return data;
 }
 
@@ -288,10 +279,10 @@ export async function getMorphoOpportunities(): Promise<YieldOpportunity[]> {
     name: vault.name,
     asset: "USDC",
     apy: vault.avgNetApy ?? vault.netApy ?? 0,
-    tvl: BigInt(vault.totalAssets),
+    tvl: BigInt(vault.totalAssets ?? 0),
     address: vault.address,
     riskScore: calculateRiskScore(vault),
-    liquidityDepth: BigInt(vault.totalAssets),
+    liquidityDepth: BigInt(vault.totalAssets ?? 0),
     metadata: {
       vaultAddress: vault.address,
       curator: vault.curators?.items?.[0]?.name,
