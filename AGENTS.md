@@ -15,7 +15,7 @@ You are an experienced, pragmatic software engineering AI agent. Do not over-eng
 
 - **Frontend**: Next.js 15 (React 19, App Router, Turbopack), Tailwind CSS v4, Radix UI
 - **Auth**: Privy (email/Google login, embedded wallets)
-- **Blockchain**: Viem v2, Base mainnet, Morpho Blue SDK
+- **Blockchain**: Viem v2, Base mainnet, Morpho Blue SDKs (@morpho-org/blue-sdk-viem, @morpho-org/liquidity-sdk-viem)
 - **Smart Accounts**: ZeroDev SDK v5 (Kernel V3, session keys, bundler + paymaster)
 - **Database**: Drizzle ORM, Neon Postgres (serverless)
 - **Background Jobs**: Vercel cron (runs agent every 5 minutes)
@@ -328,7 +328,7 @@ function evaluateVault(vault: MorphoVault): VaultScore {
 **Unit tests**: Test logic functions (evaluators, encryption, rate limiting)
 
 ```typescript
-// tests/unit/lib/agent/vault-evaluator.test.ts
+// tests/unit/lib/morpho/vault-evaluator.test.ts
 import { describe, it, expect } from "vitest";
 import { evaluateVault } from "@/lib/morpho/vault-evaluator";
 
@@ -396,6 +396,25 @@ export const server = setupServer(
 );
 ```
 
+### 8. GraphQL Type Generation
+
+**Pattern**: Auto-generate TypeScript types from GraphQL queries to ensure type safety.
+
+```typescript
+// codegen.ts
+const config: CodegenConfig = {
+  schema: "https://api.morpho.org/graphql",
+  documents: "lib/morpho/queries.ts",
+  generates: {
+    "lib/morpho/graphql-types.ts": {
+      plugins: ["typescript", "typescript-operations"],
+    },
+  },
+};
+```
+
+**When to use**: Whenever you modify `lib/morpho/queries.ts`. Run `pnpm graphql-codegen` to update types.
+
 ## Anti-patterns
 
 ### ❌ Don't store private keys in localStorage or send to frontend
@@ -447,6 +466,11 @@ export const server = setupServer(
 
 **Why**: Manual SQL changes bypass version control and migration tracking, leading to schema drift and deployment failures.
 **Do instead**: Always use Drizzle ORM (`db/schema.ts`) and generate migrations via `pnpm db:generate`.
+
+### ❌ Don't use raw ABIs for Morpho interaction
+
+**Why**: Manually encoding function data is error-prone and brittle to contract upgrades.
+**Do instead**: Use `@morpho-org/blue-sdk-viem` and `Market` entity methods (e.g., `market.supply(...)`).
 
 ## Code Style
 

@@ -11,8 +11,8 @@
  * With caching: ~20 requests per cycle instead of 20,000
  */
 
-import { getCacheInterface } from "./client";
 import type { MorphoVault, MorphoUserPosition } from "@/lib/morpho/api-client";
+import { getCacheInterface } from "./client";
 
 // Cache key prefixes
 const CACHE_KEYS = {

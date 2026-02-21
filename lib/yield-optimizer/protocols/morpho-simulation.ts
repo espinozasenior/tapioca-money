@@ -35,7 +35,7 @@ export function createSimulationState(
   const marketId = getMarketIdFromParams(MORPHO_USDC_MARKET_PARAMS);
 
   // Default market state (supply-only market)
-  const defaultMarket: Market = {
+  const defaultMarket: Market = new Market({
     params: {
       loanToken: MORPHO_USDC_MARKET_PARAMS.loanToken,
       collateralToken: MORPHO_USDC_MARKET_PARAMS.collateralToken,
@@ -50,7 +50,7 @@ export function createSimulationState(
     lastUpdate: blockNumber,
     fee: 0n,
     ...marketData,
-  } as Market;
+  });
 
   return new SimulationState({
     chainId: CHAIN_CONFIG.chainId as ChainId,
@@ -99,8 +99,8 @@ export function simulateSupply(
   const newState = simulateOperation(operation, simState) as SimulationState;
 
   // Calculate shares received by comparing position before/after
-  const positionBefore = simState.tryGetPosition(userAddress, marketId);
-  const positionAfter = newState.tryGetPosition(userAddress, marketId);
+  const positionBefore = simState.tryGetPosition(marketId, userAddress);
+  const positionAfter = newState.tryGetPosition(marketId, userAddress);
 
   const sharesBefore = positionBefore?.supplyShares || 0n;
   const sharesAfter = positionAfter?.supplyShares || 0n;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MorphoClient } from "@/lib/morpho/api-client";
+import { MorphoVault } from "@/lib/morpho/api-client";
 
 /**
  * GET /api/morpho/vaults
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
     const vaults = await morphoClient.fetchVaults(chain, asset, limit);
 
     // Filter for high-quality vaults (min $100k liquidity)
-    const filteredVaults = vaults.filter((vault) => vault.totalAssetsUsd >= 100_000);
+    const filteredVaults = vaults.filter((vault) => (vault.totalAssetsUsd ?? 0) >= 100_000);
 
     return NextResponse.json({
       vaults: filteredVaults,

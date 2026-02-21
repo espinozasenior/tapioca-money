@@ -29,13 +29,13 @@ export function isTrustedCurator(curatorName: string): boolean {
 }
 
 export function calculateRiskScore(vault: {
-  warnings?: Array<{ type: string; level: "YELLOW" | "RED" }>;
+  warnings?: Array<{ type: string; level: string }>;
   whitelisted?: boolean;
-  curators?: { items?: Array<{ name: string }> };
+  curators?: { items?: Array<{ name: string; addresses?: Array<{ address: string }> }> | null } | null;
   performanceFee?: number;
   managementFee?: number;
-  liquidityUsd?: number;
-  totalAssetsUsd?: number;
+  liquidityUsd?: number | null;
+  totalAssetsUsd?: number | null;
 }): number {
   let score = 0;
 
@@ -73,11 +73,7 @@ export function calculateRiskScore(vault: {
   }
 
   // 5. Liquidity Risk (0-0.15)
-  if (
-    vault.liquidityUsd !== undefined &&
-    vault.totalAssetsUsd !== undefined &&
-    vault.totalAssetsUsd > 0
-  ) {
+  if (vault.liquidityUsd != null && vault.totalAssetsUsd != null && vault.totalAssetsUsd > 0) {
     const liquidityRatio = vault.liquidityUsd / vault.totalAssetsUsd;
     if (liquidityRatio < 0.1) {
       score += 0.15; // <10% liquid = high risk
@@ -109,13 +105,13 @@ export function getRiskColor(level: "low" | "medium" | "high"): string {
 }
 
 export function getRiskBreakdown(vault: {
-  warnings?: Array<{ type: string; level: "YELLOW" | "RED" }>;
+  warnings?: Array<{ type: string; level: string }>;
   whitelisted?: boolean;
-  curators?: { items?: Array<{ name: string }> };
+  curators?: { items?: Array<{ name: string; addresses?: Array<{ address: string }> }> | null } | null;
   performanceFee?: number;
   managementFee?: number;
-  liquidityUsd?: number;
-  totalAssetsUsd?: number;
+  liquidityUsd?: number | null;
+  totalAssetsUsd?: number | null;
 }): RiskBreakdown {
   const score = calculateRiskScore(vault);
   const level = getRiskLevel(score);
@@ -175,11 +171,7 @@ export function getRiskBreakdown(vault: {
     }
   }
 
-  if (
-    vault.liquidityUsd !== undefined &&
-    vault.totalAssetsUsd !== undefined &&
-    vault.totalAssetsUsd > 0
-  ) {
+  if (vault.liquidityUsd != null && vault.totalAssetsUsd != null && vault.totalAssetsUsd > 0) {
     const liquidityRatio = vault.liquidityUsd / vault.totalAssetsUsd;
     if (liquidityRatio < 0.1) {
       factors.liquidity = 0.15;

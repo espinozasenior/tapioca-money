@@ -19,47 +19,24 @@ import {
   getCachedBestVault,
   setCachedBestVault,
 } from "@/lib/redis/morpho-cache";
+import type {
+  GetVaultsQuery,
+  GetVaultQuery,
+  GetUserPositionsQuery,
+  GetVaultsQueryVariables,
+  GetVaultQueryVariables,
+  GetUserPositionsQueryVariables,
+} from "./graphql-types";
+import { GET_VAULTS, GET_VAULT, GET_USER_POSITIONS } from "./queries";
+import { print } from "graphql";
 
 const MORPHO_API_URL = "https://api.morpho.org/graphql";
 
-export interface MorphoVault {
-  address: `0x${string}`;
-  name: string;
-  symbol: string;
-  asset: {
-    address: `0x${string}`;
-    symbol: string;
-    decimals: number;
-  };
-  totalAssets: string; // BigInt string
-  totalAssetsUsd: number;
-  totalSupply: string;
-  avgNetApy: number; // Average net APY (e.g., 0.05 = 5%)
-  netApy: number | null;
-  apy: number | null;
-
-  // Risk & Safety Fields
-  warnings?: Array<{ type: string; level: "YELLOW" | "RED" }>;
-  whitelisted?: boolean;
-  curators?: { items?: Array<{ name: string; addresses?: Array<{ address: string }> }> };
-  owner?: { address: string };
-  performanceFee?: number;
-  managementFee?: number;
-  liquidity?: string; // BigInt string
-  liquidityUsd?: number;
-  idleAssetsUsd?: number;
-}
-
-export interface MorphoUserPosition {
-  vault: {
-    address: `0x${string}`;
-    name: string;
-    symbol: string;
-  };
-  shares: string; // BigInt string
-  assets: string; // BigInt string
-  assetsUsd: number;
-}
+// Extract types from the generated query types
+export type MorphoVault = NonNullable<NonNullable<GetVaultsQuery["vaultV2s"]["items"]>[number]>;
+export type MorphoUserPosition = NonNullable<
+  NonNullable<NonNullable<GetUserPositionsQuery["userByAddress"]>["vaultV2Positions"]>[number]
+>;
 
 /**
  * Morpho GraphQL API Client
@@ -120,66 +97,16 @@ export class MorphoClient {
       }
     }
 
-    const query = `
-      query GetVaults($chainId: Int!, $first: Int!) {
-        vaultV2s(
-          first: $first
-          where: {
-            chainId_in: [$chainId]
-          }
-          orderBy: NetApy
-          orderDirection: Desc
-        ) {
-          items {
-            address
-            name
-            symbol
-            asset {
-              address
-              symbol
-              decimals
-            }
-            totalAssets
-            totalAssetsUsd
-            totalSupply
-            avgNetApy
-            netApy
-            apy
-            whitelisted
-            performanceFee
-            managementFee
-            liquidity
-            liquidityUsd
-            idleAssetsUsd
-            warnings {
-              type
-              level
-            }
-            curators {
-              items {
-                name
-                addresses {
-                  address
-                }
-              }
-            }
-            owner {
-              address
-            }
-          }
-        }
-      }
-    `;
-
-    const data = await this.query<{ vaultV2s: { items: MorphoVault[] } }>(query, {
+    const data = await this.query<GetVaultsQuery>(print(GET_VAULTS), {
       chainId,
       first,
-    });
+    } as GetVaultsQueryVariables);
 
     // Filter by asset symbol client-side (API doesn't support asset filtering)
-    const vaults = data.vaultV2s.items.filter(
-      (vault) => vault.asset.symbol.toUpperCase() === assetSymbol.toUpperCase()
-    );
+    const vaults =
+      data.vaultV2s.items?.filter(
+        (vault) => vault.asset.symbol.toUpperCase() === assetSymbol.toUpperCase()
+      ) ?? [];
 
     // Cache the result
     await setCachedVaults(chainId, assetSymbol, vaults);
@@ -195,52 +122,10 @@ export class MorphoClient {
    * @returns Vault details or null if not found
    */
   async fetchVault(vaultAddress: string, chainId: number): Promise<MorphoVault | null> {
-    const query = `
-      query GetVault($address: String!, $chainId: Int!) {
-        vaultV2ByAddress(address: $address, chainId: $chainId) {
-          address
-          name
-          symbol
-          asset {
-            address
-            symbol
-            decimals
-          }
-          totalAssets
-          totalAssetsUsd
-          totalSupply
-          avgNetApy
-          netApy
-          apy
-          whitelisted
-          performanceFee
-          managementFee
-          liquidity
-          liquidityUsd
-          idleAssetsUsd
-          warnings {
-            type
-            level
-          }
-          curators {
-            items {
-              name
-              addresses {
-                address
-              }
-            }
-          }
-          owner {
-            address
-          }
-        }
-      }
-    `;
-
-    const data = await this.query<{ vaultV2ByAddress: MorphoVault | null }>(query, {
+    const data = await this.query<GetVaultQuery>(print(GET_VAULT), {
       address: vaultAddress.toLowerCase(),
       chainId,
-    });
+    } as GetVaultQueryVariables);
 
     return data.vaultV2ByAddress || null;
   }
@@ -267,29 +152,10 @@ export class MorphoClient {
       }
     }
 
-    const query = `
-      query GetUserPositions($userAddress: String!, $chainId: Int!) {
-        userByAddress(address: $userAddress, chainId: $chainId) {
-          vaultV2Positions {
-            shares
-            assets
-            assetsUsd
-            vault {
-              address
-              name
-              symbol
-            }
-          }
-        }
-      }
-    `;
-
-    const data = await this.query<{
-      userByAddress: { vaultV2Positions: MorphoUserPosition[] } | null;
-    }>(query, {
+    const data = await this.query<GetUserPositionsQuery>(print(GET_USER_POSITIONS), {
       userAddress: userAddress.toLowerCase(),
       chainId,
-    });
+    } as GetUserPositionsQueryVariables);
 
     const allPositions = data.userByAddress?.vaultV2Positions ?? [];
     const positions = allPositions.filter(
@@ -349,7 +215,7 @@ export class MorphoClient {
     const vaults = await this.fetchVaults(chainId, assetSymbol, 50, skipCache);
 
     // Filter by minimum liquidity
-    const eligibleVaults = vaults.filter((vault) => vault.totalAssetsUsd >= minLiquidityUsd);
+    const eligibleVaults = vaults.filter((vault) => (vault.totalAssetsUsd ?? 0) >= minLiquidityUsd);
 
     // Return highest APY vault
     const bestVault = eligibleVaults.length > 0 ? eligibleVaults[0] : null;
