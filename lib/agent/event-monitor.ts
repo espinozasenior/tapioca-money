@@ -1,4 +1,4 @@
-import { MorphoClient, type MorphoVault } from "../morpho/api-client";
+import { MorphoClient } from "../morpho/api-client";
 import { getCacheInterface } from "../redis/client";
 
 const CHAIN_ID = 8453;
@@ -51,7 +51,7 @@ export class ApyEventMonitor {
     for (const vault of vaults) {
       const cacheKey = `${CACHE_KEY_PREFIX}${vault.address}`;
       const baselineStr = await cache.get(cacheKey);
-      const currentApy = vault.avgNetApy;
+      const currentApy = vault.avgNetApy ?? vault.netApy ?? 0;
 
       if (baselineStr) {
         const baseline = parseFloat(baselineStr);
@@ -118,7 +118,7 @@ export class ApyEventMonitor {
     for (const vault of vaults) {
       await cache.set(
         `${CACHE_KEY_PREFIX}${vault.address}`,
-        vault.avgNetApy.toString(),
+        (vault.avgNetApy ?? vault.netApy ?? 0).toString(),
         BASELINE_TTL
       );
     }

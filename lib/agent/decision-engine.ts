@@ -1,4 +1,4 @@
-import { MorphoClient, MorphoVault, MorphoUserPosition } from "../morpho/api-client";
+import { MorphoClient, type MorphoVault, type MorphoUserPosition } from "../morpho/api-client";
 import { CHAIN_CONFIG, REBALANCE_THRESHOLDS } from "../yield-optimizer/config";
 
 const CHAIN_ID = CHAIN_CONFIG.chainId;
@@ -65,7 +65,7 @@ export class YieldDecisionEngine {
 
       // 2. Get the largest position by USD value
       const currentPosition = positions.reduce((max, pos) =>
-        pos.assetsUsd > max.assetsUsd ? pos : max
+        (pos.assetsUsd ?? 0) > (max.assetsUsd ?? 0) ? pos : max
       );
 
       // 3. Fetch current vault details with APY
@@ -91,7 +91,7 @@ export class YieldDecisionEngine {
 
       const eligibleVaults = allVaults.filter(
         (vault) =>
-          vault.totalAssetsUsd >= REBALANCE_THRESHOLDS.minLiquidityUsd && // Sufficient liquidity
+          (vault.totalAssetsUsd ?? 0) >= REBALANCE_THRESHOLDS.minLiquidityUsd && // Sufficient liquidity
           vault.address.toLowerCase() !== currentVaultDetails.address.toLowerCase() // Different vault
       );
 
@@ -102,7 +102,7 @@ export class YieldDecisionEngine {
           currentVault: {
             address: currentVaultDetails.address,
             name: currentVaultDetails.name,
-            apy: currentVaultDetails.avgNetApy,
+            apy: currentVaultDetails.avgNetApy ?? currentVaultDetails.netApy ?? 0,
             shares: currentPosition.shares,
             assets: currentPosition.assets,
           },
@@ -117,11 +117,11 @@ export class YieldDecisionEngine {
       const bestVault = eligibleVaults[0]; // Already sorted by APY descending
 
       // 6. Calculate APY improvement and estimated gains
-      const currentApy = currentVaultDetails.avgNetApy;
-      const bestApy = bestVault.avgNetApy;
+      const currentApy = currentVaultDetails.avgNetApy ?? currentVaultDetails.netApy ?? 0;
+      const bestApy = bestVault.avgNetApy ?? bestVault.netApy ?? 0;
       const apyImprovement = bestApy - currentApy;
 
-      const positionValueUsd = currentPosition.assetsUsd;
+      const positionValueUsd = currentPosition.assetsUsd ?? 0;
       const estimatedAnnualGain = positionValueUsd * apyImprovement;
 
       // 7. Break-even is effectively instant — gas is fully sponsored by ZeroDev paymaster
@@ -157,7 +157,7 @@ export class YieldDecisionEngine {
               address: bestVault.address,
               name: bestVault.name,
               apy: bestApy,
-              liquidityUsd: bestVault.totalAssetsUsd,
+              liquidityUsd: bestVault.totalAssetsUsd ?? 0,
             }
           : null,
         apyImprovement,
