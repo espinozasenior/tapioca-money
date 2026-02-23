@@ -288,6 +288,17 @@ describe("Fuzz: Session revocation case-insensitivity", () => {
 // ─── F. Rate Limiter Boundary Conditions ────────────────────────────────────
 
 describe("Fuzz: Rate limiter boundaries", () => {
+  const originalRedisUrl = process.env.REDIS_URL;
+
+  beforeAll(() => {
+    // Force in-memory fallback by unsetting REDIS_URL
+    delete process.env.REDIS_URL;
+  });
+
+  afterAll(() => {
+    process.env.REDIS_URL = originalRedisUrl;
+  });
+
   test("allows exactly maxRequests, then denies", async () => {
     const { checkAndRecordRateLimit, resetRateLimit } = await import("@/lib/redis/rate-limiter");
 
