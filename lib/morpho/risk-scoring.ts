@@ -31,7 +31,9 @@ export function isTrustedCurator(curatorName: string): boolean {
 export function calculateRiskScore(vault: {
   warnings?: Array<{ type: string; level: string }>;
   whitelisted?: boolean;
-  curators?: { items?: Array<{ name: string; addresses?: Array<{ address: string }> }> | null } | null;
+  curators?: {
+    items?: Array<{ name: string; addresses?: Array<{ address: string }> }> | null;
+  } | null;
   performanceFee?: number;
   managementFee?: number;
   liquidityUsd?: number | null;
@@ -107,7 +109,9 @@ export function getRiskColor(level: "low" | "medium" | "high"): string {
 export function getRiskBreakdown(vault: {
   warnings?: Array<{ type: string; level: string }>;
   whitelisted?: boolean;
-  curators?: { items?: Array<{ name: string; addresses?: Array<{ address: string }> }> | null } | null;
+  curators?: {
+    items?: Array<{ name: string; addresses?: Array<{ address: string }> }> | null;
+  } | null;
   performanceFee?: number;
   managementFee?: number;
   liquidityUsd?: number | null;

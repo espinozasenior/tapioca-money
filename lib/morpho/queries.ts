@@ -1,13 +1,10 @@
-
-import { gql } from 'graphql-tag';
+import { gql } from "graphql-tag";
 
 export const GET_VAULTS = gql`
   query GetVaults($chainId: Int!, $first: Int!) {
     vaultV2s(
       first: $first
-      where: {
-        chainId_in: [$chainId]
-      }
+      where: { chainId_in: [$chainId] }
       orderBy: NetApy
       orderDirection: Desc
     ) {
