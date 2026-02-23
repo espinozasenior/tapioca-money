@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { useId } from "react";
 
 interface RecipientInputProps {
   recipient: string;
@@ -7,10 +8,14 @@ interface RecipientInputProps {
 }
 
 export function RecipientInput({ recipient, onChange, error }: RecipientInputProps) {
+  const id = useId();
   return (
     <div className="w-full">
-      <label className="mb-2 block text-sm font-semibold text-gray-900">Receipient</label>
+      <label htmlFor={id} className="mb-2 block text-sm font-semibold text-gray-900">
+        Receipient
+      </label>
       <input
+        id={id}
         type="text"
         placeholder="Enter email or wallet address"
         className={cn(

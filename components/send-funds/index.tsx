@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogTitle, DialogClose } from "../common/Dialo
 import { useActivityFeed } from "@/hooks/useActivityFeed";
 import { isEmail, isValidAddress } from "@/lib/utils";
 import { ArrowLeft, X, Zap } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface SendFundsModalProps {
   open: boolean;
@@ -23,37 +24,33 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [useGasless, setUseGasless] = useState(false);
-  const [gaslessEnabled, setGaslessEnabled] = useState(false);
   const [gaslessLoading, setGaslessLoading] = useState(false);
-  const [sessionExpiry, setSessionExpiry] = useState<number | null>(null);
+
   const { displayableBalance, refetch: refetchBalance } = useBalance();
   const { refetch: refetchActivityFeed } = useActivityFeed();
+  const queryClient = useQueryClient();
 
   // Check gasless transfer session status
+  const { data: gaslessStatus } = useQuery({
+    queryKey: ["gasless-status", wallet?.address],
+    queryFn: async () => {
+      if (!wallet?.address) return null;
+      const response = await fetch(`/api/transfer/register?address=${wallet.address}`);
+      return response.json();
+    },
+    enabled: !!wallet?.address && open,
+  });
+
+  const gaslessEnabled = gaslessStatus?.isEnabled ?? false;
+  const sessionExpiry = gaslessStatus?.expiry ?? null;
+
   useEffect(() => {
-    async function checkGaslessStatus() {
-      if (!wallet?.address || !open) return;
-
-      try {
-        const response = await fetch(`/api/transfer/register?address=${wallet.address}`);
-        const status = await response.json();
-
-        if (status.isEnabled) {
-          setGaslessEnabled(true);
-          setSessionExpiry(status.expiry);
-          setUseGasless(true); // Auto-enable if available
-        } else {
-          setGaslessEnabled(false);
-          setUseGasless(false);
-        }
-      } catch (error) {
-        console.error("Failed to check gasless status:", error);
-        setGaslessEnabled(false);
-      }
+    if (gaslessEnabled) {
+      setUseGasless(true); // Auto-enable if available
+    } else {
+      setUseGasless(false);
     }
-
-    checkGaslessStatus();
-  }, [wallet, open]);
+  }, [gaslessEnabled]);
 
   // Debug logging
   console.log("[SendFunds] State:", {
@@ -191,7 +188,7 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2">
                       <Zap className="h-4 w-4 text-yellow-500" />
-                      <label className="text-sm font-medium text-gray-900">
+                      <label htmlFor="gasless-toggle" className="text-sm font-medium text-gray-900">
                         Gasless Transaction
                       </label>
                     </div>
@@ -205,6 +202,7 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
                     )}
                   </div>
                   <button
+                    id="gasless-toggle"
                     type="button"
                     onClick={() => setUseGasless(!useGasless)}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
@@ -229,10 +227,11 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
                         setError("Gasless transfers not available");
                         return;
                       }
-                      const result = await wallet.enableGaslessTransfers();
-                      setGaslessEnabled(true);
-                      setSessionExpiry(result.expiry);
-                      setUseGasless(true);
+                      await wallet.enableGaslessTransfers();
+                      await queryClient.invalidateQueries({
+                        queryKey: ["gasless-status", wallet?.address],
+                      });
+                      // We don't set local state anymore, we wait for query to update
                     } catch (err: any) {
                       setError(err.message || "Failed to enable gasless transfers");
                     } finally {

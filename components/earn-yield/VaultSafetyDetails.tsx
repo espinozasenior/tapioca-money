@@ -41,8 +41,8 @@ export function VaultSafetyDetails({ vault }: VaultSafetyDetailsProps) {
             <AlertTriangle className="mt-0.5 h-4 w-4 text-yellow-600" />
             <div>
               <p className="text-sm font-medium text-yellow-800">Warnings</p>
-              {warnings.map((w: any, i: number) => (
-                <p key={i} className="mt-1 text-xs text-yellow-700">
+              {warnings.map((w: any) => (
+                <p key={w.type} className="mt-1 text-xs text-yellow-700">
                   {w.type.replace(/_/g, " ")}
                 </p>
               ))}
