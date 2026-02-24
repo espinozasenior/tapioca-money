@@ -2,7 +2,7 @@
 
 ## Overview
 
-Tapioca Finance uses **Vitest** with 163 automated tests across 14 test files, covering integration tests, security edge cases, and property-based fuzz tests. All external services (ZeroDev, Morpho, Privy, Redis) are mocked — no real blockchain transactions occur during testing.
+Tapioca Money uses **Vitest** with 163 automated tests across 14 test files, covering integration tests, security edge cases, and property-based fuzz tests. All external services (ZeroDev, Morpho, Privy, Redis) are mocked — no real blockchain transactions occur during testing.
 
 ## Quick Start
 

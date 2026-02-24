@@ -5,7 +5,7 @@
  * auth serialization, and session revocation with random inputs.
  */
 
-import { describe, test, expect, vi, beforeAll } from "vitest";
+import { describe, test, expect, beforeAll, afterAll, vi } from "vitest";
 import fc from "fast-check";
 
 // fast-check v4 removed hexaString — build a hex arbitrary from stringMatching
@@ -296,7 +296,11 @@ describe("Fuzz: Rate limiter boundaries", () => {
   });
 
   afterAll(() => {
-    process.env.REDIS_URL = originalRedisUrl;
+    if (originalRedisUrl) {
+      process.env.REDIS_URL = originalRedisUrl;
+    } else {
+      delete process.env.REDIS_URL;
+    }
   });
 
   test("allows exactly maxRequests, then denies", async () => {
