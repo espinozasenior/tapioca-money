@@ -1921,6 +1921,24 @@ export type MorphoMarketV1AdapterPositionsArgs = {
   skip?: InputMaybe<Scalars["Int"]["input"]>;
 };
 
+export type MorphoVaultV2Adapter = VaultV2Adapter & {
+  __typename?: "MorphoVaultV2Adapter";
+  address: Scalars["Address"]["output"];
+  /** The assets managed by the adapter (includes virtually accrued interest). */
+  assets: Scalars["BigInt"]["output"];
+  /** The USD value of assets managed by the adapter (includes virtually accrued interest). */
+  assetsUsd: Maybe<Scalars["Float"]["output"]>;
+  chain: Chain;
+  creationBlockNumber: Scalars["BigInt"]["output"];
+  creationTimestamp: Scalars["BigInt"]["output"];
+  factory: VaultV2AdapterFactory;
+  id: Scalars["ID"]["output"];
+  /** The inner VaultV2 that this adapter wraps. */
+  innerVault: VaultV2;
+  type: VaultV2AdapterType;
+  vault: VaultV2;
+};
+
 export type NotWhitelistedVaultV2WarningMetadata = {
   __typename?: "NotWhitelistedVaultV2WarningMetadata";
   history: Array<VaultV2ListingMetadataHistoryChange>;
@@ -3756,9 +3774,9 @@ export type VaultPositionFilters = {
 /** Vault position state history */
 export type VaultPositionHistory = {
   __typename?: "VaultPositionHistory";
-  /** Value of the position since its inception, in underlying assets. */
+  /** Assets history, in underlying token. */
   assets: Maybe<Array<BigIntDataPoint>>;
-  /** Value of the position since its inception, in USD. */
+  /** Assets history, in USD. */
   assetsUsd: Maybe<Array<FloatDataPoint>>;
   /**
    * Profit & Loss of the position (due to the interest) of the position since its inception, in underlying assets.
@@ -3780,7 +3798,7 @@ export type VaultPositionHistory = {
    * @deprecated No longer maintained.
    */
   roeUsd: Maybe<Array<FloatDataPoint>>;
-  /** Value of the position since its inception, in vault shares. */
+  /** Vault shares history. */
   shares: Maybe<Array<BigIntDataPoint>>;
 };
 
@@ -4347,6 +4365,7 @@ export type VaultV2AdapterPendingData = {
 export enum VaultV2AdapterType {
   MetaMorpho = "MetaMorpho",
   MorphoMarketV1 = "MorphoMarketV1",
+  MorphoVaultV2 = "MorphoVaultV2",
 }
 
 /** Vault V2 allocator */
@@ -4645,9 +4664,9 @@ export type VaultV2Position = {
 /** Vault V2 position history */
 export type VaultV2PositionHistory = {
   __typename?: "VaultV2PositionHistory";
-  /** Value of the position since its inception, in underlying assets. */
+  /** Assets history, in underlying token. */
   assets: Maybe<Array<BigIntDataPoint>>;
-  /** Value of the position since its inception, in USD. */
+  /** Assets history, in USD. */
   assetsUsd: Maybe<Array<FloatDataPoint>>;
   /**
    * Profit & Loss of the position (due to the interest) of the position since its inception, in underlying assets.
@@ -4669,7 +4688,7 @@ export type VaultV2PositionHistory = {
    * @deprecated No longer maintained.
    */
   roeUsd: Maybe<Array<FloatDataPoint>>;
-  /** Value of the position since its inception, in vault shares. */
+  /** Vault shares history. */
   shares: Maybe<Array<BigIntDataPoint>>;
 };
 
@@ -5198,7 +5217,22 @@ export type GetUserPositionsQuery = {
       shares: string;
       assets: string;
       assetsUsd: number | null;
+      pnl: string | null;
       vault: { __typename?: "VaultV2"; address: any; name: string; symbol: string };
     }>;
+  };
+};
+
+export type GetUserFirstDepositQueryVariables = Exact<{
+  userAddress: Scalars["String"]["input"];
+  vaultAddress: Scalars["String"]["input"];
+  chainId: Scalars["Int"]["input"];
+}>;
+
+export type GetUserFirstDepositQuery = {
+  __typename?: "Query";
+  vaultV2transactions: {
+    __typename?: "PaginatedVaultV2Transactions";
+    items: Array<{ __typename?: "VaultV2Transaction"; timestamp: string }> | null;
   };
 };
