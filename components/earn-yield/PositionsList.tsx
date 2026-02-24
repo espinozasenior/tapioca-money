@@ -45,6 +45,14 @@ const formatApy = (apy: number) => {
   return `${(apy * 100).toFixed(2)}%`;
 };
 
+// Format earned amount — show 4 decimals for sub-cent amounts, 2 otherwise
+export const formatEarned = (earned: string): string => {
+  const num = parseFloat(earned);
+  if (isNaN(num) || num === 0) return "0.00";
+  if (num < 0.01) return num.toFixed(4);
+  return num.toFixed(2);
+};
+
 export function PositionsList({ positions, yields, isLoading, onExitSuccess }: PositionsListProps) {
   const { wallet, isReady } = useWallet();
   const [exitingId, setExitingId] = useState<string | null>(null);
@@ -181,7 +189,9 @@ export function PositionsList({ positions, yields, isLoading, onExitSuccess }: P
             {/* Rewards & activity info */}
             {rewards && (
               <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
-                <p className="text-sm text-green-600">+${rewards.totalEarned} earned</p>
+                <p className="text-sm text-green-600">
+                  +${formatEarned(rewards.totalEarned)} earned
+                </p>
                 {rewards.daysActive !== undefined && (
                   <p className="text-xs text-gray-400">
                     Active for {rewards.daysActive} {rewards.daysActive === 1 ? "day" : "days"}

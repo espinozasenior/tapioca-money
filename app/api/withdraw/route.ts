@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createPublicClient, http } from "viem";
-import { baseSepolia } from "viem/chains";
-import { buildWithdrawTransaction } from "@/lib/yield-optimizer/executor";
-import { CHAIN_CONFIG } from "@/lib/yield-optimizer/config";
+import { encodeFunctionData, parseAbi } from "viem";
+import { CHAIN_CONFIG, USDC_ADDRESS } from "@/lib/config";
+
+// ERC4626 ABI for vault interaction
+const ERC4626_ABI = parseAbi([
+  "function redeem(uint256 shares, address receiver, address owner) returns (uint256 assets)",
+  "function withdraw(uint256 assets, address receiver, address owner) returns (uint256 shares)",
+]);
 
 /**
  * POST /api/withdraw
@@ -26,8 +30,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Protocol is required" }, { status: 400 });
     }
 
+    if (protocol !== "morpho") {
+      return NextResponse.json(
+        { error: `Protocol ${protocol} is no longer supported. Please use the dashboard to exit.` },
+        { status: 400 }
+      );
+    }
+
     if (!userAddress) {
       return NextResponse.json({ error: "User address is required" }, { status: 400 });
+    }
+
+    if (!vaultAddress) {
+      return NextResponse.json({ error: "Vault address is required for Morpho" }, { status: 400 });
     }
 
     if (!shares && !assets) {
@@ -42,7 +57,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid user address format" }, { status: 400 });
     }
 
-    if (vaultAddress && !/^0x[a-fA-F0-9]{40}$/.test(vaultAddress)) {
+    if (!/^0x[a-fA-F0-9]{40}$/.test(vaultAddress)) {
       return NextResponse.json({ error: "Invalid vault address format" }, { status: 400 });
     }
 
@@ -55,31 +70,57 @@ export async function POST(req: NextRequest) {
       userAddress,
       shares: sharesBigInt?.toString(),
       assets: assetsBigInt?.toString(),
+      vaultAddress,
     });
 
-    // Build withdrawal transaction
-    const result = await buildWithdrawTransaction(
-      protocol,
-      userAddress as `0x${string}`,
-      sharesBigInt,
-      assetsBigInt,
-      vaultAddress as `0x${string}` | undefined
-    );
+    let transaction;
 
-    if (result.transactions.length === 0) {
-      return NextResponse.json(
-        { error: "No transactions generated. Withdrawal may not be available for this protocol." },
-        { status: 400 }
-      );
+    // Build ERC4626 redeem/withdraw transaction
+    if (sharesBigInt) {
+      // Redeem shares
+      const data = encodeFunctionData({
+        abi: ERC4626_ABI,
+        functionName: "redeem",
+        args: [sharesBigInt, userAddress as `0x${string}`, userAddress as `0x${string}`],
+      });
+
+      transaction = {
+        to: vaultAddress,
+        data,
+        value: "0x0",
+      };
+    } else if (assetsBigInt) {
+      // Withdraw assets
+      const data = encodeFunctionData({
+        abi: ERC4626_ABI,
+        functionName: "withdraw",
+        args: [assetsBigInt, userAddress as `0x${string}`, userAddress as `0x${string}`],
+      });
+
+      transaction = {
+        to: vaultAddress,
+        data,
+        value: "0x0",
+      };
     }
 
-    console.log("Withdrawal transaction built successfully:", {
-      transactionCount: result.transactions.length,
-      protocol,
-    });
+    if (!transaction) {
+      return NextResponse.json({ error: "Failed to build transaction" }, { status: 500 });
+    }
 
-    // Return the first transaction (withdrawals are single-step)
-    return NextResponse.json(result.transactions[0]);
+    const result = {
+      id: `withdraw-${Date.now()}`,
+      title: "Withdraw from Morpho Vault",
+      type: "WITHDRAW",
+      status: "CREATED",
+      unsignedTransaction: JSON.stringify(transaction),
+      stepIndex: 0,
+    };
+
+    console.log("Withdrawal transaction built successfully");
+
+    // Return the transaction
+    return NextResponse.json(result);
   } catch (error: any) {
     console.error("Error building withdrawal transaction:", error);
 
@@ -101,7 +142,7 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   return NextResponse.json({
     message: "Withdrawal API - use POST to build withdrawal transactions",
-    supportedProtocols: ["morpho", "aave"],
-    requiredFields: ["protocol", "userAddress", "shares or assets"],
+    supportedProtocols: ["morpho"],
+    requiredFields: ["protocol", "userAddress", "vaultAddress", "shares or assets"],
   });
 }
