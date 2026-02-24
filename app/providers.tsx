@@ -1,6 +1,7 @@
 "use client";
 
-import { PrivyProvider } from "@privy-io/react-auth";
+import { PrivyProvider, dataSuffix } from "@privy-io/react-auth";
+import { BUILDER_CODE_SUFFIX } from "@/lib/builder-code";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { base } from "viem/chains";
 
@@ -35,6 +36,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             },
           },
           defaultChain: base,
+          plugins: [dataSuffix(BUILDER_CODE_SUFFIX)],
         }}
       >
         {children}

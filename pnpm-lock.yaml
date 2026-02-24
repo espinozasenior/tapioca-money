@@ -96,6 +96,9 @@ importers:
       next:
         specifier: 15.2.8
         version: 15.2.8(@babel/core@7.29.0)(babel-plugin-macros@3.1.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      ox:
+        specifier: '>=0.11.3'
+        version: 0.11.3(typescript@5.8.3)(zod@3.25.76)
       permissionless:
         specifier: ^0.3.4
         version: 0.3.4(ox@0.11.3(typescript@5.8.3)(zod@3.25.76))(viem@2.45.1(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.25.76))
