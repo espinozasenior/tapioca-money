@@ -3,6 +3,7 @@
  */
 
 import { neon } from "@neondatabase/serverless";
+import crypto from "crypto";
 
 // Use test database URL or fallback to a mock connection string
 const DATABASE_URL = process.env.DATABASE_URL || "postgresql://test:test@localhost:5432/test_db";
@@ -15,17 +16,27 @@ export interface TestUser {
 }
 
 /**
+ * Generate a random Ethereum-style address
+ */
+export function generateRandomAddress(): string {
+  return `0x${crypto.randomBytes(20).toString("hex")}`;
+}
+
+/**
  * Create a test user with authorization
  */
 export async function seedTestUser(
-  walletAddress: string = "0xTEST1234567890123456789012345678901234",
+  walletAddress?: string,
   autoOptimizeEnabled: boolean = true,
   minApyThreshold: string = "0.005"
 ): Promise<TestUser> {
+  // Use random address if not provided to avoid collision
+  const address = walletAddress || generateRandomAddress();
+
   // Sample EIP-7702 authorization
   const authorization = {
     chainId: 8453, // Base
-    address: walletAddress,
+    address: address,
     nonce: 1,
     signature: "0xtest_signature",
     expiry: Math.floor(Date.now() / 1000) + 86400, // 24 hours
@@ -39,7 +50,7 @@ export async function seedTestUser(
       agent_registered,
       authorization_7702
     ) VALUES (
-      ${walletAddress},
+      ${address},
       ${autoOptimizeEnabled},
       true,
       ${JSON.stringify(authorization)}::jsonb
@@ -64,7 +75,7 @@ export async function seedTestUser(
 
   return {
     id: userId,
-    walletAddress,
+    walletAddress: address,
     authorization,
   };
 }
@@ -72,12 +83,12 @@ export async function seedTestUser(
 /**
  * Create test user with expired authorization
  */
-export async function seedTestUserWithExpiredAuth(
-  walletAddress: string = "0xEXPIRED1234567890123456789012345678901"
-): Promise<TestUser> {
+export async function seedTestUserWithExpiredAuth(walletAddress?: string): Promise<TestUser> {
+  const address = walletAddress || generateRandomAddress();
+
   const authorization = {
     chainId: 8453,
-    address: walletAddress,
+    address: address,
     nonce: 1,
     signature: "0xtest_signature",
     expiry: Math.floor(Date.now() / 1000) - 3600, // Expired 1 hour ago
@@ -90,7 +101,7 @@ export async function seedTestUserWithExpiredAuth(
       agent_registered,
       authorization_7702
     ) VALUES (
-      ${walletAddress},
+      ${address},
       true,
       true,
       ${JSON.stringify(authorization)}::jsonb
@@ -105,7 +116,7 @@ export async function seedTestUserWithExpiredAuth(
 
   return {
     id: users[0].id,
-    walletAddress,
+    walletAddress: address,
     authorization,
   };
 }
@@ -129,13 +140,12 @@ export async function cleanupTestData(walletAddresses: string[]): Promise<void> 
  * Clean up all test data (use carefully!)
  */
 export async function cleanupAllTestData(): Promise<void> {
-  await sql`
-    DELETE FROM users
-    WHERE wallet_address LIKE '0xTEST%'
-      OR wallet_address LIKE '0xEXPIRED%'
-  `;
-
-  console.log("Cleaned up all test data");
+  // Only delete users created by our test helper (based on pattern or knowing IDs)
+  // For safety in shared DBs, we should rely on explicit cleanup via cleanupTestData
+  // But if we must bulk clean, try to target only test-like addresses if possible
+  // Since we use random addresses now, it's harder to pattern match.
+  // Best practice: Tests track their created users and clean them up.
+  console.log("Skipping bulk cleanup - rely on per-test cleanup");
 }
 
 /**
@@ -266,14 +276,14 @@ export async function getAgentActions(userId: string, limit: number = 10) {
  */
 export async function createTestTransferSession(walletAddress: string): Promise<any> {
   // Generate proper hex addresses for testing
-  const smartAccount = `0x${"a".repeat(40)}` as `0x${string}`;
-  const sessionKey = `0x${"b".repeat(40)}` as `0x${string}`;
+  const smartAccount = `0x${crypto.randomBytes(20).toString("hex")}` as `0x${string}`;
+  const sessionKey = `0x${crypto.randomBytes(20).toString("hex")}` as `0x${string}`;
 
   const transferAuth = {
     type: "zerodev-transfer-session",
     smartAccountAddress: smartAccount,
     sessionKeyAddress: sessionKey,
-    sessionPrivateKey: `0x${"1234567890abcdef".repeat(4)}` as `0x${string}`,
+    sessionPrivateKey: `0x${crypto.randomBytes(32).toString("hex")}` as `0x${string}`,
     expiry: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60, // 30 days
     createdAt: Date.now(),
   };
@@ -292,15 +302,15 @@ export async function createTestTransferSession(walletAddress: string): Promise<
  */
 export async function createTestAgentSession(walletAddress: string): Promise<any> {
   // Generate proper hex addresses for vaults
-  const vault1 = `0x${"c".repeat(40)}` as `0x${string}`;
-  const vault2 = `0x${"d".repeat(40)}` as `0x${string}`;
+  const vault1 = `0x${crypto.randomBytes(20).toString("hex")}` as `0x${string}`;
+  const vault2 = `0x${crypto.randomBytes(20).toString("hex")}` as `0x${string}`;
 
   const agentAuth = {
     type: "zerodev-agent-session",
-    smartAccountAddress: `0x${"e".repeat(40)}` as `0x${string}`,
-    sessionKeyAddress: `0x${"f".repeat(40)}` as `0x${string}`,
-    serializedAccount: `base64_test_serialized_${"a".repeat(100)}`, // Serialized kernel account (new pattern)
-    sessionPrivateKey: `0x${"fedcba0987654321".repeat(4)}` as `0x${string}`, // Legacy field
+    smartAccountAddress: `0x${crypto.randomBytes(20).toString("hex")}` as `0x${string}`,
+    sessionKeyAddress: `0x${crypto.randomBytes(20).toString("hex")}` as `0x${string}`,
+    serializedAccount: `base64_test_serialized_${crypto.randomBytes(10).toString("hex")}`,
+    sessionPrivateKey: `0x${crypto.randomBytes(32).toString("hex")}` as `0x${string}`,
     expiry: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60, // 30 days
     approvedVaults: [vault1, vault2],
     timestamp: Date.now(),
