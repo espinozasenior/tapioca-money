@@ -25,6 +25,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <meta name="base:app_id" content="699dc4d2c5c1c2a065a21d1b" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} bg-muted box-content antialiased`}
       >
