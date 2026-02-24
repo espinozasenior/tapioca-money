@@ -38,7 +38,7 @@ function transformVaultToOpportunity(vault: MorphoVault) {
 }
 
 // Transform Morpho position to legacy Position format
-function transformPositionToLegacy(pos: any, opportunities?: any[]) {
+export function transformPositionToLegacy(pos: any, opportunities?: any[]) {
   if (!pos) return null;
 
   // Match position to its yield opportunity by vault address for name/description
