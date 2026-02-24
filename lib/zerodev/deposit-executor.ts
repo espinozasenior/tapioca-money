@@ -5,6 +5,7 @@
 
 import { encodeFunctionData, parseAbi, parseUnits, type Hex } from "viem";
 import { createDeserializedKernelClient, createSessionKernelClient } from "./kernel-client";
+import { withBuilderCode } from "@/lib/builder-code";
 
 const VAULT_ABI = parseAbi([
   "function deposit(uint256 assets, address receiver) returns (uint256 shares)",
@@ -106,10 +107,10 @@ export async function executeGaslessDeposit(
 
     // Execute both calls atomically via single UserOperation
     const userOpHash = await kernelClient.sendUserOperation({
-      calls: [
+      calls: withBuilderCode([
         { to: USDC_ADDRESS, value: BigInt(0), data: approveCallData },
         { to: params.vaultAddress, value: BigInt(0), data: depositCallData },
-      ],
+      ]),
     });
 
     console.log("[VaultDeposit] UserOp submitted:", userOpHash);
