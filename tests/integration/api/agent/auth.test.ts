@@ -158,7 +158,7 @@ describe("Agent Auth API", () => {
       const calls = mockSql.mock.calls;
       const insertUserCall = calls.find((call: any) => call[0][0].includes("INSERT INTO users"));
       expect(insertUserCall).toBeDefined();
-      expect(insertUserCall[1]).toBe(mockUserAddress);
+      expect(insertUserCall![1]).toBe(mockUserAddress);
     });
 
     it("should handle DB error", async () => {
@@ -315,7 +315,7 @@ describe("Agent Auth API", () => {
       const calls = mockSql.mock.calls;
       const insertUserCall = calls.find((call: any) => call[0][0].includes("INSERT INTO users"));
       expect(insertUserCall).toBeDefined();
-      expect(insertUserCall[1]).toBe(mockUserAddress);
+      expect(insertUserCall![1]).toBe(mockUserAddress);
     });
   });
 
@@ -343,7 +343,7 @@ describe("Agent Auth API", () => {
       const calls = mockSql.mock.calls;
       const updateCall = calls.find((call: any) => call[0][0].includes("UPDATE users"));
       expect(updateCall).toBeDefined();
-      expect(updateCall[1]).toBe(mockUserAddress);
+      expect(updateCall![1]).toBe(mockUserAddress);
     });
   });
 });
