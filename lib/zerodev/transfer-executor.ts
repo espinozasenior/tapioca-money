@@ -5,6 +5,7 @@
 
 import { encodeFunctionData, erc20Abi, parseUnits } from "viem";
 import { createDeserializedKernelClient, createSessionKernelClient } from "./kernel-client";
+import { withBuilderCode } from "@/lib/builder-code";
 
 const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
 
@@ -85,7 +86,7 @@ export async function executeGaslessTransfer(
     console.log("[GaslessTransfer] Building transfer call...");
 
     const userOpHash = await kernelClient.sendUserOperation({
-      calls: [{ to: USDC_ADDRESS, value: BigInt(0), data: transferCallData }],
+      calls: withBuilderCode([{ to: USDC_ADDRESS, value: BigInt(0), data: transferCallData }]),
     });
 
     console.log("[GaslessTransfer] UserOp submitted:", userOpHash);
