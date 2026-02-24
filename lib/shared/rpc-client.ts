@@ -4,7 +4,7 @@
 
 import { createPublicClient, http } from "viem";
 import { base } from "viem/chains";
-import { CHAIN_CONFIG } from "@/lib/yield-optimizer/config";
+import { CHAIN_CONFIG } from "@/lib/config";
 
 export const baseClient = createPublicClient({
   chain: base,

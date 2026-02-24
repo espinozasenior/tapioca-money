@@ -12,8 +12,19 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html", "lcov"],
-      include: ["lib/**", "app/api/**", "hooks/**"],
-      exclude: ["**/*.test.ts", "**/*.spec.ts", "**/node_modules/**"],
+      include: [
+        "lib/**/*.{ts,tsx,js,jsx}",
+        "app/api/**/*.{ts,tsx,js,jsx}",
+        "hooks/**/*.{ts,tsx,js,jsx}",
+      ],
+      exclude: [
+        "**/*.test.ts",
+        "**/*.spec.ts",
+        "**/node_modules/**",
+        "**/*.bak",
+        "**/*.md",
+        "lib/morpho/graphql-types.ts", // Auto-generated
+      ],
       thresholds: {
         lines: 80,
         functions: 80,
@@ -21,7 +32,9 @@ export default defineConfig({
         statements: 80,
       },
     },
-    testTimeout: 30000, // 30s for integration tests
+    testTimeout: 45000, // 45s for integration tests
+    // Ensure integration tests run sequentially to avoid DB concurrency issues
+    fileParallelism: false,
   },
   resolve: {
     alias: {

@@ -31,7 +31,9 @@ export function isTrustedCurator(curatorName: string): boolean {
 export function calculateRiskScore(vault: {
   warnings?: Array<{ type: string; level: string }>;
   whitelisted?: boolean;
-  curators?: { items?: Array<{ name: string; addresses?: Array<{ address: string }> }> | null } | null;
+  curators?: {
+    items?: Array<{ name: string; addresses?: Array<{ address: string }> }> | null;
+  } | null;
   performanceFee?: number;
   managementFee?: number;
   liquidityUsd?: number | null;
@@ -65,8 +67,8 @@ export function calculateRiskScore(vault: {
   }
 
   // 4. Fee Structure (0-0.15)
-  if ((vault.performanceFee ?? 0) > 0.2) {
-    score += 0.1; // >20% performance fee
+  if ((vault.performanceFee ?? 0) > 0.05) {
+    score += 0.4; // >5% performance fee — hard exclusion
   }
   if ((vault.managementFee ?? 0) > 0.02) {
     score += 0.05; // >2% annual fee
@@ -107,7 +109,9 @@ export function getRiskColor(level: "low" | "medium" | "high"): string {
 export function getRiskBreakdown(vault: {
   warnings?: Array<{ type: string; level: string }>;
   whitelisted?: boolean;
-  curators?: { items?: Array<{ name: string; addresses?: Array<{ address: string }> }> | null } | null;
+  curators?: {
+    items?: Array<{ name: string; addresses?: Array<{ address: string }> }> | null;
+  } | null;
   performanceFee?: number;
   managementFee?: number;
   liquidityUsd?: number | null;
@@ -141,9 +145,9 @@ export function getRiskBreakdown(vault: {
     reasoning.push("Vault is whitelisted by Morpho ✓");
   }
 
-  const curatorNames = vault.curators?.items?.map((c) => c.name?.toLowerCase() || "") || [];
+  const curatorNames = vault.curators?.items?.map((c) => c.name || "") || [];
   const hasTrustedCurator = curatorNames.some((name) =>
-    TRUSTED_CURATORS.some((trusted) => name.includes(trusted))
+    TRUSTED_CURATORS.some((trusted) => name.toLowerCase().includes(trusted))
   );
 
   if (curatorNames.length === 0) {
@@ -156,19 +160,17 @@ export function getRiskBreakdown(vault: {
     reasoning.push(`Curated by trusted team: ${curatorNames[0]}`);
   }
 
-  if ((vault.performanceFee ?? 0) > 0.2 || (vault.managementFee ?? 0) > 0.02) {
-    const fees: string[] = [];
-    if ((vault.performanceFee ?? 0) > 0.2) {
-      factors.fees += 0.1;
-      fees.push(`${(vault.performanceFee! * 100).toFixed(1)}% performance`);
-    }
-    if ((vault.managementFee ?? 0) > 0.02) {
-      factors.fees += 0.05;
-      fees.push(`${(vault.managementFee! * 100).toFixed(2)}% annual`);
-    }
-    if (fees.length > 0) {
-      reasoning.push(`High fees: ${fees.join(", ")}`);
-    }
+  const fees: string[] = [];
+  if ((vault.performanceFee ?? 0) > 0.05) {
+    factors.fees += 0.4;
+    fees.push(`${(vault.performanceFee! * 100).toFixed(1)}% performance`);
+  }
+  if ((vault.managementFee ?? 0) > 0.02) {
+    factors.fees += 0.05;
+    fees.push(`${(vault.managementFee! * 100).toFixed(2)}% annual`);
+  }
+  if (fees.length > 0) {
+    reasoning.push(`High fees: ${fees.join(", ")}`);
   }
 
   if (vault.liquidityUsd != null && vault.totalAssetsUsd != null && vault.totalAssetsUsd > 0) {

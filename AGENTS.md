@@ -2,7 +2,7 @@ You are an experienced, pragmatic software engineering AI agent. Do not over-eng
 
 ## Project Overview
 
-**Tapioca Finance** is a smart yield optimization platform on Base that combines user-friendly DeFi with autonomous agent technology. Users deposit USDC into Morpho vaults through a web interface, and an autonomous agent continuously monitors yield opportunities and rebalances their holdings to maximize returns—all with zero gas fees via ERC-4337.
+**Tapioca Money** is a smart yield optimization platform on Base that combines user-friendly DeFi with autonomous agent technology. Users deposit USDC into Morpho vaults through a web interface, and an autonomous agent continuously monitors yield opportunities and rebalances their holdings to maximize returns—all with zero gas fees via ERC-4337.
 
 **Core Goals:**
 

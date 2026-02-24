@@ -16,7 +16,7 @@ vi.mock("viem", async (importOriginal) => {
   };
 });
 
-vi.mock("@/lib/yield-optimizer/config", () => ({
+vi.mock("@/lib/config", () => ({
   CHAIN_CONFIG: { rpcUrl: "https://test-rpc.example.com", chainId: 8453, name: "Base" },
 }));
 

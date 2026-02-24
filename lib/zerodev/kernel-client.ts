@@ -12,7 +12,7 @@ import { createPublicClient, http, type Hex } from "viem";
 import { base } from "viem/chains";
 import { privateKeyToAccount } from "viem/accounts";
 import { checkSmartAccountActive, type DelegationStatus } from "./client-secure";
-import { CHAIN_CONFIG } from "@/lib/yield-optimizer/config";
+import { CHAIN_CONFIG } from "@/lib/config";
 
 // EntryPoint V0.7 object (required format for ZeroDev SDK v5)
 const ENTRYPOINT_V07 = {

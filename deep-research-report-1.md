@@ -1,6 +1,6 @@
-# Análisis del proyecto **Tapioca Finance**
+# Análisis del proyecto **Tapioca Money**
 
-El repositorio de **Tapioca Finance** muestra un backend Node.js que usa **Privy**, **ZeroDev**, **Morpho GraphQL** y un **cron agent** para automatizar yield. A continuación evaluamos cómo cumple los requisitos del diseño propuesto y qué mejorar:
+El repositorio de **Tapioca Money** muestra un backend Node.js que usa **Privy**, **ZeroDev**, **Morpho GraphQL** y un **cron agent** para automatizar yield. A continuación evaluamos cómo cumple los requisitos del diseño propuesto y qué mejorar:
 
 ## Arquitectura actual y puntos fuertes
 
@@ -75,4 +75,4 @@ En resumen, **no se puede “usar como punto de partida”** el mecanismo AA tal
 
 ---
 
-**Conclusión:** El proyecto Tapioca Finance está bien encaminado (usa Privy/ZeroDev para AA y consulta Morpho) pero requiere **pulir la integración EIP‑7702** y definir con claridad el modelo de patrocinio (ZeroDev vs Gelato). Recomiendo continuar con ZeroDev como base (aprovechando sus ventajas de sesión y autenticación rápida【58†L120-L128】【58†L129-L137】), y emplear Gelato solo si se decide externalizar el pago de gas. Lo esencial es arreglar las implementaciones AA (lo cual dará robustez al agente) y luego reforzar las políticas de seguridad y fiabilidad operacional según las buenas prácticas encontradas【41†L591-L599】【45†L492-L500】.
+**Conclusión:** El proyecto Tapioca Money está bien encaminado (usa Privy/ZeroDev para AA y consulta Morpho) pero requiere **pulir la integración EIP‑7702** y definir con claridad el modelo de patrocinio (ZeroDev vs Gelato). Recomiendo continuar con ZeroDev como base (aprovechando sus ventajas de sesión y autenticación rápida【58†L120-L128】【58†L129-L137】), y emplear Gelato solo si se decide externalizar el pago de gas. Lo esencial es arreglar las implementaciones AA (lo cual dará robustez al agente) y luego reforzar las políticas de seguridad y fiabilidad operacional según las buenas prácticas encontradas【41†L591-L599】【45†L492-L500】.

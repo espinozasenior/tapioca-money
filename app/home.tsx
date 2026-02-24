@@ -5,6 +5,7 @@ import { MainScreen } from "@/components/MainScreen";
 import { useAuth, useWallet } from "@/hooks/useWallet";
 import { useProcessWithdrawal } from "@/hooks/useProcessWithdrawal";
 import { useEffect } from "react";
+import { useMutation } from "@tanstack/react-query";
 
 export function HomeContent() {
   const { wallet, isReady: walletReady } = useWallet();
@@ -32,19 +33,26 @@ export function HomeContent() {
     });
   }, [ready, authenticated, walletReady, authReady, status, wallet, isLoggedIn, isLoading]);
 
+  const { mutate: syncUser } = useMutation({
+    mutationFn: async (data: { address: string; email?: string }) => {
+      await fetch("/api/agent/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+    },
+    onError: (err) => console.error("Failed to sync user to Postgres:", err),
+  });
+
   // Sync user with Postgres on login
   useEffect(() => {
     if (isLoggedIn && walletAddress) {
-      fetch("/api/agent/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          address: walletAddress,
-          email: user?.email,
-        }),
-      }).catch((err) => console.error("Failed to sync user to Postgres:", err));
+      syncUser({
+        address: walletAddress,
+        email: user?.email,
+      });
     }
-  }, [isLoggedIn, walletAddress, user?.email]);
+  }, [isLoggedIn, walletAddress, user?.email, syncUser]);
 
   if (isLoading) {
     return (

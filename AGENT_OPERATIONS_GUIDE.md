@@ -1,8 +1,8 @@
-# Tapioca Finance - Agent Operations Guide
+# Tapioca Money - Agent Operations Guide
 
 ## Overview
 
-The Tapioca Finance Autonomous Yield Agent is a fully automated system that monitors user positions and rebalances funds across DeFi protocols to maximize yield. Built using EIP-7702 delegation, the agent can execute gasless transactions on behalf of users while maintaining full user control.
+The Tapioca Money Autonomous Yield Agent is a fully automated system that monitors user positions and rebalances funds across DeFi protocols to maximize yield. Built using EIP-7702 delegation, the agent can execute gasless transactions on behalf of users while maintaining full user control.
 
 ## Architecture
 

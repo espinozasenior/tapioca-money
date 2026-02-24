@@ -16,7 +16,7 @@
 import { createWalletClient, createPublicClient, http, parseEther } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { base } from "viem/chains";
-import { CHAIN_CONFIG, PROTOCOLS, USDC_ADDRESS } from "../lib/yield-optimizer/config";
+import { CHAIN_CONFIG, PROTOCOLS, USDC_ADDRESS } from "../lib/config";
 
 // ============================================================================
 // CONFIGURATION
@@ -233,7 +233,7 @@ async function main() {
   // ============================================================================
   console.log("\n✅ Deployment Complete!");
   console.log("========================\n");
-  console.log("📋 Add this configuration to lib/yield-optimizer/config.ts:\n");
+  console.log("📋 Add this configuration to lib/config.ts:\n");
   console.log("```typescript");
   console.log("export const MORPHO_USDC_MARKET_PARAMS = {");
   console.log(`  loanToken: "${marketParams.loanToken}",`);
