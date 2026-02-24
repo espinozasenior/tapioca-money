@@ -140,7 +140,7 @@ export function PositionsList({ positions, yields, isLoading, onExitSuccess }: P
 
       {positions.map((position) => {
         const yieldOpp = getYieldForPosition(position.yieldId);
-        const apy = yieldOpp?.rewardRate?.total ?? position.apy;
+        const apy = position.apy;
         const isExiting = exitingId === position.id;
         const displayAmount = formatUsdAmount(position.amountUsd, position.amount);
         const protocolInfo = getProtocolInfo(position.protocol);

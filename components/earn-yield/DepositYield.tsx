@@ -44,7 +44,7 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
 
   // Calculate estimated yearly earnings
   const estimatedYearlyEarnings = isAmountValid
-    ? (Number(amount) * (yieldOpportunity.rewardRate?.total || 0)).toFixed(2)
+    ? (Number(amount) * yieldOpportunity.apy).toFixed(2)
     : "0.00";
 
   const handleDeposit = async () => {
@@ -154,17 +154,13 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-gray-600">Current APY</p>
-            <p className="text-primary text-2xl font-bold">
-              {formatApy(yieldOpportunity.rewardRate?.total || 0)}
-            </p>
+            <p className="text-primary text-2xl font-bold">{formatApy(yieldOpportunity.apy)}</p>
           </div>
           <div className="text-right">
             <p className="text-sm text-gray-600">Protocol</p>
             <p className="font-semibold text-gray-900">
-              {yieldOpportunity.providerId
-                ? yieldOpportunity.providerId.charAt(0).toUpperCase() +
-                  yieldOpportunity.providerId.slice(1)
-                : "Unknown"}
+              {yieldOpportunity.protocol.charAt(0).toUpperCase() +
+                yieldOpportunity.protocol.slice(1)}
             </p>
           </div>
         </div>
