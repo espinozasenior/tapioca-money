@@ -11,18 +11,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrivyClient } from "@privy-io/node";
 
-const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
-const PRIVY_APP_SECRET = process.env.PRIVY_APP_SECRET;
-
 // Initialize Privy client (singleton)
 let privyClient: PrivyClient | null = null;
 
 function getPrivyClient(): PrivyClient {
   if (!privyClient) {
-    if (!PRIVY_APP_ID || !PRIVY_APP_SECRET) {
+    const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
+    const appSecret = process.env.PRIVY_APP_SECRET;
+    if (!appId || !appSecret) {
       throw new Error("PRIVY_APP_ID and PRIVY_APP_SECRET must be configured");
     }
-    privyClient = new PrivyClient({ appId: PRIVY_APP_ID, appSecret: PRIVY_APP_SECRET });
+    privyClient = new PrivyClient({ appId, appSecret });
   }
   return privyClient;
 }
