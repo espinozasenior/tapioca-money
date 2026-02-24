@@ -7,38 +7,28 @@ import { useWallets, usePrivy, useSign7702Authorization } from "@privy-io/react-
 import { createWalletClient, custom, type WalletClient } from "viem";
 import { base } from "viem/chains";
 
-// Types matching what components expect (compatible with legacy Yield.xyz types)
 export interface YieldOpportunity {
   id: string;
   protocol: "morpho" | "aave" | "moonwell";
   name: string;
   asset: string;
   apy: number;
-  tvl: bigint;
+  tvl: number | null;
   address: `0x${string}`;
   riskScore: number;
-  liquidityDepth: bigint;
-  // Legacy compatibility fields
-  providerId: string;
-  network: string;
   metadata: {
     name: string;
     description?: string;
-    vaultAddress?: `0x${string}`; // For Morpho vaults
-    curator?: string;
-    isVault?: boolean;
-    marketParams?: Record<string, unknown>;
+    vaultAddress?: `0x${string}`;
   };
-  rewardRate: {
-    total: number;
-  };
-  status: {
-    enter: boolean;
-    exit: boolean;
-  };
-  mechanics: {
-    type: "lending" | "vault";
-  };
+  // Native Morpho vault fields for safety display
+  totalAssetsUsd?: number | null;
+  warnings?: Array<{ type: string; level: string }>;
+  whitelisted?: boolean;
+  curators?: { items: Array<{ name: string; addresses: Array<{ address: string }> }> | null };
+  performanceFee?: number | null;
+  managementFee?: number | null;
+  liquidityUsd?: number | null;
 }
 
 export interface YieldPosition {
@@ -48,20 +38,18 @@ export interface YieldPosition {
   vaultAddress: `0x${string}`;
   vaultName?: string;
   vaultDescription?: string;
-  shares: bigint;
-  assets: bigint;
+  shares: string;
+  assets: string;
   apy: number;
   enteredAt: number;
-  // Legacy compatibility
   amount: string;
   amountUsd: string;
   createdAt: string;
-  // Rewards tracking
   rewards?: {
-    totalEarned: string; // Display-friendly format (USDC)
-    earnedThisMonth: string; // Current month estimate
-    monthlyRate: string; // Current monthly earning rate
-    daysActive: number; // Days since entry
+    totalEarned: string;
+    earnedThisMonth: string;
+    monthlyRate: string;
+    daysActive: number;
   };
 }
 
