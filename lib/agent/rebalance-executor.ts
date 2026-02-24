@@ -5,6 +5,7 @@ import {
   createSessionKernelClient,
 } from "../zerodev/kernel-client";
 import { checkSmartAccountActive } from "../zerodev/client-secure";
+import { withBuilderCode } from "@/lib/builder-code";
 
 const VAULT_ABI = parseAbi([
   "function redeem(uint256 shares, address receiver, address owner) returns (uint256 assets)",
@@ -197,11 +198,13 @@ export async function executeRebalance(
     let userOpHash: string;
     try {
       userOpHash = await kernelClient.sendUserOperation({
-        calls: calls.map((call) => ({
-          to: call.to,
-          value: call.value,
-          data: call.data,
-        })),
+        calls: withBuilderCode(
+          calls.map((call) => ({
+            to: call.to,
+            value: call.value,
+            data: call.data,
+          }))
+        ),
       });
     } catch (sendError: any) {
       if (sendError.message?.includes("paymaster")) {

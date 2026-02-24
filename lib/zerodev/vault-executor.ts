@@ -7,6 +7,7 @@ import { createPublicClient, encodeFunctionData, http, parseAbi, type Hex } from
 import { base } from "viem/chains";
 import { createDeserializedKernelClient, createSessionKernelClient } from "./kernel-client";
 import { CHAIN_CONFIG } from "@/lib/config";
+import { withBuilderCode } from "@/lib/builder-code";
 
 const VAULT_ABI = parseAbi([
   "function redeem(uint256 shares, address receiver, address owner) returns (uint256 assets)",
@@ -115,7 +116,7 @@ export async function executeVaultRedeem(params: VaultRedeemParams): Promise<Vau
     console.log("[VaultRedeem] Executing redeem transaction...");
 
     const userOpHash = await kernelClient.sendUserOperation({
-      calls: [{ to: params.vaultAddress, value: BigInt(0), data: redeemCallData }],
+      calls: withBuilderCode([{ to: params.vaultAddress, value: BigInt(0), data: redeemCallData }]),
     });
 
     console.log("[VaultRedeem] UserOp submitted:", userOpHash);
