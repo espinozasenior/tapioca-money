@@ -27,8 +27,10 @@ import type {
   GetVaultQueryVariables,
   GetUserPositionsQueryVariables,
 } from "./graphql-types";
-import { GET_VAULTS, GET_VAULT, GET_USER_POSITIONS } from "./queries";
+import { GET_VAULTS, GET_VAULT, GET_USER_POSITIONS, GET_USER_FIRST_DEPOSIT } from "./queries";
+import { calculateRiskScore } from "./risk-scoring";
 import { print } from "graphql";
+import { base } from "viem/chains";
 
 const MORPHO_API_URL = "https://api.morpho.org/graphql";
 
@@ -36,13 +38,14 @@ const MORPHO_API_URL = "https://api.morpho.org/graphql";
 export type MorphoVault = NonNullable<NonNullable<GetVaultsQuery["vaultV2s"]["items"]>[number]>;
 export type MorphoUserPosition = NonNullable<
   NonNullable<NonNullable<GetUserPositionsQuery["userByAddress"]>["vaultV2Positions"]>[number]
->;
+> & { enteredAt?: number };
 
 /**
  * Morpho GraphQL API Client
  */
 export class MorphoClient {
   private apiUrl: string;
+  private entryTimeCache = new Map<string, number>();
 
   constructor(apiUrl: string = MORPHO_API_URL) {
     this.apiUrl = apiUrl;
@@ -61,7 +64,9 @@ export class MorphoClient {
     });
 
     if (!response.ok) {
-      throw new Error(`Morpho API error: ${response.status} ${response.statusText}`);
+      const errorBody = await response.text();
+      console.error(`Morpho API Error Body: ${errorBody}`);
+      throw new Error(`Morpho API error: ${response.status} ${response.statusText} - ${errorBody}`);
     }
 
     const result = await response.json();
@@ -102,11 +107,12 @@ export class MorphoClient {
       first,
     } as GetVaultsQueryVariables);
 
-    // Filter by asset symbol client-side (API doesn't support asset filtering)
-    const vaults =
-      data.vaultV2s.items?.filter(
-        (vault) => vault.asset.symbol.toUpperCase() === assetSymbol.toUpperCase()
-      ) ?? [];
+    // Filter by asset symbol and apply risk gate (score <= 0.3 = low risk only)
+    const vaults = (data.vaultV2s.items ?? []).filter(
+      (vault) =>
+        vault.asset.symbol.toUpperCase() === assetSymbol.toUpperCase() &&
+        calculateRiskScore(vault) <= 0.3
+    );
 
     // Cache the result
     await setCachedVaults(chainId, assetSymbol, vaults);
@@ -128,6 +134,38 @@ export class MorphoClient {
     } as GetVaultQueryVariables);
 
     return data.vaultV2ByAddress || null;
+  }
+
+  /**
+   * Fetch entry time for a user's position using GraphQL
+   */
+  async getEntryTime(userAddress: string, vaultAddress: string): Promise<number> {
+    const cacheKey = `${userAddress.toLowerCase()}-${vaultAddress.toLowerCase()}`;
+    if (this.entryTimeCache.has(cacheKey)) {
+      return this.entryTimeCache.get(cacheKey)!;
+    }
+
+    try {
+      const data = await this.query<any>(print(GET_USER_FIRST_DEPOSIT), {
+        userAddress: userAddress.toLowerCase(),
+        vaultAddress: vaultAddress.toLowerCase(),
+        chainId: base.id,
+      });
+
+      const items = data.vaultV2transactions?.items;
+      if (items && items.length > 0) {
+        const timestamp = Number(items[0].timestamp) * 1000;
+        this.entryTimeCache.set(cacheKey, timestamp);
+        return timestamp;
+      }
+    } catch (error) {
+      console.warn(`Failed to fetch entry time for ${userAddress} in ${vaultAddress}:`, error);
+    }
+
+    // Default to now if no history found or error
+    const now = Date.now();
+    this.entryTimeCache.set(cacheKey, now);
+    return now;
   }
 
   /**
@@ -162,10 +200,21 @@ export class MorphoClient {
       (pos) => BigInt(pos.shares) > 0n // Only return positions with shares
     );
 
-    // Cache the result
-    await setCachedUserPositions(userAddress, chainId, positions);
+    // Enrich with position metrics (in parallel)
+    const enrichedPositions: MorphoUserPosition[] = await Promise.all(
+      positions.map(async (pos) => {
+        const enteredAt = await this.getEntryTime(userAddress, pos.vault.address);
+        return {
+          ...pos,
+          enteredAt,
+        };
+      })
+    );
 
-    return positions;
+    // Cache the result
+    await setCachedUserPositions(userAddress, chainId, enrichedPositions);
+
+    return enrichedPositions;
   }
 
   /**

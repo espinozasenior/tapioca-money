@@ -83,6 +83,14 @@ function ActivityCard({ activity, isExpanded, onToggle }: ActivityCardProps) {
         isExpanded ? "shadow-md" : "hover:shadow-sm"
       }`}
       onClick={onToggle}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onToggle();
+        }
+      }}
     >
       <div className="flex items-center justify-between">
         <div className="flex-1">

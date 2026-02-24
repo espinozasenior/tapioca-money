@@ -1,6 +1,6 @@
 import { createPublicClient, http, parseAbi } from "viem";
 import { base } from "viem/chains";
-import { CHAIN_CONFIG } from "@/lib/yield-optimizer/config";
+import { CHAIN_CONFIG } from "@/lib/config";
 
 const CHAINLINK_USDC_USD = "0x7e860098F58bBFC8648a4311b374B1D669a2bc6B" as const;
 const BASE_SEQUENCER_UPTIME_FEED = "0xBCF85224fc0756B9Fa45aA7892530B47e10b6433" as const;

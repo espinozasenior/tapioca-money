@@ -1,4 +1,4 @@
-# Tapioca Finance - Session Key Encryption Implementation
+# Tapioca Money - Session Key Encryption Implementation
 
 ## Overview
 

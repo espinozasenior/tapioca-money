@@ -1,12 +1,12 @@
-# Technical Development Plan for the Tapioca Finance Agent
+# Technical Development Plan for the Tapioca Money Agent
 
-This plan builds on our deep research and existing code. It details how to audit, fix, and extend the Tapioca Finance agent (Node.js) to meet its goals, focusing on ZeroDev account abstraction, Privy integration, Morpho yield logic, and robust operation. All code examples and design decisions are backed by references to documentation and proven patterns.
+This plan builds on our deep research and existing code. It details how to audit, fix, and extend the Tapioca Money agent (Node.js) to meet its goals, focusing on ZeroDev account abstraction, Privy integration, Morpho yield logic, and robust operation. All code examples and design decisions are backed by references to documentation and proven patterns.
 
 ---
 
 ## 1. Code Audit and Test Setup
 
-- **Clone and run tests:** First, clone the [Tapioca Finance repository](https://github.com/espinozasenior/tapioca-finance) and install dependencies. Execute the existing test suite to identify failures, especially those related to EIP-7702.
+- **Clone and run tests:** First, clone the [Tapioca Money repository](https://github.com/espinozasenior/tapioca-finance) and install dependencies. Execute the existing test suite to identify failures, especially those related to EIP-7702.
 - **ZeroDev/Privy points:** Search the code for how ZeroDev’s `KernelAccountClient` or similar is used. Document each integration point where:
   - ZeroDev smart accounts are created or signed.
   - Privy wallets or signers are used (`PrivyClient`, `createViemAccount`, etc.).  
@@ -87,6 +87,6 @@ Structure the code so each module has clear responsibilities. This mirrors frame
   - Optionally expose a simple status API (e.g. `/status`) showing last run time, current vault, etc.
 - **Rollback Plan:** In case of critical bug, ensure the agent can be disabled and allow manual withdrawal. Because assets remain in user-owned vaults, users can always withdraw directly via their wallets.
 
-By following this plan, the Tapioca Finance agent will fully implement the desired automated yield strategy using ZeroDev account abstraction and Privy wallets【60†L477-L485】【58†L120-L128】, with robust error handling and security. Each module and step is based on proven patterns from the research references to ensure correctness and reliability.
+By following this plan, the Tapioca Money agent will fully implement the desired automated yield strategy using ZeroDev account abstraction and Privy wallets【60†L477-L485】【58†L120-L128】, with robust error handling and security. Each module and step is based on proven patterns from the research references to ensure correctness and reliability.
 
 **Key References:** Privy and Viem integration【60†L477-L485】; ZeroDev capabilities (batch calls, session keys)【58†L120-L128】【58†L129-L137】; EIP-7702 delegation flow【49†L261-L270】; Morpho vault rebalancer example【52†L299-L307】; Vault architecture patterns【51†L442-L450】. Each item above aligns with these sources.

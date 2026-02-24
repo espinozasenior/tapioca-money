@@ -6,7 +6,7 @@
 import { createPublicClient, encodeFunctionData, http, parseAbi, type Hex } from "viem";
 import { base } from "viem/chains";
 import { createDeserializedKernelClient, createSessionKernelClient } from "./kernel-client";
-import { CHAIN_CONFIG } from "@/lib/yield-optimizer/config";
+import { CHAIN_CONFIG } from "@/lib/config";
 
 const VAULT_ABI = parseAbi([
   "function redeem(uint256 shares, address receiver, address owner) returns (uint256 assets)",

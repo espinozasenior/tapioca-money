@@ -115,7 +115,7 @@ export function AgentStats({ address }: AgentStatsProps) {
           <div className="space-y-2">
             {gainsData.breakdown.slice(0, 5).map((item: any, idx: number) => (
               <div
-                key={idx}
+                key={`${item.fromProtocol}-${item.toProtocol}-${idx}`}
                 className="flex items-center justify-between border-b py-2 text-sm last:border-0"
               >
                 <div className="flex-1">

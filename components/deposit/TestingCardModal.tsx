@@ -3,16 +3,16 @@
 import { CreditCard } from "lucide-react";
 import { createPortal } from "react-dom";
 import { CopyWrapper } from "../common/CopyWrapper";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 export function TestingCardModal() {
-  const [mounted, setMounted] = useState(false);
+  const isClient = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) return null;
+  if (!isClient) return null;
 
   return createPortal(
     <div

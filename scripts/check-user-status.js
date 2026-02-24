@@ -106,13 +106,11 @@ async function checkUserStatus(walletAddress) {
   } catch (error) {
     console.error("❌ Error:", error.message);
     if (error.message.includes('relation "users" does not exist')) {
-      console.error("\n💡 The users table doesn't exist. Run the schema.sql file first:");
-      console.error("   psql $DATABASE_URL -f lib/yield-optimizer/db/schema.sql");
+      console.error("\n💡 The users table doesn't exist. Run Drizzle migrations:");
+      console.error("   pnpm db:push");
     } else if (error.message.includes('column "authorization_7702" does not exist')) {
-      console.error("\n💡 The authorization_7702 column is missing. Run the migration:");
-      console.error(
-        "   psql $DATABASE_URL -f lib/yield-optimizer/db/migrate-add-authorization.sql"
-      );
+      console.error("\n💡 The authorization_7702 column is missing. Run Drizzle migrations:");
+      console.error("   pnpm db:push");
     }
     console.error(error);
   }

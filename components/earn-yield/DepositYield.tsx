@@ -32,6 +32,7 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
   } = useAgent();
   const [amount, setAmount] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isVaultNotApproved, setIsVaultNotApproved] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
 
@@ -64,6 +65,7 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
     }
 
     setError(null);
+    setIsVaultNotApproved(false);
     setIsLoading(true);
     setTxHash(null);
     onProcessing();
@@ -109,7 +111,8 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
         errorMessage = "Your session has expired. Please re-register your agent.";
       } else if (errorMessage.includes("Vault not approved")) {
         errorMessage =
-          "This vault is not approved. Please re-register your agent with updated vault permissions.";
+          "This vault is not in your approved list. Re-register your agent to update permissions.";
+        setIsVaultNotApproved(true);
       }
 
       setError(errorMessage);
@@ -219,7 +222,20 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
       )}
 
       {/* Error Display */}
-      {error && <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</div>}
+      {error && (
+        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
+          <p>{error}</p>
+          {isVaultNotApproved && (
+            <PrimaryButton
+              onClick={() => register()}
+              disabled={isRegistering}
+              className="mt-3 w-full"
+            >
+              {isRegistering ? "Registering..." : "Re-Register Agent"}
+            </PrimaryButton>
+          )}
+        </div>
+      )}
 
       {/* Transaction Hash Display */}
       {txHash && (

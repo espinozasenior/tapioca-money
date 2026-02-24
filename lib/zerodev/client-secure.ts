@@ -12,7 +12,7 @@
 import { createPublicClient, http, parseAbi, type Hex } from "viem";
 import { base } from "viem/chains";
 import { toAccount } from "viem/accounts";
-import { CHAIN_CONFIG } from "@/lib/yield-optimizer/config";
+import { CHAIN_CONFIG } from "@/lib/config";
 
 // Session key expiry: 7 days
 const SESSION_KEY_EXPIRY_DAYS = 7;
