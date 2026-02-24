@@ -1,5 +1,5 @@
 import { MorphoClient, type MorphoVault, type MorphoUserPosition } from "../morpho/api-client";
-import { CHAIN_CONFIG, REBALANCE_THRESHOLDS } from "../yield-optimizer/config";
+import { CHAIN_CONFIG, REBALANCE_THRESHOLDS } from "../config";
 
 const CHAIN_ID = CHAIN_CONFIG.chainId;
 const ASSET_SYMBOL = "USDC";
@@ -194,7 +194,9 @@ export class YieldDecisionEngine {
    * @param userAddress - User wallet address
    * @returns Array of positions with vault details
    */
-  async getUserPositionsWithApy(userAddress: `0x${string}`) {
+  async getUserPositionsWithApy(
+    userAddress: `0x${string}`
+  ): Promise<(MorphoUserPosition & { apy: number })[]> {
     const positions = await this.morphoClient.fetchUserPositions(userAddress, CHAIN_ID);
 
     // Enrich with vault details

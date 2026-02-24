@@ -1,4 +1,4 @@
-Below is a **meticulous technical checklist** you can use to **review and harden your Tapioca Finance project’s implementation of EIP-7702 / ZeroDev / smart account logic**, especially in the context of building a non-custodial automated yield agent.
+Below is a **meticulous technical checklist** you can use to **review and harden your Tapioca Money project’s implementation of EIP-7702 / ZeroDev / smart account logic**, especially in the context of building a non-custodial automated yield agent.
 
 Each item includes **why it matters**, **what to check**, and **reference links** so that Claude Code or any engineer using this checklist can confidently validate every piece.
 

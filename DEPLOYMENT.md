@@ -1,4 +1,4 @@
-# Tapioca Finance - Fintech Starter App - Production Deployment Guide
+# Tapioca Money - Fintech Starter App - Production Deployment Guide
 
 This guide covers the complete deployment procedure for the fintech-starter-app on Vercel with production configuration for Base mainnet.
 
