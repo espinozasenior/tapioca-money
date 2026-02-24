@@ -18,11 +18,9 @@ interface YieldListProps {
   onSelectYield: (yieldOpp: YieldOpportunity) => void;
 }
 
-// Format provider ID to display name
-const formatProviderName = (providerId?: string) => {
-  if (!providerId) return "Unknown";
-  // Capitalize first letter
-  return providerId.charAt(0).toUpperCase() + providerId.slice(1);
+// Format protocol name for display
+const formatProtocolName = (protocol: string) => {
+  return protocol.charAt(0).toUpperCase() + protocol.slice(1);
 };
 
 // Format APY for display
@@ -89,7 +87,6 @@ export function YieldList({ yields, isLoading, error, onSelectYield }: YieldList
 
       {/* Yield list */}
       {yields.map((yieldOpp) => {
-        const canEnter = yieldOpp.status?.enter !== false;
         const isPending = yieldOpp.id.includes("pending");
         const riskLevel = getRiskLevel(yieldOpp.riskScore);
         const riskColor = getRiskColor(riskLevel);
@@ -99,15 +96,15 @@ export function YieldList({ yields, isLoading, error, onSelectYield }: YieldList
             <div
               className={cn(
                 "rounded-xl border border-gray-200 bg-white transition",
-                canEnter && !isPending
+                !isPending
                   ? "hover:border-primary/30 hover:shadow-md"
                   : "cursor-not-allowed opacity-60"
               )}
             >
               {/* Main button */}
               <button
-                onClick={() => canEnter && !isPending && onSelectYield(yieldOpp)}
-                disabled={!canEnter || isPending}
+                onClick={() => !isPending && onSelectYield(yieldOpp)}
+                disabled={isPending}
                 className="w-full p-4 text-left"
               >
                 <div className="flex items-center justify-between">
@@ -124,10 +121,10 @@ export function YieldList({ yields, isLoading, error, onSelectYield }: YieldList
                     <div className="flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-semibold text-gray-900">
-                          {formatProviderName(yieldOpp.providerId)}
+                          {formatProtocolName(yieldOpp.protocol)}
                         </span>
                         <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600">
-                          {getMechanicLabel(yieldOpp.mechanics?.type || "vault")}
+                          {getMechanicLabel("vault")}
                         </span>
                         {/* Risk Badge */}
                         <div className="flex items-center gap-1" style={{ color: riskColor }}>
@@ -142,7 +139,7 @@ export function YieldList({ yields, isLoading, error, onSelectYield }: YieldList
                   {/* APY */}
                   <div className="text-right">
                     <div className="text-lg font-semibold text-green-500">
-                      {formatApy(yieldOpp.rewardRate?.total || 0)}
+                      {formatApy(yieldOpp.apy)}
                     </div>
                     <div className="text-muted-foreground text-xs">APY</div>
                   </div>

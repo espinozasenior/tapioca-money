@@ -5218,6 +5218,7 @@ export type GetUserPositionsQuery = {
       assets: string;
       assetsUsd: number | null;
       pnl: string | null;
+      pnlUsd: number | null;
       vault: { __typename?: "VaultV2"; address: any; name: string; symbol: string };
     }>;
   };
