@@ -1,4 +1,4 @@
-# Tapioca Finance
+# Tapioca Money
 
 Smart yield optimization on Base. Deposit USDC, earn yield across DeFi protocols, and let an autonomous agent maximize your returns.
 
@@ -129,24 +129,24 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for the full production deployment guide in
 
 ## License
 
-This project is licensed under the **Tapioca Finance Business Source License Version 1.0**. See [LICENSE](./LICENSE) for the full terms.
+This project is licensed under the **Tapioca Money Business Source License Version 1.0**. See [LICENSE](./LICENSE) for the full terms.
 
 ### Key Points
 
 - **Commercial Use**: Allowed, subject to the restrictions in Section 2 of the license
-- **Competitive Restriction**: You may not provide this software as a service to third parties if such service competes with Tapioca Finance's commercial offerings without a separate commercial license
+- **Competitive Restriction**: You may not provide this software as a service to third parties if such service competes with Tapioca Money's commercial offerings without a separate commercial license
 - **Patent Grant**: Includes the Apache 2.0 patent grant
 - **Automatic Conversion**: On **February 9, 2029** (4 years from the effective date), this license automatically converts to the Apache License 2.0, and the competitive restrictions no longer apply
 
 ### Why This License?
 
-This license model allows Tapioca Finance to:
+This license model allows Tapioca Money to:
 
 - Generate revenue through commercial offerings
 - Protect against competitors directly rehosting our software as a service
 - Contribute to the open-source community by automatically converting to Apache 2.0 after 4 years
 
-For questions about commercial licensing before the conversion date, contact licensing@tapioca.finance.
+For questions about commercial licensing before the conversion date, contact licensing@tapioca.money.
 
 ## Attribution
 

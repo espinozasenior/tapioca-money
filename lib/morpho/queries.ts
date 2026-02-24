@@ -1,5 +1,4 @@
-
-import { gql } from 'graphql-tag';
+import { gql } from "graphql-tag";
 
 export const GET_VAULTS = gql`
   query GetVaults($chainId: Int!, $first: Int!) {
@@ -7,6 +6,9 @@ export const GET_VAULTS = gql`
       first: $first
       where: {
         chainId_in: [$chainId]
+        netApy_gte: 0.025
+        totalAssetsUsd_gte: 1000000
+        listed: true
       }
       orderBy: NetApy
       orderDirection: Desc
@@ -101,11 +103,33 @@ export const GET_USER_POSITIONS = gql`
         shares
         assets
         assetsUsd
+        pnl
+        pnlUsd
         vault {
           address
           name
           symbol
         }
+      }
+    }
+  }
+`;
+
+export const GET_USER_FIRST_DEPOSIT = gql`
+  query GetUserFirstDeposit($userAddress: String!, $vaultAddress: String!, $chainId: Int!) {
+    vaultV2transactions(
+      where: {
+        userAddress_in: [$userAddress]
+        vaultAddress_in: [$vaultAddress]
+        chainId_in: [$chainId]
+        type_in: [Deposit]
+      }
+      orderBy: Time
+      orderDirection: Asc
+      first: 1
+    ) {
+      items {
+        timestamp
       }
     }
   }

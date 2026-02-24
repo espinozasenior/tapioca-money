@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
-import { calculateTotalGains, formatApyPct, formatUsd } from "@/lib/yield-optimizer/apy-calculator";
+import { calculateTotalGains, formatApyPct, formatUsd } from "@/lib/utils";
 
 const sql = neon(process.env.DATABASE_URL!);
 

@@ -1,79 +1,98 @@
 // Auto-Optimization API Endpoint
 import { NextRequest, NextResponse } from "next/server";
-import { optimize, getAllOpportunities, getCurrentPosition } from "@/lib/yield-optimizer";
-import { calculateAccruedRewards } from "@/lib/yield-optimizer/rewards-calculator";
+import { yieldDecisionEngine } from "@/lib/agent/decision-engine";
+import type { MorphoVault } from "@/lib/morpho/api-client";
 
-// Transform opportunity to include legacy compatibility fields
-function transformOpportunity(o: any) {
+// Transform MorphoVault to legacy Opportunity format
+function transformVaultToOpportunity(vault: MorphoVault) {
   return {
-    id: o.id,
-    protocol: o.protocol,
-    name: o.name,
-    asset: o.asset,
-    apy: o.apy,
-    address: o.address,
-    riskScore: o.riskScore,
-    tvl: o.tvl.toString(),
-    liquidityDepth: o.liquidityDepth.toString(),
+    id: vault.address,
+    protocol: "morpho",
+    name: vault.name,
+    asset: "USDC",
+    apy: vault.avgNetApy ?? vault.netApy ?? 0,
+    address: vault.address,
+    riskScore: 0, // Not available in new SDK yet, default to 0
+    tvl: vault.totalAssetsUsd?.toString() ?? "0",
+    liquidityDepth: vault.totalAssets?.toString() ?? "0",
     // Legacy Yield.xyz compatibility
-    providerId: o.protocol,
+    providerId: "morpho",
     network: "base",
     metadata: {
-      // Preserve original metadata (vaultAddress, curator, isVault, etc)
-      ...o.metadata,
-      // Add/override legacy fields
-      name: o.name,
-      description: o.metadata?.description || `Earn yield on USDC via ${o.protocol}`,
+      name: vault.name,
+      description: `Earn yield on USDC via Morpho Vault`,
+      vaultAddress: vault.address,
+      isVault: true,
     },
     rewardRate: {
-      total: o.apy,
+      total: vault.avgNetApy ?? vault.netApy ?? 0,
     },
     status: {
       enter: true,
       exit: true,
     },
     mechanics: {
-      type: o.metadata?.isVault ? "vault" : "lending",
+      type: "vault",
     },
   };
 }
 
-// Transform position to include legacy compatibility fields, rewards, and vault info
-function transformPosition(p: any, opportunities?: any[]) {
-  if (!p) return null;
-
-  // Calculate rewards for this position
-  const rewards = calculateAccruedRewards(p);
+// Transform Morpho position to legacy Position format
+function transformPositionToLegacy(pos: any, opportunities?: any[]) {
+  if (!pos) return null;
 
   // Match position to its yield opportunity by vault address for name/description
   const matchedYield = opportunities?.find(
     (o: any) =>
-      o.metadata?.vaultAddress?.toLowerCase() === p.vaultAddress?.toLowerCase() ||
-      o.address?.toLowerCase() === p.vaultAddress?.toLowerCase()
+      o.metadata?.vaultAddress?.toLowerCase() === pos.vault.address.toLowerCase() ||
+      o.address?.toLowerCase() === pos.vault.address.toLowerCase()
   );
 
+  const enteredAt = pos.enteredAt || Date.now();
+  const now = Date.now();
+  const msElapsed = Math.max(0, now - enteredAt);
+  const daysActive = Math.floor(msElapsed / (1000 * 60 * 60 * 24));
+  const yearsElapsed = msElapsed / (1000 * 60 * 60 * 24 * 365.25);
+
+  const assetsUsdc = Number(pos.assets) / 1e6;
+  const apy = matchedYield?.apy ?? pos.apy ?? 0;
+
+  // Real earnings calculation (using Morpho API PnL or fallback)
+  let totalEarned = 0;
+
+  if (pos.pnlUsd != null) {
+    // Direct USD float from Morpho API — most accurate
+    totalEarned = pos.pnlUsd;
+  } else if (pos.pnl) {
+    // PnL from Morpho API is in underlying asset units (BigInt string)
+    // Convert to USDC (divide by 1e6)
+    totalEarned = Number(pos.pnl) / 1e6;
+  } else {
+    // Fallback: Estimate based on time
+    totalEarned = assetsUsdc * apy * yearsElapsed;
+  }
+
+  const monthlyRate = (assetsUsdc * apy) / 12;
+
   return {
-    protocol: p.protocol,
-    vaultAddress: p.vaultAddress,
-    vaultName: matchedYield?.name ?? p.protocol,
+    protocol: "morpho",
+    vaultAddress: pos.vault.address,
+    vaultName: matchedYield?.name ?? pos.vault.name,
     vaultDescription: matchedYield?.metadata?.description,
-    apy: matchedYield?.apy ?? p.apy,
-    enteredAt: p.enteredAt,
-    id: `${p.protocol}-${p.vaultAddress}`,
-    yieldId: matchedYield?.id ?? `${p.protocol}-${p.vaultAddress}`,
-    shares: p.shares.toString(),
-    assets: p.assets.toString(),
-    amount: (Number(p.assets) / 1e6).toFixed(2),
-    amountUsd: (Number(p.assets) / 1e6).toFixed(2),
-    createdAt: new Date(p.enteredAt).toISOString(),
+    apy: apy,
+    enteredAt: enteredAt,
+    id: `morpho-${pos.vault.address}`,
+    yieldId: matchedYield?.id ?? `morpho-${pos.vault.address}`,
+    shares: pos.shares.toString(),
+    assets: pos.assets.toString(),
+    amount: assetsUsdc.toFixed(2),
+    amountUsd: Number(pos.assetsUsd).toFixed(2),
+    createdAt: new Date(enteredAt).toISOString(),
     rewards: {
-      totalEarned: rewards.totalEarned.toFixed(2),
-      earnedThisMonth: (
-        rewards.currentMonthlyRate *
-        (Math.min(rewards.daysActive, 30) / 30)
-      ).toFixed(2),
-      monthlyRate: rewards.currentMonthlyRate.toFixed(2),
-      daysActive: rewards.daysActive,
+      totalEarned: totalEarned.toFixed(4),
+      earnedThisMonth: (monthlyRate * (Math.min(daysActive, 30) / 30)).toFixed(4),
+      monthlyRate: monthlyRate.toFixed(2),
+      daysActive,
     },
   };
 }
@@ -84,8 +103,9 @@ export async function GET(request: NextRequest) {
   const balance = searchParams.get("balance");
 
   try {
-    const opportunities = await getAllOpportunities();
-    const transformedOpportunities = opportunities.map(transformOpportunity);
+    // Get all available vaults
+    const vaults = await yieldDecisionEngine.getAvailableVaults();
+    const transformedOpportunities = vaults.map(transformVaultToOpportunity);
 
     // If no address, just return opportunities
     if (!address) {
@@ -97,22 +117,50 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const usdcBalance = balance ? BigInt(balance) : BigInt(0);
-    const decision = await optimize(address, usdcBalance);
-    const currentPositions = await getCurrentPosition(address);
+    // Evaluate rebalancing
+    // Note: The legacy 'balance' param was used to simulate, but the new engine fetches on-chain positions
+    // We can pass the user address to evaluate
+    const decision = await yieldDecisionEngine.evaluateRebalancing(address);
+
+    // Get current positions
+    const currentPositions = await yieldDecisionEngine.getUserPositionsWithApy(address);
 
     return NextResponse.json({
       decision: {
         shouldRebalance: decision.shouldRebalance,
-        estimatedGasCost: decision.estimatedGasCost.toString(),
-        estimatedSlippage: decision.estimatedSlippage,
-        netGain: decision.netGain,
+        estimatedGasCost: "0", // Sponsored
+        estimatedSlippage: 0, // Minimal for vaults
+        netGain: decision.estimatedAnnualGain,
         reason: decision.reason,
-        from: decision.from ? transformPosition(decision.from, opportunities) : null,
-        to: decision.to ? transformOpportunity(decision.to) : null,
+        from: decision.currentVault
+          ? transformPositionToLegacy(
+              {
+                vault: {
+                  address: decision.currentVault.address,
+                  name: decision.currentVault.name,
+                },
+                shares: decision.currentVault.shares,
+                assets: decision.currentVault.assets,
+                apy: decision.currentVault.apy,
+                assetsUsd: 0, // Not needed for simple display
+              },
+              transformedOpportunities
+            )
+          : null,
+        to: decision.targetVault
+          ? transformVaultToOpportunity({
+              address: decision.targetVault.address,
+              name: decision.targetVault.name,
+              avgNetApy: decision.targetVault.apy,
+              totalAssetsUsd: decision.targetVault.liquidityUsd,
+              // other fields undefined
+            } as any)
+          : null,
       },
       opportunities: transformedOpportunities,
-      positions: currentPositions.map((p) => transformPosition(p, opportunities)),
+      positions: currentPositions.map((p) =>
+        transformPositionToLegacy(p, transformedOpportunities)
+      ),
       timestamp: Date.now(),
     });
   } catch (error) {
@@ -125,14 +173,13 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { address, balance } = body;
+    const { address } = body;
 
     if (!address) {
       return NextResponse.json({ error: "Missing address" }, { status: 400 });
     }
 
-    const usdcBalance = balance ? BigInt(balance) : 0n;
-    const decision = await optimize(address as `0x${string}`, usdcBalance);
+    const decision = await yieldDecisionEngine.evaluateRebalancing(address as `0x${string}`);
 
     if (!decision.shouldRebalance) {
       return NextResponse.json({
@@ -141,26 +188,21 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const opportunities = await getAllOpportunities();
-
-    // In production, this would:
-    // 1. Build the transaction using GOAT SDK
-    // 2. Sign with Crossmint wallet (server-side agent key)
-    // 3. Submit to chain
-    // For now, return the decision for client-side execution
+    // In the new architecture, the agent runs on the server via cron.
+    // This endpoint is just for the UI to check/simulate.
+    // If we wanted to trigger it manually, we'd need to call the agent executor.
+    // For now, we return the decision as a recommendation.
 
     return NextResponse.json({
-      executed: false, // Would be true after actual execution
+      executed: false,
       decision: {
         shouldRebalance: decision.shouldRebalance,
-        estimatedGasCost: decision.estimatedGasCost.toString(),
-        estimatedSlippage: decision.estimatedSlippage,
-        netGain: decision.netGain,
+        estimatedGasCost: "0",
+        estimatedSlippage: 0,
+        netGain: decision.estimatedAnnualGain,
         reason: decision.reason,
-        from: decision.from ? transformPosition(decision.from, opportunities) : null,
-        to: decision.to ? transformOpportunity(decision.to) : null,
       },
-      message: "Rebalance recommended - client should execute",
+      message: "Rebalance recommended. Enable Autonomous Agent to execute automatically.",
     });
   } catch (error) {
     console.error("Rebalance error:", error);

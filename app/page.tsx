@@ -1,5 +1,11 @@
 import Image from "next/image";
 import { HomeContent } from "@/app/home";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Tapioca Money",
+  description: "Autonomous gains, total control.",
+};
 
 export default function Home() {
   return (

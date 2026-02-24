@@ -25,6 +25,7 @@ function mockFetchResponse(data: any, status = 200) {
     status,
     statusText: status === 200 ? "OK" : status === 400 ? "Bad Request" : "Error",
     json: () => Promise.resolve(data),
+    text: () => Promise.resolve(JSON.stringify(data)),
   });
 }
 

@@ -17,14 +17,6 @@ export function CopyWrapper({
 }: CopyWrapperProps) {
   const [justCopied, setJustCopied] = useState(false);
 
-  useEffect(() => {
-    if (justCopied) {
-      setTimeout(() => {
-        setJustCopied(false);
-      }, 3_000);
-    }
-  }, [justCopied]);
-
   const iconClasses = "w-4 h-4";
   const icon = justCopied ? (
     <CheckIcon className={cn(iconClasses, "text-emerald-500")} />
@@ -50,6 +42,7 @@ export function CopyWrapper({
         e.stopPropagation();
         navigator.clipboard?.writeText(toCopy ?? "").then(() => {
           setJustCopied(true);
+          setTimeout(() => setJustCopied(false), 3000);
         });
       }}
       data-testid="copy-wrapper"

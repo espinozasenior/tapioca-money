@@ -25,7 +25,6 @@ export function AmountInput({ amount, onChange }: AmountInputProps) {
       value={amount ? `$${amount}` : ""}
       onChange={handleChange}
       style={{ maxWidth: 300, minHeight: 80 }}
-      autoFocus
     />
   );
 }
