@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useReducer, useCallback } from "react";
 import { useAuth, useWallet } from "@/hooks/useWallet";
 import { AmountInput } from "../common/AmountInput";
 import { OrderPreview } from "./OrderPreview";
@@ -7,8 +7,62 @@ import { useBalance } from "@/hooks/useBalance";
 import { Dialog, DialogContent, DialogTitle, DialogClose } from "../common/Dialog";
 import { useActivityFeed } from "@/hooks/useActivityFeed";
 import { isEmail, isValidAddress } from "@/lib/utils";
-import { ArrowLeft, X, Zap } from "lucide-react";
+import { ArrowLeft, X, Zap, AlertTriangle } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+interface SendState {
+  recipient: string;
+  amount: string;
+  showPreview: boolean;
+  isLoading: boolean;
+  error: string | null;
+  gaslessOverride: boolean | null; // null = use default (gaslessEnabled), true/false = user toggled
+  gaslessLoading: boolean;
+}
+
+type SendAction =
+  | { type: "SET_RECIPIENT"; value: string }
+  | { type: "SET_AMOUNT"; value: string }
+  | { type: "SET_ERROR"; error: string | null }
+  | { type: "SHOW_PREVIEW" }
+  | { type: "START_LOADING" }
+  | { type: "STOP_LOADING" }
+  | { type: "TOGGLE_GASLESS"; value: boolean }
+  | { type: "SET_GASLESS_LOADING"; value: boolean }
+  | { type: "RESET" };
+
+const initialState: SendState = {
+  recipient: "",
+  amount: "",
+  showPreview: false,
+  isLoading: false,
+  error: null,
+  gaslessOverride: null,
+  gaslessLoading: false,
+};
+
+function sendReducer(state: SendState, action: SendAction): SendState {
+  switch (action.type) {
+    case "SET_RECIPIENT":
+      return { ...state, recipient: action.value };
+    case "SET_AMOUNT":
+      return { ...state, amount: action.value };
+    case "SET_ERROR":
+      return { ...state, error: action.error };
+    case "SHOW_PREVIEW":
+      return { ...state, showPreview: true, error: null };
+    case "START_LOADING":
+      return { ...state, isLoading: true, error: null };
+    case "STOP_LOADING":
+      return { ...state, isLoading: false };
+    case "TOGGLE_GASLESS":
+      return { ...state, gaslessOverride: action.value };
+    case "SET_GASLESS_LOADING":
+      return { ...state, gaslessLoading: action.value };
+    case "RESET":
+      return initialState;
+  }
+}
 
 interface SendFundsModalProps {
   open: boolean;
@@ -16,15 +70,9 @@ interface SendFundsModalProps {
 }
 
 export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
-  const { wallet } = useWallet();
+  const { wallet, isSolanaWallet } = useWallet();
   const { user } = useAuth();
-  const [recipient, setRecipient] = useState("");
-  const [amount, setAmount] = useState("");
-  const [showPreview, setShowPreview] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [useGasless, setUseGasless] = useState(false);
-  const [gaslessLoading, setGaslessLoading] = useState(false);
+  const [state, dispatch] = useReducer(sendReducer, initialState);
 
   const { displayableBalance, refetch: refetchBalance } = useBalance();
   const { refetch: refetchActivityFeed } = useActivityFeed();
@@ -43,110 +91,89 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
 
   const gaslessEnabled = gaslessStatus?.isEnabled ?? false;
   const sessionExpiry = gaslessStatus?.expiry ?? null;
+  // Derive gasless toggle: user override wins, otherwise default to enabled status
+  const useGasless = state.gaslessOverride ?? gaslessEnabled;
 
-  useEffect(() => {
-    if (gaslessEnabled) {
-      setUseGasless(true); // Auto-enable if available
-    } else {
-      setUseGasless(false);
-    }
-  }, [gaslessEnabled]);
-
-  // Debug logging
-  console.log("[SendFunds] State:", {
-    recipient,
-    amount,
-    displayableBalance,
-    showPreview,
-    isLoading,
-    hasWallet: !!wallet,
-  });
-
-  const isRecipientValid = isValidAddress(recipient) || isEmail(recipient);
+  const isRecipientValid = isValidAddress(state.recipient) || isEmail(state.recipient);
   const isAmountValid =
-    !!amount &&
-    !Number.isNaN(Number(amount)) &&
-    Number(amount) > 0 &&
-    Number(amount) <= Number(displayableBalance);
+    !!state.amount &&
+    !Number.isNaN(Number(state.amount)) &&
+    Number(state.amount) > 0 &&
+    Number(state.amount) <= Number(displayableBalance);
   const canContinue = isRecipientValid && isAmountValid;
 
-  async function handleContinue() {
-    setError(null);
-    if (isEmail(recipient)) {
-      if (!recipient) {
-        setError("Please enter a recipient");
-        return;
-      }
-      try {
-        setIsLoading(true);
-        setShowPreview(true);
-      } catch (e: unknown) {
-        setError((e as Error).message || String(e));
-      } finally {
-        setIsLoading(false);
-      }
-    } else {
-      setShowPreview(true);
+  const handleContinue = useCallback(() => {
+    if (isEmail(state.recipient) && !state.recipient) {
+      dispatch({ type: "SET_ERROR", error: "Please enter a recipient" });
+      return;
     }
-  }
+    dispatch({ type: "SHOW_PREVIEW" });
+  }, [state.recipient]);
 
-  async function handleSend() {
-    setError(null);
-    setIsLoading(true);
+  const handleSend = useCallback(async () => {
+    dispatch({ type: "START_LOADING" });
     try {
-      if (!isRecipientValid || !amount || !isAmountValid) {
-        setError("Invalid recipient or amount");
-        setIsLoading(false);
+      if (!isRecipientValid || !state.amount || !isAmountValid) {
+        dispatch({ type: "SET_ERROR", error: "Invalid recipient or amount" });
+        dispatch({ type: "STOP_LOADING" });
         return;
       }
 
       if (!wallet) {
-        setError("No wallet connected");
-        setIsLoading(false);
+        dispatch({ type: "SET_ERROR", error: "No wallet connected" });
+        dispatch({ type: "STOP_LOADING" });
         return;
       }
 
       // Email recipients not supported with Privy - only wallet addresses
-      if (isEmail(recipient)) {
-        setError("Email recipients not yet supported. Please use a wallet address.");
-        setIsLoading(false);
+      if (isEmail(state.recipient)) {
+        dispatch({
+          type: "SET_ERROR",
+          error: "Email recipients not yet supported. Please use a wallet address.",
+        });
+        dispatch({ type: "STOP_LOADING" });
         return;
       }
 
       // Use gasless or regular transaction based on toggle
       if (useGasless && gaslessEnabled) {
-        console.log("[SendFunds] Sending gasless transaction");
-        await wallet.sendSponsored(recipient, "USDC", amount);
+        await wallet.sendSponsored(state.recipient, "USDC", state.amount);
       } else {
-        console.log("[SendFunds] Sending regular transaction");
-        await wallet.send(recipient, "usdc", amount);
+        await wallet.send(state.recipient, "usdc", state.amount);
       }
 
       refetchBalance();
       refetchActivityFeed();
-      handleDone();
+      dispatch({ type: "RESET" });
+      onClose();
     } catch (err: any) {
-      setError(err.message);
+      dispatch({ type: "SET_ERROR", error: err.message });
     } finally {
-      setIsLoading(false);
+      dispatch({ type: "STOP_LOADING" });
     }
-  }
+  }, [
+    isRecipientValid,
+    isAmountValid,
+    state.recipient,
+    state.amount,
+    wallet,
+    useGasless,
+    gaslessEnabled,
+    refetchBalance,
+    refetchActivityFeed,
+    onClose,
+  ]);
 
-  const resetFlow = () => {
-    setShowPreview(false);
-    setAmount("");
-    setRecipient("");
-    setError(null);
-  };
+  const resetFlow = useCallback(() => dispatch({ type: "RESET" }), []);
 
-  const handleDone = () => {
-    resetFlow();
+  const handleDone = useCallback(() => {
+    dispatch({ type: "RESET" });
     onClose();
-  };
+  }, [onClose]);
 
-  const displayableAmount = Number(amount).toFixed(2);
-  const showBackButton = showPreview && !isLoading;
-  const showCloseButton = !showPreview;
+  const displayableAmount = Number(state.amount).toFixed(2);
+  const showBackButton = state.showPreview && !state.isLoading;
+  const showCloseButton = !state.showPreview;
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleDone()}>
@@ -163,15 +190,29 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
         )}
         {showCloseButton && <DialogClose />}
         <DialogTitle className="text-center">
-          {showPreview ? "Order Confirmation" : "Send"}
+          {state.showPreview ? "Order Confirmation" : "Send"}
         </DialogTitle>
-        {!showPreview ? (
+        {isSolanaWallet ? (
+          <div className="flex flex-1 flex-col items-center justify-center px-4">
+            <AlertTriangle className="mb-3 h-10 w-10 text-yellow-500" />
+            <h3 className="mb-2 text-lg font-semibold text-yellow-800">
+              Requires an Ethereum Wallet
+            </h3>
+            <p className="text-center text-sm text-yellow-700">
+              USDC transfers are only available with EVM wallets. Please switch to an Ethereum
+              wallet to send funds.
+            </p>
+          </div>
+        ) : !state.showPreview ? (
           <div className="flex w-full flex-1 flex-col">
             <div className="mb-2 flex w-full flex-col items-center">
-              <AmountInput amount={amount} onChange={setAmount} />
+              <AmountInput
+                amount={state.amount}
+                onChange={(v) => dispatch({ type: "SET_AMOUNT", value: v })}
+              />
               <div
                 className={
-                  Number(amount) > Number(displayableBalance)
+                  Number(state.amount) > Number(displayableBalance)
                     ? "text-sm text-red-600"
                     : "text-muted-foreground text-sm"
                 }
@@ -180,7 +221,11 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
               </div>
             </div>
             <div className="mt-4 w-full">
-              <RecipientInput recipient={recipient} onChange={setRecipient} error={error} />
+              <RecipientInput
+                recipient={state.recipient}
+                onChange={(v) => dispatch({ type: "SET_RECIPIENT", value: v })}
+                error={state.error}
+              />
             </div>
             <div className="mt-4 w-full">
               {gaslessEnabled ? (
@@ -204,7 +249,7 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
                   <button
                     id="gasless-toggle"
                     type="button"
-                    onClick={() => setUseGasless(!useGasless)}
+                    onClick={() => dispatch({ type: "TOGGLE_GASLESS", value: !useGasless })}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                       useGasless ? "bg-blue-600" : "bg-gray-300"
                     }`}
@@ -220,31 +265,33 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
                 <button
                   type="button"
                   onClick={async () => {
-                    setGaslessLoading(true);
-                    setError(null);
+                    dispatch({ type: "SET_GASLESS_LOADING", value: true });
+                    dispatch({ type: "SET_ERROR", error: null });
                     try {
                       if (!wallet?.enableGaslessTransfers) {
-                        setError("Gasless transfers not available");
+                        dispatch({ type: "SET_ERROR", error: "Gasless transfers not available" });
                         return;
                       }
                       await wallet.enableGaslessTransfers();
                       await queryClient.invalidateQueries({
                         queryKey: ["gasless-status", wallet?.address],
                       });
-                      // We don't set local state anymore, we wait for query to update
                     } catch (err: any) {
-                      setError(err.message || "Failed to enable gasless transfers");
+                      dispatch({
+                        type: "SET_ERROR",
+                        error: err.message || "Failed to enable gasless transfers",
+                      });
                     } finally {
-                      setGaslessLoading(false);
+                      dispatch({ type: "SET_GASLESS_LOADING", value: false });
                     }
                   }}
-                  disabled={gaslessLoading}
+                  disabled={state.gaslessLoading}
                   className="w-full rounded-lg border-2 border-dashed border-blue-300 bg-blue-50 p-4 hover:bg-blue-100 disabled:opacity-50"
                 >
                   <div className="flex items-center justify-center gap-2">
                     <Zap className="h-5 w-5 text-blue-600" />
                     <span className="text-sm font-medium text-blue-900">
-                      {gaslessLoading ? "Enabling..." : "Enable Gasless Transfers"}
+                      {state.gaslessLoading ? "Enabling..." : "Enable Gasless Transfers"}
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-blue-700">Send USDC without paying gas fees</p>
@@ -264,10 +311,10 @@ export function SendFundsModal({ open, onClose }: SendFundsModalProps) {
         ) : (
           <OrderPreview
             userEmail={user?.email || ""}
-            recipient={recipient}
+            recipient={state.recipient}
             amount={displayableAmount}
-            error={error}
-            isLoading={isLoading}
+            error={state.error}
+            isLoading={state.isLoading}
             onConfirm={handleSend}
           />
         )}

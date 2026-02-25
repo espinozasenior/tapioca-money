@@ -3,7 +3,8 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "./useWallet";
-import { useWallets, usePrivy, useSign7702Authorization } from "@privy-io/react-auth";
+import { useWalletSelection } from "./useWalletSelection";
+import { usePrivy, useSign7702Authorization } from "@privy-io/react-auth";
 import { createWalletClient, custom, type WalletClient } from "viem";
 import { base } from "viem/chains";
 
@@ -176,8 +177,8 @@ export function useAgent() {
   const queryClient = useQueryClient();
   const address = wallet?.address;
 
-  // Access Privy wallets and auth for ZeroDev integration
-  const { wallets } = useWallets();
+  // Access active wallet for ZeroDev integration
+  const { activeWallet, supportsSmartAccount } = useWalletSelection();
   const { getAccessToken } = usePrivy();
   const { signAuthorization } = useSign7702Authorization();
 
@@ -196,6 +197,11 @@ export function useAgent() {
   const register = useMutation({
     mutationFn: async () => {
       if (!wallet || !address) throw new Error("No wallet connected");
+      if (!supportsSmartAccount)
+        throw new Error(
+          "Smart account registration requires an EVM wallet. Please switch to an Ethereum wallet."
+        );
+      if (!activeWallet) throw new Error("No active wallet selected");
 
       console.log("[Agent Registration] Starting secure ZeroDev registration", {
         address,
@@ -233,7 +239,7 @@ export function useAgent() {
 
         // Create Viem WalletClient from Privy provider for signing enable data
         console.log("[Agent Registration] Creating wallet client for account serialization...");
-        const provider = await wallets[0].getEthereumProvider();
+        const provider = await activeWallet.raw.getEthereumProvider();
         const privyWalletClient = createWalletClient({
           account: address as `0x${string}`,
           chain: base,
@@ -303,6 +309,10 @@ export function useAgent() {
   const undelegate = useMutation({
     mutationFn: async () => {
       if (!address) throw new Error("No wallet connected");
+      if (!supportsSmartAccount || !activeWallet)
+        throw new Error(
+          "Undelegation requires an EVM wallet. Please switch to an Ethereum wallet."
+        );
 
       // Get access token for API authentication
       const accessToken = await getAccessToken();
@@ -310,8 +320,8 @@ export function useAgent() {
         throw new Error("Failed to get access token");
       }
 
-      // Get embedded wallet's Ethereum provider
-      const provider = await wallets[0].getEthereumProvider();
+      // Get active wallet's Ethereum provider
+      const provider = await activeWallet.raw.getEthereumProvider();
 
       // Create Viem wallet client
       const walletClient = createWalletClient({

@@ -7,13 +7,15 @@ import {
   formatApy,
   getProtocolColor,
 } from "@/hooks/useOptimizer";
-import { Loader2, TrendingUp, ArrowRight, Zap, AlertCircle } from "lucide-react";
+import { useWallet } from "@/hooks/useWallet";
+import { Loader2, TrendingUp, ArrowRight, Zap, AlertCircle, AlertTriangle } from "lucide-react";
 
 interface AutoOptimizeProps {
   usdcBalance: bigint;
 }
 
 export function AutoOptimize({ usdcBalance }: AutoOptimizeProps) {
+  const { isSolanaWallet } = useWallet();
   const { data, isLoading, error } = useOptimizer(usdcBalance);
   const {
     isRegistered,
@@ -49,6 +51,21 @@ export function AutoOptimize({ usdcBalance }: AutoOptimizeProps) {
 
   const isTogglingDisabled = isRegistering || isTogglingAutoOptimize;
   const hasAgentError = registerError || toggleError;
+
+  if (isSolanaWallet) {
+    return (
+      <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
+        <div className="flex items-center gap-2 text-yellow-700">
+          <AlertTriangle className="h-4 w-4" />
+          <span className="text-sm font-medium">Requires an Ethereum wallet</span>
+        </div>
+        <p className="mt-1 pl-6 text-xs text-yellow-600">
+          Auto-optimize uses ERC-7702 smart accounts and is only available with EVM wallets. Please
+          switch to an Ethereum wallet to use this feature.
+        </p>
+      </div>
+    );
+  }
 
   if (isLoading || isStatusLoading) {
     return (

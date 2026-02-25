@@ -8,12 +8,13 @@ import { useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 
 export function HomeContent() {
-  const { wallet, isReady: walletReady } = useWallet();
+  const { wallet, isReady: walletReady, isSolanaWallet } = useWallet();
   const { status, isReady: authReady, user, ready, authenticated } = useAuth();
 
   useProcessWithdrawal(user?.id, wallet ?? undefined);
 
   const walletAddress = wallet?.address;
+  // Allow login with any wallet type (EVM or Solana)
   const isLoggedIn = authenticated && !!wallet;
 
   // Show loading if Privy SDK isn't ready OR if authenticated but wallet not loaded yet
