@@ -19,7 +19,7 @@ import React from "react";
 const {
   mockUseWallet,
   mockUsePrivy,
-  mockUseWallets,
+  mockUseWalletSelection,
   mockSignAuthorization,
   mockRegisterAgentSecure,
   mockUndelegateEoa,
@@ -27,7 +27,7 @@ const {
 } = vi.hoisted(() => ({
   mockUseWallet: vi.fn(),
   mockUsePrivy: vi.fn(),
-  mockUseWallets: vi.fn(),
+  mockUseWalletSelection: vi.fn(),
   mockSignAuthorization: vi.fn(),
   mockRegisterAgentSecure: vi.fn().mockResolvedValue({
     sessionKeyAddress: "0xsession",
@@ -41,9 +41,12 @@ vi.mock("@/hooks/useWallet", () => ({
   useWallet: () => mockUseWallet(),
 }));
 
+vi.mock("@/hooks/useWalletSelection", () => ({
+  useWalletSelection: () => mockUseWalletSelection(),
+}));
+
 vi.mock("@privy-io/react-auth", () => ({
   usePrivy: () => mockUsePrivy(),
-  useWallets: () => mockUseWallets(),
   useSign7702Authorization: () => ({ signAuthorization: mockSignAuthorization }),
 }));
 
@@ -88,14 +91,24 @@ describe("useOptimizer Hooks", () => {
       getAccessToken: vi.fn().mockResolvedValue("mock-token"),
     });
 
-    mockUseWallets.mockReturnValue({
-      wallets: [
-        {
+    mockUseWalletSelection.mockReturnValue({
+      activeWallet: {
+        address: "0xuser",
+        walletClientType: "privy",
+        chainType: "ethereum",
+        raw: {
+          address: "0xuser",
           getEthereumProvider: vi.fn().mockResolvedValue({
             request: vi.fn(),
           }),
         },
-      ],
+      },
+      activeWalletType: "embedded",
+      isEvmWallet: true,
+      isSolanaWallet: false,
+      supportsSmartAccount: true,
+      allWallets: [],
+      selectWallet: vi.fn(),
     });
   });
 

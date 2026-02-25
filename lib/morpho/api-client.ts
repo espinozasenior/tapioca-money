@@ -190,10 +190,19 @@ export class MorphoClient {
       }
     }
 
-    const data = await this.query<GetUserPositionsQuery>(print(GET_USER_POSITIONS), {
-      userAddress: userAddress.toLowerCase(),
-      chainId,
-    } as GetUserPositionsQueryVariables);
+    let data: GetUserPositionsQuery;
+    try {
+      data = await this.query<GetUserPositionsQuery>(print(GET_USER_POSITIONS), {
+        userAddress: userAddress.toLowerCase(),
+        chainId,
+      } as GetUserPositionsQueryVariables);
+    } catch (error: any) {
+      // Morpho returns NOT_FOUND for addresses with no positions — treat as empty
+      if (error.message?.includes("NOT_FOUND")) {
+        return [];
+      }
+      throw error;
+    }
 
     const allPositions = data.userByAddress?.vaultV2Positions ?? [];
     const positions = allPositions.filter(
