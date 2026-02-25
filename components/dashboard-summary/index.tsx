@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Image from "next/image";
-import { ArrowUpRight, ArrowRightLeft, Wallet, MoreVertical } from "lucide-react";
+import { ArrowUpRight, ArrowRightLeft, Wallet, MoreVertical, RefreshCw } from "lucide-react";
 import { WalletBalance } from "./WalletBallance";
 import { RewardsBalance } from "./RewardsBalance";
 import { DepositButton } from "../common/DepositButton";
@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "../common/DropdownMenu";
 import { WalletDetails } from "./WalletDetails";
+import { WalletSwitcher } from "../WalletSwitcher";
 import { useWallet, useAuth } from "@/hooks/useWallet";
 
 interface DashboardSummaryProps {
@@ -22,6 +23,7 @@ interface DashboardSummaryProps {
 
 export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSummaryProps) {
   const [showWalletDetails, setShowWalletDetails] = useState(false);
+  const [showWalletSwitcher, setShowWalletSwitcher] = useState(false);
   const { wallet } = useWallet();
   const { user } = useAuth();
   const [openWarningModal, setOpenWarningModal] = useState(false);
@@ -63,6 +65,10 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => setShowWalletSwitcher(true)}>
+                <RefreshCw className="h-4 w-4" />
+                Switch Wallet
+              </DropdownMenuItem>
               <DropdownMenuItem onSelect={handleWithdraw}>
                 <ArrowRightLeft className="h-4 w-4" />
                 Withdraw
@@ -77,6 +83,7 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
       </Container>
 
       <WalletDetails onClose={() => setShowWalletDetails(false)} open={showWalletDetails} />
+      <WalletSwitcher open={showWalletSwitcher} onClose={() => setShowWalletSwitcher(false)} />
 
       <Dialog open={openWarningModal} onOpenChange={setOpenWarningModal}>
         <DialogContent className="flex h-[400px] max-h-[85vh] flex-col rounded-3xl bg-white sm:max-w-md">

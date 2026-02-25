@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useReducer, useCallback } from "react";
 import { useWallet } from "@/hooks/useWallet";
 import { usePrivy } from "@privy-io/react-auth";
 import { AmountInput } from "../common/AmountInput";
@@ -7,6 +7,7 @@ import { useBalance } from "@/hooks/useBalance";
 import { YieldOpportunity, useAgent } from "@/hooks/useOptimizer";
 import { cn } from "@/lib/utils";
 import { VaultSafetyDetails } from "./VaultSafetyDetails";
+import { AlertTriangle } from "lucide-react";
 
 interface DepositYieldProps {
   yieldOpportunity: YieldOpportunity;
@@ -19,8 +20,52 @@ const formatApy = (apy: number) => {
   return `${(apy * 100).toFixed(2)}%`;
 };
 
+interface DepositState {
+  amount: string;
+  error: string | null;
+  isVaultNotApproved: boolean;
+  isLoading: boolean;
+  txHash: string | null;
+}
+
+type DepositAction =
+  | { type: "SET_AMOUNT"; value: string }
+  | { type: "START_DEPOSIT" }
+  | { type: "DEPOSIT_SUCCESS"; txHash: string }
+  | { type: "DEPOSIT_ERROR"; error: string; isVaultNotApproved?: boolean }
+  | { type: "SET_ERROR"; error: string | null };
+
+const initialState: DepositState = {
+  amount: "",
+  error: null,
+  isVaultNotApproved: false,
+  isLoading: false,
+  txHash: null,
+};
+
+function depositReducer(state: DepositState, action: DepositAction): DepositState {
+  switch (action.type) {
+    case "SET_AMOUNT":
+      return { ...state, amount: action.value };
+    case "START_DEPOSIT":
+      return { ...state, error: null, isVaultNotApproved: false, isLoading: true, txHash: null };
+    case "DEPOSIT_SUCCESS":
+      return { ...state, txHash: action.txHash };
+    case "DEPOSIT_ERROR":
+      return {
+        ...state,
+        error: action.error,
+        isVaultNotApproved: action.isVaultNotApproved ?? false,
+        isLoading: false,
+        txHash: null,
+      };
+    case "SET_ERROR":
+      return { ...state, error: action.error };
+  }
+}
+
 export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: DepositYieldProps) {
-  const { wallet } = useWallet();
+  const { wallet, isSolanaWallet } = useWallet();
   const { getAccessToken } = usePrivy();
   const { displayableBalance, refetch: refetchBalance } = useBalance();
   const {
@@ -30,44 +75,37 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
     register,
     isRegistering,
   } = useAgent();
-  const [amount, setAmount] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isVaultNotApproved, setIsVaultNotApproved] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [txHash, setTxHash] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(depositReducer, initialState);
 
   const isAmountValid =
-    !!amount &&
-    !Number.isNaN(Number(amount)) &&
-    Number(amount) > 0 &&
-    Number(amount) <= Number(displayableBalance);
+    !!state.amount &&
+    !Number.isNaN(Number(state.amount)) &&
+    Number(state.amount) > 0 &&
+    Number(state.amount) <= Number(displayableBalance);
 
   // Calculate estimated yearly earnings
   const estimatedYearlyEarnings = isAmountValid
-    ? (Number(amount) * yieldOpportunity.apy).toFixed(2)
+    ? (Number(state.amount) * yieldOpportunity.apy).toFixed(2)
     : "0.00";
 
-  const handleDeposit = async () => {
+  const handleDeposit = useCallback(async () => {
     if (!wallet?.address) {
-      setError("No wallet connected");
+      dispatch({ type: "SET_ERROR", error: "No wallet connected" });
       return;
     }
 
     if (!isAmountValid) {
-      setError("Invalid amount");
+      dispatch({ type: "SET_ERROR", error: "Invalid amount" });
       return;
     }
 
     const vaultAddress = yieldOpportunity.metadata?.vaultAddress as string | undefined;
     if (!vaultAddress) {
-      setError("Vault address not available for this opportunity");
+      dispatch({ type: "SET_ERROR", error: "Vault address not available for this opportunity" });
       return;
     }
 
-    setError(null);
-    setIsVaultNotApproved(false);
-    setIsLoading(true);
-    setTxHash(null);
+    dispatch({ type: "START_DEPOSIT" });
     onProcessing();
 
     try {
@@ -82,7 +120,7 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ vaultAddress, amount }),
+        body: JSON.stringify({ vaultAddress, amount: state.amount }),
       });
 
       const data = await res.json();
@@ -92,7 +130,7 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
       }
 
       console.log("[Yield] Gasless deposit success:", data.txHash);
-      setTxHash(data.txHash);
+      dispatch({ type: "DEPOSIT_SUCCESS", txHash: data.txHash });
 
       // Refresh balance after successful deposit
       await refetchBalance();
@@ -101,6 +139,7 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
       console.error("[Yield] Deposit error:", err);
 
       let errorMessage = err.message || "Failed to deposit. Please try again.";
+      let isVaultNotApproved = false;
 
       if (
         errorMessage.includes("Agent not registered") ||
@@ -112,14 +151,27 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
       } else if (errorMessage.includes("Vault not approved")) {
         errorMessage =
           "This vault is not in your approved list. Re-register your agent to update permissions.";
-        setIsVaultNotApproved(true);
+        isVaultNotApproved = true;
       }
 
-      setError(errorMessage);
-      setIsLoading(false);
-      setTxHash(null);
+      dispatch({ type: "DEPOSIT_ERROR", error: errorMessage, isVaultNotApproved });
     }
-  };
+  }, [wallet, isAmountValid, yieldOpportunity.metadata?.vaultAddress, state.amount, getAccessToken, refetchBalance, onProcessing, onSuccess]);
+
+  if (isSolanaWallet) {
+    return (
+      <div className="mt-4 flex w-full flex-col items-center">
+        <div className="w-full rounded-xl bg-yellow-50 p-6 text-center">
+          <AlertTriangle className="mx-auto mb-3 h-8 w-8 text-yellow-500" />
+          <p className="mb-2 text-lg font-semibold text-yellow-800">Requires an Ethereum Wallet</p>
+          <p className="text-sm text-yellow-700">
+            Vault deposits use EVM smart accounts and are only available with Ethereum wallets.
+            Please switch to an EVM wallet to deposit.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (isAgentLoading) {
     return (
@@ -177,11 +229,14 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
 
       {/* Amount Input */}
       <div className="mb-4 flex w-full flex-col items-center">
-        <AmountInput amount={amount} onChange={setAmount} />
+        <AmountInput
+          amount={state.amount}
+          onChange={(v) => dispatch({ type: "SET_AMOUNT", value: v })}
+        />
         <div
           className={cn(
             "mt-1 text-sm",
-            Number(amount) > Number(displayableBalance) ? "text-red-600" : "text-gray-400"
+            Number(state.amount) > Number(displayableBalance) ? "text-red-600" : "text-gray-400"
           )}
         >
           ${displayableBalance} available
@@ -195,7 +250,7 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
             key={percent}
             onClick={() => {
               const newAmount = ((Number(displayableBalance) * percent) / 100).toFixed(2);
-              setAmount(newAmount);
+              dispatch({ type: "SET_AMOUNT", value: newAmount });
             }}
             className="hover:border-primary hover:text-primary rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 transition"
           >
@@ -218,10 +273,10 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
       )}
 
       {/* Error Display */}
-      {error && (
+      {state.error && (
         <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
-          <p>{error}</p>
-          {isVaultNotApproved && (
+          <p>{state.error}</p>
+          {state.isVaultNotApproved && (
             <PrimaryButton
               onClick={() => register()}
               disabled={isRegistering}
@@ -234,14 +289,14 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
       )}
 
       {/* Transaction Hash Display */}
-      {txHash && (
+      {state.txHash && (
         <div className="mb-4 rounded-lg bg-blue-50 p-3 text-xs text-blue-600">
           <p className="font-medium">Deposit confirmed</p>
           <p className="mt-1 break-all font-mono">
-            Tx: {txHash.slice(0, 10)}...{txHash.slice(-8)}
+            Tx: {state.txHash.slice(0, 10)}...{state.txHash.slice(-8)}
           </p>
           <a
-            href={`https://basescan.org/tx/${txHash}`}
+            href={`https://basescan.org/tx/${state.txHash}`}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-2 inline-block text-blue-700 underline hover:text-blue-900"
@@ -252,8 +307,8 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
       )}
 
       {/* Deposit Button */}
-      <PrimaryButton onClick={handleDeposit} disabled={!isAmountValid || isLoading}>
-        {isLoading ? "Processing deposit..." : `Deposit ${amount || "0"} USDC`}
+      <PrimaryButton onClick={handleDeposit} disabled={!isAmountValid || state.isLoading}>
+        {state.isLoading ? "Processing deposit..." : `Deposit ${state.amount || "0"} USDC`}
       </PrimaryButton>
 
       {/* Risk Disclaimer */}

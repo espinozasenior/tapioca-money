@@ -1,6 +1,7 @@
 "use client";
 
-import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { usePrivy } from "@privy-io/react-auth";
+import { useWalletSelection, type WalletType } from "./useWalletSelection";
 import {
   type Hex,
   createPublicClient,
@@ -81,17 +82,15 @@ const erc20Abi = [
  */
 export function useWallet() {
   const { authenticated, user, ready, getAccessToken } = usePrivy();
-  const { wallets } = useWallets();
+  const { activeWallet, activeWalletType, isEvmWallet, isSolanaWallet, supportsSmartAccount } =
+    useWalletSelection();
 
-  const wallet = wallets?.[0]; // Primary wallet (Privy embedded wallet)
+  const wallet = activeWallet?.raw ?? null;
   const address = wallet?.address as Hex | undefined;
 
   // Debug: Log only when authenticated but no wallet (unusual state)
   if (ready && authenticated && !wallet) {
-    console.warn(
-      "[useWallet] Authenticated but no wallet found. Wallets count:",
-      wallets?.length || 0
-    );
+    console.warn("[useWallet] Authenticated but no active wallet selected.");
   }
 
   // Check for wallet object existence rather than requiring address immediately
@@ -121,6 +120,10 @@ export function useWallet() {
        * Compatible with Crossmint's balances() API
        */
       async balances(assets: string[]) {
+        if (!isEvmWallet)
+          throw new Error(
+            "Balance queries require an EVM wallet. Please switch to an Ethereum wallet."
+          );
         if (!address) throw new Error("Wallet address not yet available");
 
         const balances: Record<string, { amount: string; decimals: number }> = {};
@@ -154,6 +157,10 @@ export function useWallet() {
        * Compatible with Crossmint's send() API
        */
       async send(to: string, asset: string, amount: string) {
+        if (!isEvmWallet)
+          throw new Error(
+            "Sending tokens requires an EVM wallet. Please switch to an Ethereum wallet."
+          );
         if (!wallet) throw new Error("Wallet not ready");
         if (!address) throw new Error("Wallet address not yet available");
 
@@ -326,6 +333,10 @@ export function useWallet() {
        * Used for complex multi-step transactions like vault deposits
        */
       async getEthereumProvider() {
+        if (!isEvmWallet)
+          throw new Error(
+            "Ethereum provider requires an EVM wallet. Please switch to an Ethereum wallet."
+          );
         if (!wallet) throw new Error("Wallet not ready");
         const rawProvider = await wallet.getEthereumProvider();
         return wrapProviderWithTracing(rawProvider, "useWallet.getEthereumProvider");
@@ -339,6 +350,10 @@ export function useWallet() {
        * @returns The signed authorization object for use with createKernelAccount
        */
       async signAuthorization(contractAddress: `0x${string}`) {
+        if (!isEvmWallet)
+          throw new Error(
+            "EIP-7702 authorization requires an EVM wallet. Please switch to an Ethereum wallet."
+          );
         if (!wallet) throw new Error("Wallet not ready");
         if (!address) throw new Error("Wallet address not yet available");
 
@@ -357,12 +372,16 @@ export function useWallet() {
         return authorization;
       },
     };
-  }, [isReady, address, wallet, publicClient, getAccessToken]);
+  }, [isReady, address, wallet, publicClient, getAccessToken, isEvmWallet]);
 
   return {
     wallet: walletObject,
     status: isReady ? ("connected" as const) : ("disconnected" as const),
     isReady,
+    walletType: activeWalletType,
+    isEvmWallet,
+    isSolanaWallet,
+    supportsSmartAccount,
   };
 }
 
