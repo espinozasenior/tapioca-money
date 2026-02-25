@@ -6,8 +6,21 @@ import { Details } from "../common/Details";
 import { CopyWrapper } from "../common/CopyWrapper";
 import { shortenAddress } from "@/utils/shortenAddress";
 
+function formatWalletType(type: string | null): string {
+  switch (type) {
+    case "embedded":
+      return "Embedded (Privy)";
+    case "external-evm":
+      return "External (EVM)";
+    case "solana":
+      return "Solana";
+    default:
+      return "Unknown";
+  }
+}
+
 export function WalletDetails({ onClose, open }: { onClose: () => void; open: boolean }) {
-  const { wallet } = useWallet();
+  const { wallet, walletType } = useWallet();
   const { user } = useAuth();
   const { displayableBalance, isLoading: isBalanceLoading } = useBalance();
 
@@ -36,6 +49,10 @@ export function WalletDetails({ onClose, open }: { onClose: () => void; open: bo
                     <span>{shortenAddress(wallet?.address || "")}</span>
                   </CopyWrapper>
                 ),
+              },
+              {
+                label: "Type",
+                value: formatWalletType(walletType),
               },
               {
                 label: "Balance",

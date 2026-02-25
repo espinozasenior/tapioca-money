@@ -6,13 +6,16 @@ import { useWallet } from "@/hooks/useWallet";
 // Mock dependencies
 const mockGetAccessToken = vi.fn();
 const mockUsePrivy = vi.fn();
-const mockUseWallets = vi.fn();
+const mockUseWalletSelection = vi.fn();
 const mockReadContract = vi.fn();
 const mockSendTransaction = vi.fn();
 
 vi.mock("@privy-io/react-auth", () => ({
   usePrivy: () => mockUsePrivy(),
-  useWallets: () => mockUseWallets(),
+}));
+
+vi.mock("@/hooks/useWalletSelection", () => ({
+  useWalletSelection: () => mockUseWalletSelection(),
 }));
 
 vi.mock("viem", async (importOriginal) => {
@@ -42,13 +45,22 @@ describe("useWallet", () => {
       getAccessToken: mockGetAccessToken,
     });
 
-    mockUseWallets.mockReturnValue({
-      wallets: [
-        {
+    mockUseWalletSelection.mockReturnValue({
+      activeWallet: {
+        address: "0xuser",
+        walletClientType: "privy",
+        chainType: "ethereum",
+        raw: {
           address: "0xuser",
           getEthereumProvider: vi.fn().mockResolvedValue({ request: vi.fn() }),
         },
-      ],
+      },
+      activeWalletType: "embedded",
+      isEvmWallet: true,
+      isSolanaWallet: false,
+      supportsSmartAccount: true,
+      allWallets: [],
+      selectWallet: vi.fn(),
     });
 
     mockGetAccessToken.mockResolvedValue("mock-token");
@@ -62,7 +74,15 @@ describe("useWallet", () => {
 
   it("should return disconnected status when not authenticated", () => {
     mockUsePrivy.mockReturnValue({ authenticated: false, ready: true });
-    mockUseWallets.mockReturnValue({ wallets: [] });
+    mockUseWalletSelection.mockReturnValue({
+      activeWallet: null,
+      activeWalletType: null,
+      isEvmWallet: false,
+      isSolanaWallet: false,
+      supportsSmartAccount: false,
+      allWallets: [],
+      selectWallet: vi.fn(),
+    });
 
     const { result } = renderHook(() => useWallet());
     expect(result.current.status).toBe("disconnected");

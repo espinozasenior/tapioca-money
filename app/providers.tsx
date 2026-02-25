@@ -1,9 +1,11 @@
 "use client";
 
 import { PrivyProvider, dataSuffix } from "@privy-io/react-auth";
+import { toSolanaWalletConnectors } from "@privy-io/react-auth/solana";
 import { BUILDER_CODE_SUFFIX } from "@/lib/builder-code";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { base } from "viem/chains";
+import { WalletSelectionProvider } from "@/hooks/useWalletSelection";
 
 // Validate environment variables
 if (!process.env.NEXT_PUBLIC_PRIVY_APP_ID) {
@@ -19,27 +21,43 @@ const queryClient = new QueryClient({
   },
 });
 
+const solanaConnectors = toSolanaWalletConnectors({ shouldAutoConnect: false });
+
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <PrivyProvider
         appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID!}
         config={{
-          loginMethods: ["email", "google"],
+          loginMethods: ["email", "google", "wallet"],
           appearance: {
             theme: "light",
             accentColor: "#676FFF",
+            walletChainType: "ethereum-and-solana",
+            walletList: [
+              "metamask",
+              "coinbase_wallet",
+              "rainbow",
+              "phantom",
+              "detected_ethereum_wallets",
+              "wallet_connect_qr",
+            ],
           },
           embeddedWallets: {
             ethereum: {
-              createOnLogin: "all-users", // Force embedded wallet creation for all users
+              createOnLogin: "users-without-wallets", // Only create embedded wallet for email/Google users
+            },
+          },
+          externalWallets: {
+            solana: {
+              connectors: solanaConnectors,
             },
           },
           defaultChain: base,
           plugins: [dataSuffix(BUILDER_CODE_SUFFIX)],
         }}
       >
-        {children}
+        <WalletSelectionProvider>{children}</WalletSelectionProvider>
       </PrivyProvider>
     </QueryClientProvider>
   );
