@@ -18,4 +18,3 @@ export function calculateYoRiskScore(vault: YoVault): number {
 
   return Math.min(score, 1.0);
 }
-

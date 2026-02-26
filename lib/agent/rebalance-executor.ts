@@ -13,7 +13,12 @@ import {
 } from "../zerodev/kernel-client";
 import { checkSmartAccountActive } from "../zerodev/client-secure";
 import { withBuilderCode } from "@/lib/builder-code";
-import { YO_GATEWAY_ADDRESS, YO_GATEWAY_ABI, YO_PARTNER_ID, applyYoSlippage } from "@/lib/yo/constants";
+import {
+  YO_GATEWAY_ADDRESS,
+  YO_GATEWAY_ABI,
+  YO_PARTNER_ID,
+  applyYoSlippage,
+} from "@/lib/yo/constants";
 import { CHAIN_CONFIG } from "@/lib/config";
 import type { Protocol } from "./decision-engine";
 
