@@ -149,6 +149,21 @@ async function createAndSerializeAccount(
     permissions.push({ target: vault, selector: WITHDRAW_SELECTOR, valueLimit: 0n });
   }
 
+  // YO Gateway permissions — deposit and redeem via Gateway
+  // Import dynamically to avoid circular deps and keep client-secure lean
+  const { YO_GATEWAY_ADDRESS, YO_GATEWAY_DEPOSIT_SELECTOR, YO_GATEWAY_REDEEM_SELECTOR } =
+    await import("@/lib/yo/constants");
+  permissions.push({
+    target: YO_GATEWAY_ADDRESS as `0x${string}`,
+    selector: YO_GATEWAY_DEPOSIT_SELECTOR,
+    valueLimit: 0n,
+  });
+  permissions.push({
+    target: YO_GATEWAY_ADDRESS as `0x${string}`,
+    selector: YO_GATEWAY_REDEEM_SELECTOR,
+    valueLimit: 0n,
+  });
+
   const callPolicy = toCallPolicy({
     policyVersion: CallPolicyVersion.V0_0_5,
     permissions,
@@ -249,7 +264,7 @@ export async function registerAgentSecure(
     console.log("[ZeroDev 7702] Starting registration (serialize/deserialize pattern)...");
     console.log("[ZeroDev 7702] User EOA:", userAddress);
 
-    // 1. Fetch approved vaults from the optimizer API
+    // 1. Fetch approved vaults from the optimizer API (includes both Morpho + YO)
     console.log("[ZeroDev 7702] Fetching vault opportunities...");
     const optimizeResponse = await fetch("/api/optimize");
     if (!optimizeResponse.ok) {
@@ -260,7 +275,13 @@ export async function registerAgentSecure(
       .filter((o: any) => o.metadata?.vaultAddress)
       .map((o: any) => o.metadata.vaultAddress) as `0x${string}`[];
 
-    console.log("[ZeroDev 7702] Fetched", approvedVaults.length, "vaults");
+    // Include YO Gateway address for session key scoping
+    const { YO_GATEWAY_ADDRESS } = await import("@/lib/yo/constants");
+    if (!approvedVaults.some((v) => v.toLowerCase() === YO_GATEWAY_ADDRESS.toLowerCase())) {
+      approvedVaults.push(YO_GATEWAY_ADDRESS as `0x${string}`);
+    }
+
+    console.log("[ZeroDev 7702] Fetched", approvedVaults.length, "vaults (including YO Gateway)");
 
     // 2. Create and serialize the kernel account client-side
     // This captures the enable signature from the EOA (sudo)

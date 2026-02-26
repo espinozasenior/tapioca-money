@@ -77,6 +77,7 @@ export function PositionsList({ positions, yields, isLoading, onExitSuccess }: P
       await vaultExit.mutateAsync({
         vaultAddress: position.vaultAddress,
         shares: position.shares.toString(),
+        protocol: position.protocol,
       });
       onExitSuccess();
     } catch (err: any) {

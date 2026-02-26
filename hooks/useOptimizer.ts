@@ -10,7 +10,7 @@ import { base } from "viem/chains";
 
 export interface YieldOpportunity {
   id: string;
-  protocol: "morpho" | "aave" | "moonwell";
+  protocol: "morpho" | "aave" | "moonwell" | "yo";
   name: string;
   asset: string;
   apy: number;
@@ -35,7 +35,7 @@ export interface YieldOpportunity {
 export interface YieldPosition {
   id: string;
   yieldId: string;
-  protocol: "morpho" | "aave" | "moonwell";
+  protocol: "morpho" | "aave" | "moonwell" | "yo";
   vaultAddress: `0x${string}`;
   vaultName?: string;
   vaultDescription?: string;
@@ -365,7 +365,7 @@ export function useVaultExit() {
   const { getAccessToken } = usePrivy();
 
   return useMutation({
-    mutationFn: async ({ vaultAddress, shares }: { vaultAddress: string; shares: string }) => {
+    mutationFn: async ({ vaultAddress, shares, protocol }: { vaultAddress: string; shares: string; protocol?: string }) => {
       if (!wallet?.address) throw new Error("No wallet connected");
 
       const accessToken = await getAccessToken();
@@ -379,7 +379,7 @@ export function useVaultExit() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ vaultAddress, shares }),
+        body: JSON.stringify({ vaultAddress, shares, protocol }),
       });
 
       const data = await res.json();
@@ -408,6 +408,7 @@ export function getProtocolColor(protocol: string): string {
     morpho: "#00D395",
     aave: "#B6509E",
     moonwell: "#7B3FE4",
+    yo: "#FF6B35",
   };
   return colors[protocol] || "#888";
 }
@@ -417,6 +418,7 @@ export function getProtocolInfo(protocol: string) {
     morpho: { name: "Morpho", color: "#00D395", icon: "🔷" },
     aave: { name: "Aave", color: "#B6509E", icon: "👻" },
     moonwell: { name: "Moonwell", color: "#7B3FE4", icon: "🌙" },
+    yo: { name: "YO Protocol", color: "#FF6B35", icon: "🟠" },
   };
   return info[protocol] || { name: protocol, color: "#888", icon: "💰" };
 }

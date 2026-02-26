@@ -1,8 +1,12 @@
 import { MorphoClient, type MorphoVault, type MorphoUserPosition } from "../morpho/api-client";
+import { YoApiClient, yoApiClient } from "../yo/api-client";
+import type { YoVault, YoUserPosition } from "../yo/types";
 import { CHAIN_CONFIG, REBALANCE_THRESHOLDS } from "../config";
 
 const CHAIN_ID = CHAIN_CONFIG.chainId;
 const ASSET_SYMBOL = "USDC";
+
+export type Protocol = "morpho" | "yo";
 
 export interface RebalanceDecision {
   shouldRebalance: boolean;
@@ -13,16 +17,18 @@ export interface RebalanceDecision {
     apy: number;
     shares: string;
     assets: string;
+    protocol: Protocol;
   } | null;
   targetVault: {
     address: `0x${string}`;
     name: string;
     apy: number;
     liquidityUsd: number;
+    protocol: Protocol;
   } | null;
-  apyImprovement: number; // Absolute improvement (e.g., 0.02 = 2%)
-  estimatedAnnualGain: number; // USD per year
-  breakEvenDays: number; // Days to recover gas cost
+  apyImprovement: number;
+  estimatedAnnualGain: number;
+  breakEvenDays: number;
 }
 
 /**
@@ -31,9 +37,11 @@ export interface RebalanceDecision {
  */
 export class YieldDecisionEngine {
   private morphoClient: MorphoClient;
+  private yoClient: YoApiClient;
 
-  constructor(morphoClient?: MorphoClient) {
+  constructor(morphoClient?: MorphoClient, yoClient?: YoApiClient) {
     this.morphoClient = morphoClient || new MorphoClient();
+    this.yoClient = yoClient || yoApiClient;
   }
 
   /**
@@ -48,10 +56,42 @@ export class YieldDecisionEngine {
     targetedVaults?: string[] | null
   ): Promise<RebalanceDecision> {
     try {
-      // 1. Fetch user's current positions
-      const positions = await this.morphoClient.fetchUserPositions(userAddress, CHAIN_ID);
+      // 1. Fetch user's current positions from BOTH protocols in parallel
+      const [morphoPositions, yoPositions] = await Promise.all([
+        this.morphoClient.fetchUserPositions(userAddress, CHAIN_ID),
+        this.yoClient.fetchUserPositions(userAddress, CHAIN_ID),
+      ]);
 
-      if (positions.length === 0) {
+      // Normalize positions into a common shape for comparison
+      type NormalizedPosition = {
+        protocol: Protocol;
+        vaultAddress: string;
+        vaultName: string;
+        shares: string;
+        assets: string;
+        assetsUsd: number;
+      };
+
+      const allPositions: NormalizedPosition[] = [
+        ...morphoPositions.map((p) => ({
+          protocol: "morpho" as Protocol,
+          vaultAddress: p.vault.address,
+          vaultName: p.vault.name,
+          shares: p.shares,
+          assets: p.assets,
+          assetsUsd: p.assetsUsd ?? 0,
+        })),
+        ...yoPositions.map((p) => ({
+          protocol: "yo" as Protocol,
+          vaultAddress: p.vaultAddress,
+          vaultName: p.vaultName,
+          shares: p.shares.toString(),
+          assets: p.assets.toString(),
+          assetsUsd: p.assetsUsd,
+        })),
+      ];
+
+      if (allPositions.length === 0) {
         return {
           shouldRebalance: false,
           reason: "No active positions found",
@@ -63,36 +103,73 @@ export class YieldDecisionEngine {
         };
       }
 
-      // 2. Get the largest position by USD value
-      const currentPosition = positions.reduce((max, pos) =>
-        (pos.assetsUsd ?? 0) > (max.assetsUsd ?? 0) ? pos : max
+      // 2. Get the largest position across all protocols by USD value
+      const currentPosition = allPositions.reduce((max, pos) =>
+        pos.assetsUsd > max.assetsUsd ? pos : max
       );
 
-      // 3. Fetch current vault details with APY
-      const currentVaultDetails = await this.morphoClient.fetchVault(
-        currentPosition.vault.address,
-        CHAIN_ID
-      );
-
-      if (!currentVaultDetails) {
-        return {
-          shouldRebalance: false,
-          reason: "Could not fetch current vault details",
-          currentVault: null,
-          targetVault: null,
-          apyImprovement: 0,
-          estimatedAnnualGain: 0,
-          breakEvenDays: 0,
-        };
+      // 3. Fetch current vault APY based on protocol
+      let currentApy = 0;
+      if (currentPosition.protocol === "morpho") {
+        const vaultDetails = await this.morphoClient.fetchVault(
+          currentPosition.vaultAddress,
+          CHAIN_ID
+        );
+        if (!vaultDetails) {
+          return {
+            shouldRebalance: false,
+            reason: "Could not fetch current Morpho vault details",
+            currentVault: null,
+            targetVault: null,
+            apyImprovement: 0,
+            estimatedAnnualGain: 0,
+            breakEvenDays: 0,
+          };
+        }
+        currentApy = vaultDetails.avgNetApy ?? vaultDetails.netApy ?? 0;
+      } else {
+        const yoVaults = await this.yoClient.fetchVaults(CHAIN_ID, ASSET_SYMBOL);
+        const matchedVault = yoVaults.find(
+          (v) => v.address.toLowerCase() === currentPosition.vaultAddress.toLowerCase()
+        );
+        currentApy = matchedVault?.apy ?? 0;
       }
 
-      // 4. Fetch all available vaults and find best option
-      const allVaults = await this.morphoClient.fetchVaults(CHAIN_ID, ASSET_SYMBOL, 50);
+      // 4. Fetch all available vaults from BOTH protocols in parallel
+      const [morphoVaults, yoVaults] = await Promise.all([
+        this.morphoClient.fetchVaults(CHAIN_ID, ASSET_SYMBOL, 50),
+        this.yoClient.fetchVaults(CHAIN_ID, ASSET_SYMBOL),
+      ]);
+
+      type NormalizedVault = {
+        protocol: Protocol;
+        address: string;
+        name: string;
+        apy: number;
+        liquidityUsd: number;
+      };
+
+      const allVaults: NormalizedVault[] = [
+        ...morphoVaults.map((v) => ({
+          protocol: "morpho" as Protocol,
+          address: v.address,
+          name: v.name,
+          apy: v.avgNetApy ?? v.netApy ?? 0,
+          liquidityUsd: v.totalAssetsUsd ?? 0,
+        })),
+        ...yoVaults.map((v) => ({
+          protocol: "yo" as Protocol,
+          address: v.address,
+          name: v.name,
+          apy: v.apy,
+          liquidityUsd: v.tvlUsd,
+        })),
+      ];
 
       const eligibleVaults = allVaults.filter(
         (vault) =>
-          (vault.totalAssetsUsd ?? 0) >= REBALANCE_THRESHOLDS.minLiquidityUsd && // Sufficient liquidity
-          vault.address.toLowerCase() !== currentVaultDetails.address.toLowerCase() // Different vault
+          vault.liquidityUsd >= REBALANCE_THRESHOLDS.minLiquidityUsd &&
+          vault.address.toLowerCase() !== currentPosition.vaultAddress.toLowerCase()
       );
 
       if (eligibleVaults.length === 0) {
@@ -100,11 +177,12 @@ export class YieldDecisionEngine {
           shouldRebalance: false,
           reason: "No eligible alternative vaults found",
           currentVault: {
-            address: currentVaultDetails.address,
-            name: currentVaultDetails.name,
-            apy: currentVaultDetails.avgNetApy ?? currentVaultDetails.netApy ?? 0,
+            address: currentPosition.vaultAddress as `0x${string}`,
+            name: currentPosition.vaultName,
+            apy: currentApy,
             shares: currentPosition.shares,
             assets: currentPosition.assets,
+            protocol: currentPosition.protocol,
           },
           targetVault: null,
           apyImprovement: 0,
@@ -113,24 +191,18 @@ export class YieldDecisionEngine {
         };
       }
 
-      // 5. Find best vault by APY
-      const bestVault = eligibleVaults[0]; // Already sorted by APY descending
+      // 5. Find best vault by APY across all protocols
+      const bestVault = eligibleVaults.sort((a, b) => b.apy - a.apy)[0];
 
-      // 6. Calculate APY improvement and estimated gains
-      const currentApy = currentVaultDetails.avgNetApy ?? currentVaultDetails.netApy ?? 0;
-      const bestApy = bestVault.avgNetApy ?? bestVault.netApy ?? 0;
-      const apyImprovement = bestApy - currentApy;
-
-      const positionValueUsd = currentPosition.assetsUsd ?? 0;
+      // 6. Calculate APY improvement
+      const apyImprovement = bestVault.apy - currentApy;
+      const positionValueUsd = currentPosition.assetsUsd;
       const estimatedAnnualGain = positionValueUsd * apyImprovement;
+      const breakEvenDays = 0; // Gas fully sponsored
 
-      // 7. Break-even is effectively instant — gas is fully sponsored by ZeroDev paymaster
-      const breakEvenDays = 0;
-
-      // 8. Make decision — gates on APY improvement threshold only
-      // Use lower threshold for targeted rebalances (APY monitor detected drops)
+      // 7. Make decision
       const isTargeted = targetedVaults?.some(
-        (v) => v.toLowerCase() === currentVaultDetails.address.toLowerCase()
+        (v) => v.toLowerCase() === currentPosition.vaultAddress.toLowerCase()
       );
       const effectiveThreshold = isTargeted
         ? REBALANCE_THRESHOLDS.targetedApyImprovement
@@ -139,25 +211,27 @@ export class YieldDecisionEngine {
       const shouldRebalance = apyImprovement >= effectiveThreshold;
 
       const reason = shouldRebalance
-        ? `${isTargeted ? "[TARGETED] " : ""}Found ${(apyImprovement * 100).toFixed(2)}% APY improvement (${(currentApy * 100).toFixed(2)}% → ${(bestApy * 100).toFixed(2)}%). Estimated gain: $${estimatedAnnualGain.toFixed(2)}/year.`
+        ? `${isTargeted ? "[TARGETED] " : ""}Found ${(apyImprovement * 100).toFixed(2)}% APY improvement (${(currentApy * 100).toFixed(2)}% → ${(bestVault.apy * 100).toFixed(2)}%). ${currentPosition.protocol}→${bestVault.protocol}. Estimated gain: $${estimatedAnnualGain.toFixed(2)}/year.`
         : `APY improvement too small (${(apyImprovement * 100).toFixed(2)}% < ${(effectiveThreshold * 100).toFixed(1)}% threshold)`;
 
       return {
         shouldRebalance,
         reason,
         currentVault: {
-          address: currentVaultDetails.address,
-          name: currentVaultDetails.name,
+          address: currentPosition.vaultAddress as `0x${string}`,
+          name: currentPosition.vaultName,
           apy: currentApy,
           shares: currentPosition.shares,
           assets: currentPosition.assets,
+          protocol: currentPosition.protocol,
         },
         targetVault: shouldRebalance
           ? {
-              address: bestVault.address,
+              address: bestVault.address as `0x${string}`,
               name: bestVault.name,
-              apy: bestApy,
-              liquidityUsd: bestVault.totalAssetsUsd ?? 0,
+              apy: bestVault.apy,
+              liquidityUsd: bestVault.liquidityUsd,
+              protocol: bestVault.protocol,
             }
           : null,
         apyImprovement,
@@ -179,38 +253,68 @@ export class YieldDecisionEngine {
   }
 
   /**
-   * Get all available vaults with APY data
-   * Useful for UI display
-   *
-   * @returns Array of vaults sorted by APY
+   * Get all available Morpho vaults
+   */
+  async getAvailableMorphoVaults(): Promise<MorphoVault[]> {
+    return await this.morphoClient.fetchVaults(CHAIN_ID, ASSET_SYMBOL, 20);
+  }
+
+  /**
+   * Get all available YO vaults
+   */
+  async getAvailableYoVaults(): Promise<YoVault[]> {
+    return await this.yoClient.fetchVaults(CHAIN_ID, ASSET_SYMBOL);
+  }
+
+  /**
+   * Get all available vaults from all protocols
+   * Returns Morpho vaults (for backward compat with optimize route)
+   * Use getAvailableMorphoVaults() / getAvailableYoVaults() for typed access
    */
   async getAvailableVaults(): Promise<MorphoVault[]> {
     return await this.morphoClient.fetchVaults(CHAIN_ID, ASSET_SYMBOL, 20);
   }
 
   /**
-   * Get user's current positions with APY data
-   *
-   * @param userAddress - User wallet address
-   * @returns Array of positions with vault details
+   * Get Morpho positions with APY data
+   */
+  async getMorphoPositionsWithApy(
+    userAddress: `0x${string}`
+  ): Promise<(MorphoUserPosition & { apy: number })[]> {
+    const positions = await this.morphoClient.fetchUserPositions(userAddress, CHAIN_ID);
+    const enrichedPositions = await Promise.all(
+      positions.map(async (pos) => {
+        const vaultDetails = await this.morphoClient.fetchVault(pos.vault.address, CHAIN_ID);
+        return { ...pos, apy: vaultDetails?.avgNetApy || 0 };
+      })
+    );
+    return enrichedPositions;
+  }
+
+  /**
+   * Get YO positions with APY data
+   */
+  async getYoPositionsWithApy(
+    userAddress: `0x${string}`
+  ): Promise<(YoUserPosition & { apy: number })[]> {
+    const [positions, vaults] = await Promise.all([
+      this.yoClient.fetchUserPositions(userAddress, CHAIN_ID),
+      this.yoClient.fetchVaults(CHAIN_ID),
+    ]);
+    return positions.map((pos) => {
+      const vault = vaults.find((v) => v.address.toLowerCase() === pos.vaultAddress.toLowerCase());
+      return { ...pos, apy: vault?.apy ?? 0 };
+    });
+  }
+
+  /**
+   * Get user's current positions with APY data (backward compat — Morpho only)
+   * For cross-protocol positions, use getMorphoPositionsWithApy + getYoPositionsWithApy
    */
   async getUserPositionsWithApy(
     userAddress: `0x${string}`
   ): Promise<(MorphoUserPosition & { apy: number })[]> {
-    const positions = await this.morphoClient.fetchUserPositions(userAddress, CHAIN_ID);
-
-    // Enrich with vault details
-    const enrichedPositions = await Promise.all(
-      positions.map(async (pos) => {
-        const vaultDetails = await this.morphoClient.fetchVault(pos.vault.address, CHAIN_ID);
-        return {
-          ...pos,
-          apy: vaultDetails?.avgNetApy || 0,
-        };
-      })
-    );
-
-    return enrichedPositions;
+    return this.getMorphoPositionsWithApy(userAddress);
   }
 }
 
