@@ -175,7 +175,7 @@ describe("buildRebalanceCalls — previewRedeem & No MAX_UINT256", () => {
     // Verify MAX_UINT256 is NOT used in the deposit args
     // The old code had: args: [MAX_UINT256, params.userAddress]
     // The new code should use depositAmount
-    expect(rebalanceSource).toContain("args: [depositAmount, params.userAddress]");
+    expect(rebalanceSource).toContain("args: [redeemAmount, params.userAddress]");
     expect(rebalanceSource).not.toMatch(/deposit.*args:\s*\[MAX_UINT256/);
   });
 
@@ -184,7 +184,7 @@ describe("buildRebalanceCalls — previewRedeem & No MAX_UINT256", () => {
     const rebalanceSource = fs.readFileSync("lib/agent/rebalance-executor.ts", "utf-8");
 
     // Verify approve uses depositAmount
-    expect(rebalanceSource).toContain("args: [params.toVault, depositAmount]");
+    expect(rebalanceSource).toContain("args: [params.toVault, redeemAmount]");
   });
 
   test("11. Full rebalance calls structure is correct", async () => {

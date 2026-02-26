@@ -9,7 +9,12 @@ import { base } from "viem/chains";
 import { createDeserializedKernelClient } from "./kernel-client";
 import { withBuilderCode } from "@/lib/builder-code";
 import { CHAIN_CONFIG } from "@/lib/config";
-import { YO_GATEWAY_ADDRESS, YO_GATEWAY_ABI, YO_PARTNER_ID, applyYoSlippage } from "@/lib/yo/constants";
+import {
+  YO_GATEWAY_ADDRESS,
+  YO_GATEWAY_ABI,
+  YO_PARTNER_ID,
+  applyYoSlippage,
+} from "@/lib/yo/constants";
 import { erc20Abi } from "@yo-protocol/core";
 
 export interface YoRedeemParams {

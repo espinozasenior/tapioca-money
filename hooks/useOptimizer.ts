@@ -365,7 +365,15 @@ export function useVaultExit() {
   const { getAccessToken } = usePrivy();
 
   return useMutation({
-    mutationFn: async ({ vaultAddress, shares, protocol }: { vaultAddress: string; shares: string; protocol?: string }) => {
+    mutationFn: async ({
+      vaultAddress,
+      shares,
+      protocol,
+    }: {
+      vaultAddress: string;
+      shares: string;
+      protocol?: string;
+    }) => {
       if (!wallet?.address) throw new Error("No wallet connected");
 
       const accessToken = await getAccessToken();
