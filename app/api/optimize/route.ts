@@ -2,65 +2,121 @@
 import { NextRequest, NextResponse } from "next/server";
 import { yieldDecisionEngine } from "@/lib/agent/decision-engine";
 import { transformPosition, transformVaultToOpportunity } from "@/lib/morpho/transforms";
+import { transformYoVaultToOpportunity, transformYoPosition } from "@/lib/yo/transforms";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const address = searchParams.get("address") as `0x${string}` | null;
 
   try {
-    // Get all available vaults
-    const vaults = await yieldDecisionEngine.getAvailableVaults();
-    const transformedOpportunities = vaults.map(transformVaultToOpportunity);
+    // Get all available vaults from both protocols in parallel
+    const [morphoVaults, yoVaults] = await Promise.all([
+      yieldDecisionEngine.getAvailableMorphoVaults(),
+      yieldDecisionEngine.getAvailableYoVaults(),
+    ]);
+
+    const morphoOpportunities = morphoVaults.map(transformVaultToOpportunity);
+    const yoOpportunities = yoVaults.map(transformYoVaultToOpportunity);
+    const allOpportunities = [...morphoOpportunities, ...yoOpportunities].sort(
+      (a, b) => b.apy - a.apy
+    );
 
     // If no address, just return opportunities
     if (!address) {
       return NextResponse.json({
         decision: null,
-        opportunities: transformedOpportunities,
+        opportunities: allOpportunities,
         positions: [],
         timestamp: Date.now(),
       });
     }
 
     const decision = await yieldDecisionEngine.evaluateRebalancing(address);
-    const currentPositions = await yieldDecisionEngine.getUserPositionsWithApy(address);
+
+    // Fetch positions from both protocols in parallel
+    const [morphoPositions, yoPositions] = await Promise.all([
+      yieldDecisionEngine.getMorphoPositionsWithApy(address),
+      yieldDecisionEngine.getYoPositionsWithApy(address),
+    ]);
+
+    const transformedMorphoPositions = morphoPositions.map((p) =>
+      transformPosition(p, morphoOpportunities)
+    );
+    const transformedYoPositions = yoPositions.map((p) => transformYoPosition(p, yoOpportunities));
+    const allPositions = [...transformedMorphoPositions, ...transformedYoPositions];
+
+    // Transform decision vaults based on protocol
+    let decisionFrom = null;
+    if (decision.currentVault) {
+      if (decision.currentVault.protocol === "yo") {
+        decisionFrom = transformYoPosition(
+          {
+            vaultAddress: decision.currentVault.address,
+            vaultName: decision.currentVault.name,
+            vaultId: "",
+            shares: BigInt(decision.currentVault.shares),
+            assets: BigInt(decision.currentVault.assets),
+            assetsUsd: 0,
+            apy: decision.currentVault.apy,
+          },
+          yoOpportunities
+        );
+      } else {
+        decisionFrom = transformPosition(
+          {
+            vault: {
+              address: decision.currentVault.address,
+              name: decision.currentVault.name,
+              symbol: "",
+            },
+            shares: decision.currentVault.shares,
+            assets: decision.currentVault.assets,
+            apy: decision.currentVault.apy,
+            assetsUsd: 0,
+            pnl: null,
+            pnlUsd: null,
+          },
+          morphoOpportunities
+        );
+      }
+    }
+
+    let decisionTo = null;
+    if (decision.targetVault) {
+      if (decision.targetVault.protocol === "yo") {
+        decisionTo = transformYoVaultToOpportunity({
+          id: "",
+          address: decision.targetVault.address,
+          name: decision.targetVault.name,
+          apy: decision.targetVault.apy,
+          tvlUsd: decision.targetVault.liquidityUsd,
+          underlying: { address: "0x" as any, symbol: "USDC", decimals: 6 },
+          totalAssets: 0n,
+          totalShares: 0n,
+        });
+      } else {
+        decisionTo = transformVaultToOpportunity({
+          address: decision.targetVault.address,
+          name: decision.targetVault.name,
+          asset: { symbol: "USDC" },
+          avgNetApy: decision.targetVault.apy,
+          totalAssetsUsd: decision.targetVault.liquidityUsd,
+        } as any);
+      }
+    }
 
     return NextResponse.json({
       decision: {
         shouldRebalance: decision.shouldRebalance,
-        estimatedGasCost: "0", // Sponsored
-        estimatedSlippage: 0, // Minimal for vaults
+        estimatedGasCost: "0",
+        estimatedSlippage: 0,
         netGain: decision.estimatedAnnualGain,
         reason: decision.reason,
-        from: decision.currentVault
-          ? transformPosition(
-              {
-                vault: {
-                  address: decision.currentVault.address,
-                  name: decision.currentVault.name,
-                  symbol: "",
-                },
-                shares: decision.currentVault.shares,
-                assets: decision.currentVault.assets,
-                apy: decision.currentVault.apy,
-                assetsUsd: 0,
-                pnl: null,
-                pnlUsd: null,
-              },
-              transformedOpportunities
-            )
-          : null,
-        to: decision.targetVault
-          ? transformVaultToOpportunity({
-              address: decision.targetVault.address,
-              name: decision.targetVault.name,
-              avgNetApy: decision.targetVault.apy,
-              totalAssetsUsd: decision.targetVault.liquidityUsd,
-            } as any)
-          : null,
+        from: decisionFrom,
+        to: decisionTo,
       },
-      opportunities: transformedOpportunities,
-      positions: currentPositions.map((p) => transformPosition(p, transformedOpportunities)),
+      opportunities: allOpportunities,
+      positions: allPositions,
       timestamp: Date.now(),
     });
   } catch (error) {

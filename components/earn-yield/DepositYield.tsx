@@ -120,7 +120,7 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ vaultAddress, amount: state.amount }),
+        body: JSON.stringify({ vaultAddress, amount: state.amount, protocol: yieldOpportunity.protocol }),
       });
 
       const data = await res.json();
@@ -156,7 +156,17 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
 
       dispatch({ type: "DEPOSIT_ERROR", error: errorMessage, isVaultNotApproved });
     }
-  }, [wallet, isAmountValid, yieldOpportunity.metadata?.vaultAddress, state.amount, getAccessToken, refetchBalance, onProcessing, onSuccess]);
+  }, [
+    wallet,
+    isAmountValid,
+    yieldOpportunity.metadata?.vaultAddress,
+    yieldOpportunity.protocol,
+    state.amount,
+    getAccessToken,
+    refetchBalance,
+    onProcessing,
+    onSuccess,
+  ]);
 
   if (isSolanaWallet) {
     return (
