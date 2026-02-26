@@ -78,14 +78,15 @@ export class YoApiClient {
     const snapshot = parsed.data;
 
     // native yield (percentage string, e.g. "5.48") → decimal (0.0548)
-    const nativeApy = parseFloat(snapshot.stats.yield['30d'] ?? '0') / 100;
+    const nativeApy = parseFloat(snapshot.stats.yield["30d"] ?? "0") / 100;
     // reward yield (percentage string, e.g. "14.0") → decimal (0.14)
-    const rewardApy = parseFloat(snapshot.stats.rewardYield ?? '0') / 100;
+    const rewardApy = parseFloat(snapshot.stats.rewardYield ?? "0") / 100;
     const apy = nativeApy + rewardApy;
 
-    const tvlUsd = typeof snapshot.stats.tvl.raw === 'number'
-      ? snapshot.stats.tvl.raw
-      : parseFloat(snapshot.stats.tvl.raw);
+    const tvlUsd =
+      typeof snapshot.stats.tvl.raw === "number"
+        ? snapshot.stats.tvl.raw
+        : parseFloat(snapshot.stats.tvl.raw);
 
     return { apy, tvlUsd };
   }
@@ -205,7 +206,9 @@ export class YoApiClient {
               const history = await this.yoClient.getUserHistory(config.address, userAddress);
               const firstDeposit = history
                 .filter((h: { type: string }) => h.type === "deposit")
-                .sort((a: { timestamp: number }, b: { timestamp: number }) => a.timestamp - b.timestamp)[0];
+                .sort(
+                  (a: { timestamp: number }, b: { timestamp: number }) => a.timestamp - b.timestamp
+                )[0];
               if (firstDeposit) {
                 // SDK returns Unix seconds, convert to ms
                 enteredAt = firstDeposit.timestamp * 1000;

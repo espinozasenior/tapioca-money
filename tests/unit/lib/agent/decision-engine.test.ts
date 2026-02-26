@@ -14,6 +14,21 @@ vi.mock("@/lib/morpho/api-client", () => {
   };
 });
 
+// Mock YoApiClient — return empty arrays so YO doesn't interfere with Morpho-focused tests
+vi.mock("@/lib/yo/api-client", () => {
+  const mockYoClient = {
+    fetchVaults: vi.fn().mockResolvedValue([]),
+    fetchUserPositions: vi.fn().mockResolvedValue([]),
+  };
+  return {
+    YoApiClient: class {
+      fetchVaults = mockYoClient.fetchVaults;
+      fetchUserPositions = mockYoClient.fetchUserPositions;
+    },
+    yoApiClient: mockYoClient,
+  };
+});
+
 describe("YieldDecisionEngine", () => {
   let decisionEngine: YieldDecisionEngine;
   let mockMorphoClient: any;
@@ -22,10 +37,14 @@ describe("YieldDecisionEngine", () => {
   const mockCurrentVaultAddress = "0x1111111111111111111111111111111111111111";
   const mockBetterVaultAddress = "0x2222222222222222222222222222222222222222";
 
-  beforeEach(() => {
-    mockMorphoClient = new MorphoClient();
-    decisionEngine = new YieldDecisionEngine(mockMorphoClient);
+  beforeEach(async () => {
     vi.clearAllMocks();
+    mockMorphoClient = new MorphoClient();
+    // Re-set YO mock defaults after clearAllMocks
+    const { yoApiClient } = await import("@/lib/yo/api-client");
+    (yoApiClient.fetchVaults as any).mockResolvedValue([]);
+    (yoApiClient.fetchUserPositions as any).mockResolvedValue([]);
+    decisionEngine = new YieldDecisionEngine(mockMorphoClient);
   });
 
   describe("evaluateRebalancing", () => {
@@ -50,7 +69,7 @@ describe("YieldDecisionEngine", () => {
       const result = await decisionEngine.evaluateRebalancing(mockUserAddress);
 
       expect(result.shouldRebalance).toBe(false);
-      expect(result.reason).toBe("Could not fetch current vault details");
+      expect(result.reason).toBe("Could not fetch current Morpho vault details");
     });
 
     it("should return false if no eligible alternative vaults found", async () => {
