@@ -15,6 +15,8 @@ import {
 } from "@/lib/security/session-encryption";
 import { authenticateRequest, unauthorizedResponse } from "@/lib/auth/middleware";
 import { executeVaultRedeem } from "@/lib/zerodev/vault-executor";
+import { executeYoVaultRedeem } from "@/lib/zerodev/yo-vault-executor";
+import { YO_GATEWAY_ADDRESS } from "@/lib/yo/constants";
 import { incrementUserOpCount } from "@/lib/redis/rate-limiter";
 
 const sql = neon(process.env.DATABASE_URL!);
@@ -34,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     // 2. Parse request body
     const body = await request.json();
-    const { vaultAddress, shares } = body;
+    const { vaultAddress, shares, protocol = "morpho" } = body;
 
     if (!vaultAddress) {
       return NextResponse.json({ error: "Missing vault address" }, { status: 400 });
@@ -98,11 +100,21 @@ export async function POST(request: NextRequest) {
     // 6. Decrypt session key
     const decryptedAuth = decryptAuthorization(authorizationData);
 
-    // 7. Verify vault is approved (if approved vaults list exists)
+    // 7. Verify vault/gateway is approved
     const approvedVaults = authorizationData.approvedVaults || [];
     const normalizedVaultAddress = vaultAddress.toLowerCase();
 
-    if (approvedVaults.length > 0) {
+    if (protocol === "yo") {
+      const gatewayApproved = approvedVaults.some(
+        (v: string) => v.toLowerCase() === YO_GATEWAY_ADDRESS.toLowerCase()
+      );
+      if (approvedVaults.length > 0 && !gatewayApproved) {
+        return NextResponse.json(
+          { error: "YO Gateway not approved. Please re-register agent." },
+          { status: 403 }
+        );
+      }
+    } else if (approvedVaults.length > 0) {
       const isApproved = approvedVaults.some(
         (v: string) => v.toLowerCase() === normalizedVaultAddress
       );
@@ -115,15 +127,26 @@ export async function POST(request: NextRequest) {
     }
 
     // 8. Execute vault redeem
-    const result = await executeVaultRedeem({
-      smartAccountAddress: decryptedAuth.eoaAddress,
-      vaultAddress: vaultAddress as `0x${string}`,
-      shares: BigInt(shares),
-      receiver: decryptedAuth.eoaAddress,
-      serializedAccount: decryptedAuth.serializedAccount,
-      sessionPrivateKey: decryptedAuth.sessionPrivateKey as `0x${string}` | undefined,
-      approvedVaults: approvedVaults as `0x${string}`[],
-    });
+    let result;
+    if (protocol === "yo") {
+      result = await executeYoVaultRedeem({
+        smartAccountAddress: decryptedAuth.eoaAddress,
+        vaultAddress: vaultAddress as `0x${string}`,
+        shares: BigInt(shares),
+        receiver: decryptedAuth.eoaAddress,
+        serializedAccount: decryptedAuth.serializedAccount!,
+      });
+    } else {
+      result = await executeVaultRedeem({
+        smartAccountAddress: decryptedAuth.eoaAddress,
+        vaultAddress: vaultAddress as `0x${string}`,
+        shares: BigInt(shares),
+        receiver: decryptedAuth.eoaAddress,
+        serializedAccount: decryptedAuth.serializedAccount,
+        sessionPrivateKey: decryptedAuth.sessionPrivateKey as `0x${string}` | undefined,
+        approvedVaults: approvedVaults as `0x${string}`[],
+      });
+    }
 
     if (!result.success) {
       let userMessage = result.error || "Vault redeem failed";
