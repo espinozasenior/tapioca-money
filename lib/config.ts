@@ -46,6 +46,10 @@ export const PROTOCOLS = {
     comptroller: "0xfBb21d0380beE3312B33c4353c8936a0F13EF26C" as `0x${string}`,
     mUsdc: "0xEdc817A28E8B93B03976FBd4a3dDBc9f7D176c22" as `0x${string}`,
   },
+  yo: {
+    enabled: true,
+    name: "YO Protocol",
+  },
 } as const;
 
 // Morpho USDC Market Parameters (Base Mainnet)

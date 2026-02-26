@@ -82,15 +82,22 @@ const erc20Abi = [
  */
 export function useWallet() {
   const { authenticated, user, ready, getAccessToken } = usePrivy();
-  const { activeWallet, activeWalletType, isEvmWallet, isSolanaWallet, supportsSmartAccount } =
-    useWalletSelection();
+  const {
+    activeWallet,
+    activeWalletType,
+    isEvmWallet,
+    isSolanaWallet,
+    supportsSmartAccount,
+    allWallets,
+  } = useWalletSelection();
 
   const wallet = activeWallet?.raw ?? null;
   const address = wallet?.address as Hex | undefined;
 
-  // Debug: Log only when authenticated but no wallet (unusual state)
-  if (ready && authenticated && !wallet) {
-    console.warn("[useWallet] Authenticated but no active wallet selected.");
+  // Debug: Only warn when wallets exist but none is selected (genuinely unexpected).
+  // Skip during hydration gap where Privy is authenticated but wallets haven't loaded yet.
+  if (ready && authenticated && !wallet && allWallets.length > 0) {
+    console.warn("[useWallet] Authenticated with wallets available but no active wallet selected.");
   }
 
   // Check for wallet object existence rather than requiring address immediately

@@ -39,6 +39,7 @@
     "@radix-ui/react-scroll-area": "^1.2.10",
     "@solana-program/memo": "^0.11.0",
     "@tanstack/react-query": "^5.77.2",
+    "@yo-protocol/core": "^0.0.3",
     "@zerodev/ecdsa-validator": "^5.4.9",
     "@zerodev/permissions": "^5.6.3",
     "@zerodev/sdk": "^5.5.7",
@@ -56,7 +57,8 @@
     "react-dom": "^19.0.0",
     "tailwind-merge": "^3.0.2",
     "tw-animate-css": "^1.2.4",
-    "viem": "^2.45.1"
+    "viem": "^2.45.1",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@graphql-codegen/cli": "^6.1.1",

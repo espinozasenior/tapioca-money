@@ -1,4 +1,11 @@
-import { encodeFunctionData, parseAbi, createPublicClient, http, type Hex } from "viem";
+import {
+  encodeFunctionData,
+  parseAbi,
+  createPublicClient,
+  http,
+  type Hex,
+  type Address,
+} from "viem";
 import { base } from "viem/chains";
 import {
   createDeserializedKernelClient,
@@ -6,6 +13,9 @@ import {
 } from "../zerodev/kernel-client";
 import { checkSmartAccountActive } from "../zerodev/client-secure";
 import { withBuilderCode } from "@/lib/builder-code";
+import { YO_GATEWAY_ADDRESS, YO_GATEWAY_ABI, YO_PARTNER_ID, applyYoSlippage } from "@/lib/yo/constants";
+import { CHAIN_CONFIG } from "@/lib/config";
+import type { Protocol } from "./decision-engine";
 
 const VAULT_ABI = parseAbi([
   "function redeem(uint256 shares, address receiver, address owner) returns (uint256 assets)",
@@ -33,6 +43,8 @@ export interface RebalanceParams {
   toVault: `0x${string}`;
   shares: bigint;
   userAddress: `0x${string}`;
+  fromProtocol?: Protocol;
+  toProtocol?: Protocol;
 }
 
 export interface RebalanceCall {
@@ -48,36 +60,37 @@ export interface RebalanceResult {
 }
 
 /**
- * Build transaction calls for vault rebalancing
- * Three-step process:
- * 1. Redeem shares from source vault → receive USDC
- * 2. Approve destination vault to spend USDC
- * 3. Deposit USDC into destination vault
- *
- * Uses previewRedeem to calculate expected USDC output for accurate deposit amount.
+ * Build transaction calls for vault rebalancing.
+ * Handles 4 cross-protocol paths:
+ * - Morpho→Morpho: vault.redeem + usdc.approve(vault) + vault.deposit
+ * - YO→YO: vault.approve(gateway) + gateway.redeem + usdc.approve(gateway) + gateway.deposit
+ * - Morpho→YO: vault.redeem + usdc.approve(gateway) + gateway.deposit
+ * - YO→Morpho: vault.approve(gateway) + gateway.redeem + usdc.approve(vault) + vault.deposit
  */
 export async function buildRebalanceCalls(params: RebalanceParams): Promise<RebalanceCall[]> {
-  // Calculate expected USDC output from redeem via on-chain preview
-  const publicClient = createPublicClient({ chain: base, transport: http() });
-  const expectedAssets = await publicClient.readContract({
-    address: params.fromVault,
-    abi: parseAbi(["function previewRedeem(uint256 shares) view returns (uint256)"]),
-    functionName: "previewRedeem",
-    args: [params.shares],
+  const fromProtocol = params.fromProtocol ?? "morpho";
+  const toProtocol = params.toProtocol ?? "morpho";
+  const publicClient = createPublicClient({
+    chain: base,
+    transport: http(CHAIN_CONFIG.rpcUrl),
   });
 
-  // Apply 0.5% slippage buffer to account for rounding and timing differences
-  const depositAmount = (expectedAssets * 995n) / 1000n;
+  const calls: RebalanceCall[] = [];
 
-  if (depositAmount === 0n) {
-    throw new Error(
-      `previewRedeem returned 0 for ${params.shares} shares on vault ${params.fromVault}`
-    );
-  }
+  // --- Step 1: Redeem from source ---
+  let redeemAmount: bigint;
 
-  return [
-    // Step 1: Redeem from source vault
-    {
+  if (fromProtocol === "morpho") {
+    // ERC4626 previewRedeem on vault directly
+    const expectedAssets = await publicClient.readContract({
+      address: params.fromVault,
+      abi: parseAbi(["function previewRedeem(uint256 shares) view returns (uint256)"]),
+      functionName: "previewRedeem",
+      args: [params.shares],
+    });
+    redeemAmount = (expectedAssets * 995n) / 1000n;
+
+    calls.push({
       to: params.fromVault,
       data: encodeFunctionData({
         abi: VAULT_ABI,
@@ -85,28 +98,97 @@ export async function buildRebalanceCalls(params: RebalanceParams): Promise<Reba
         args: [params.shares, params.userAddress, params.userAddress],
       }),
       value: BigInt(0),
-    },
-    // Step 2: Approve destination vault with exact amount (not MAX_UINT256)
-    {
+    });
+  } else {
+    // YO: approve shares to Gateway, then gateway.redeem
+    const expectedAssets = await publicClient.readContract({
+      address: YO_GATEWAY_ADDRESS as Address,
+      abi: YO_GATEWAY_ABI,
+      functionName: "quotePreviewRedeem",
+      args: [params.fromVault, params.shares],
+    });
+    redeemAmount = applyYoSlippage(expectedAssets);
+
+    // Approve vault shares to Gateway
+    calls.push({
+      to: params.fromVault,
+      data: encodeFunctionData({
+        abi: ERC20_ABI,
+        functionName: "approve",
+        args: [YO_GATEWAY_ADDRESS as Address, params.shares],
+      }),
+      value: BigInt(0),
+    });
+
+    calls.push({
+      to: YO_GATEWAY_ADDRESS as `0x${string}`,
+      data: encodeFunctionData({
+        abi: YO_GATEWAY_ABI,
+        functionName: "redeem",
+        args: [params.fromVault, params.shares, redeemAmount, params.userAddress, YO_PARTNER_ID],
+      }),
+      value: BigInt(0),
+    });
+  }
+
+  if (redeemAmount === 0n) {
+    throw new Error(
+      `previewRedeem returned 0 for ${params.shares} shares on vault ${params.fromVault}`
+    );
+  }
+
+  // --- Step 2: Approve + Deposit into destination ---
+  if (toProtocol === "morpho") {
+    // Approve USDC to vault, then vault.deposit
+    calls.push({
       to: USDC_ADDRESS,
       data: encodeFunctionData({
         abi: ERC20_ABI,
         functionName: "approve",
-        args: [params.toVault, depositAmount],
+        args: [params.toVault, redeemAmount],
       }),
       value: BigInt(0),
-    },
-    // Step 3: Deposit calculated amount into destination vault
-    {
+    });
+    calls.push({
       to: params.toVault,
       data: encodeFunctionData({
         abi: VAULT_ABI,
         functionName: "deposit",
-        args: [depositAmount, params.userAddress],
+        args: [redeemAmount, params.userAddress],
       }),
       value: BigInt(0),
-    },
-  ];
+    });
+  } else {
+    // YO: Approve USDC to Gateway, then gateway.deposit
+    const minSharesOut = await publicClient.readContract({
+      address: YO_GATEWAY_ADDRESS as Address,
+      abi: YO_GATEWAY_ABI,
+      functionName: "quotePreviewDeposit",
+      args: [params.toVault, redeemAmount],
+    });
+    const minSharesSlippage = applyYoSlippage(minSharesOut);
+
+    calls.push({
+      to: USDC_ADDRESS,
+      data: encodeFunctionData({
+        abi: ERC20_ABI,
+        functionName: "approve",
+        args: [YO_GATEWAY_ADDRESS as Address, redeemAmount],
+      }),
+      value: BigInt(0),
+    });
+    calls.push({
+      to: YO_GATEWAY_ADDRESS as `0x${string}`,
+      data: encodeFunctionData({
+        abi: YO_GATEWAY_ABI,
+        functionName: "deposit",
+        args: [params.toVault, redeemAmount, minSharesSlippage, params.userAddress, YO_PARTNER_ID],
+      }),
+      value: BigInt(0),
+    });
+  }
+
+  return calls;
 }
 
 /**
