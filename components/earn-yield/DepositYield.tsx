@@ -120,7 +120,11 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ vaultAddress, amount: state.amount, protocol: yieldOpportunity.protocol }),
+        body: JSON.stringify({
+          vaultAddress,
+          amount: state.amount,
+          protocol: yieldOpportunity.protocol,
+        }),
       });
 
       const data = await res.json();
