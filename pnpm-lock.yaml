@@ -8,7 +8,7 @@ overrides:
   use-sync-external-store: '>=1.2.0'
   '@privy-io/react-auth>permissionless': ^0.3.4
   viem: ^2.45.1
-  zod: '>=3.22.4'
+  zod: ^4.3.6
   ox: '>=0.11.3'
 
 importers:
@@ -4670,7 +4670,7 @@ packages:
     resolution: {integrity: sha512-MMSqYh4+C/aVqI2RQaWqbvI4Kxo5cQV40WQ4QFtDnNzCkqChm8MuENhElmynZlO0qUy/ObkEUaXtKqYnx1Kp3A==}
     peerDependencies:
       typescript: '>=5.0.4'
-      zod: '>=3.22.4'
+      zod: ^4.3.6
     peerDependenciesMeta:
       typescript:
         optional: true
@@ -4681,7 +4681,7 @@ packages:
     resolution: {integrity: sha512-ZeiI6h3GnW06uYDLx0etQtX/p8E24UaHHBj57RSjK7YBFe7iuVn07EDpOeP451D06sF27VOz9JJPlIKJmXgkEg==}
     peerDependencies:
       typescript: '>=5.0.4'
-      zod: '>=3.22.4'
+      zod: ^4.3.6
     peerDependenciesMeta:
       typescript:
         optional: true
@@ -4692,7 +4692,7 @@ packages:
     resolution: {integrity: sha512-Ofer5QUnuUdTFsBRwARMoWKOH1ND5ehwYhJ3OJ/BQO+StkwQjHw0XyVh4vDttzHB7QOFhPHa/o413PJ82gU/Tg==}
     peerDependencies:
       typescript: '>=5.0.4'
-      zod: '>=3.22.4'
+      zod: ^4.3.6
     peerDependenciesMeta:
       typescript:
         optional: true
