@@ -43,16 +43,23 @@ export function transformYoPosition(
       o.address?.toLowerCase() === pos.vaultAddress.toLowerCase()
   );
 
-  const enteredAt = pos.enteredAt || Date.now();
+  const enteredAt = pos.enteredAt ?? null;
   const now = Date.now();
-  const msElapsed = Math.max(0, now - enteredAt);
+  const msElapsed = enteredAt != null ? Math.max(0, now - enteredAt) : 0;
   const daysActive = Math.floor(msElapsed / (1000 * 60 * 60 * 24));
   const yearsElapsed = msElapsed / (1000 * 60 * 60 * 24 * 365.25);
 
   const assetsUsd = pos.assetsUsd;
   const apy = matchedYield?.apy ?? pos.apy;
 
-  const totalEarned = assetsUsd * apy * yearsElapsed;
+  // Prefer actual P&L when available (mirrors Morpho pattern)
+  let totalEarned = 0;
+  if (pos.unrealizedPnl != null || pos.realizedPnl != null) {
+    totalEarned = (pos.realizedPnl ?? 0) + (pos.unrealizedPnl ?? 0);
+  } else {
+    totalEarned = assetsUsd * apy * yearsElapsed;
+  }
+
   const monthlyRate = (assetsUsd * apy) / 12;
 
   return {
@@ -61,14 +68,14 @@ export function transformYoPosition(
     vaultName: matchedYield?.name ?? pos.vaultName,
     vaultDescription: matchedYield?.metadata?.description,
     apy,
-    enteredAt,
+    enteredAt: enteredAt ?? now,
     id: `yo-${pos.vaultAddress}`,
     yieldId: matchedYield?.id ?? `yo-${pos.vaultAddress}`,
     shares: pos.shares.toString(),
     assets: pos.assets.toString(),
     amount: assetsUsd.toFixed(2),
     amountUsd: assetsUsd.toFixed(2),
-    createdAt: new Date(enteredAt).toISOString(),
+    createdAt: new Date(enteredAt ?? now).toISOString(),
     rewards: {
       totalEarned: totalEarned.toFixed(4),
       earnedThisMonth: (monthlyRate * (Math.min(daysActive, 30) / 30)).toFixed(4),

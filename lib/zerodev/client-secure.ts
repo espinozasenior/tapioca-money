@@ -144,6 +144,14 @@ async function createAndSerializeAccount(
       args: [{ condition: ParamCondition.LESS_THAN_OR_EQUAL, value: MAX_USDC_PER_CALL }, null],
       valueLimit: 0n,
     });
+    // Approve vault share token (needed for YO Gateway redeem flow: approve shares → gateway.redeem)
+    permissions.push({
+      target: vault,
+      abi: parseAbi(["function approve(address spender, uint256 amount) returns (bool)"]),
+      functionName: "approve",
+      args: [null, null],
+      valueLimit: 0n,
+    });
     // Redeem/withdraw move funds back to user — no amount cap needed
     permissions.push({ target: vault, selector: REDEEM_SELECTOR, valueLimit: 0n });
     permissions.push({ target: vault, selector: WITHDRAW_SELECTOR, valueLimit: 0n });

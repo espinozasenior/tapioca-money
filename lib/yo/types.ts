@@ -29,4 +29,6 @@ export interface YoUserPosition {
   assets: bigint;
   assetsUsd: number;
   enteredAt?: number; // Timestamp ms
+  unrealizedPnl?: number; // From getUserPerformance() (USD)
+  realizedPnl?: number; // From getUserPerformance() (USD)
 }
