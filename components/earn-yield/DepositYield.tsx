@@ -8,6 +8,7 @@ import { YieldOpportunity, useAgent } from "@/hooks/useOptimizer";
 import { cn } from "@/lib/utils";
 import { VaultSafetyDetails } from "./VaultSafetyDetails";
 import { AlertTriangle } from "lucide-react";
+import { formatUserError } from "@/lib/yo/error-messages";
 
 interface DepositYieldProps {
   yieldOpportunity: YieldOpportunity;
@@ -141,22 +142,9 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
       onSuccess();
     } catch (err: any) {
       console.error("[Yield] Deposit error:", err);
-
-      let errorMessage = err.message || "Failed to deposit. Please try again.";
-      let isVaultNotApproved = false;
-
-      if (
-        errorMessage.includes("Agent not registered") ||
-        errorMessage.includes("User not found")
-      ) {
-        errorMessage = "Please register your agent first to enable gasless deposits.";
-      } else if (errorMessage.includes("Session key expired")) {
-        errorMessage = "Your session has expired. Please re-register your agent.";
-      } else if (errorMessage.includes("Vault not approved")) {
-        errorMessage =
-          "This vault is not in your approved list. Re-register your agent to update permissions.";
-        isVaultNotApproved = true;
-      }
+      const rawError = err instanceof Error ? err.message : String(err);
+      const errorMessage = formatUserError(err);
+      const isVaultNotApproved = rawError.toLowerCase().includes("vault not approved");
 
       dispatch({ type: "DEPOSIT_ERROR", error: errorMessage, isVaultNotApproved });
     }

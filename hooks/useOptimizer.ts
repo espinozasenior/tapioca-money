@@ -71,6 +71,24 @@ interface OptimizerResponse {
   timestamp: number;
 }
 
+interface VaultExitResponse {
+  success: boolean;
+  txHash?: string;
+  userOpHash?: string;
+  redeemStatus?: "instant" | "queued";
+}
+
+interface PendingRedeemEntry {
+  vaultAddress: `0x${string}`;
+  pendingAssets: string;
+  pendingShares: string;
+}
+
+interface PendingRedeemsResponse {
+  pendingRedeems: PendingRedeemEntry[];
+  timestamp: number;
+}
+
 // Main hook - replaces useYields()
 export function useYields() {
   const { wallet } = useWallet();
@@ -364,7 +382,11 @@ export function useVaultExit() {
   const queryClient = useQueryClient();
   const { getAccessToken } = usePrivy();
 
-  return useMutation({
+  return useMutation<
+    VaultExitResponse,
+    Error,
+    { vaultAddress: string; shares: string; protocol?: string }
+  >({
     mutationFn: async ({
       vaultAddress,
       shares,
@@ -403,6 +425,27 @@ export function useVaultExit() {
       queryClient.invalidateQueries({ queryKey: ["optimizer"] });
       queryClient.invalidateQueries({ queryKey: ["balance"] });
     },
+  });
+}
+
+export function usePendingRedeems(userAddress?: `0x${string}`) {
+  return useQuery<PendingRedeemsResponse>({
+    queryKey: ["pending-redeems", userAddress],
+    queryFn: async () => {
+      if (!userAddress) {
+        return { pendingRedeems: [], timestamp: Date.now() };
+      }
+
+      const res = await fetch(`/api/yo/pending-redeems?address=${userAddress}`);
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to fetch pending redeems");
+      }
+      return data;
+    },
+    enabled: !!userAddress,
+    refetchInterval: 30_000,
+    staleTime: 30_000,
   });
 }
 

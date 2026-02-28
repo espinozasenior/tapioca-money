@@ -1,13 +1,15 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import Image from "next/image";
-import { Info } from "lucide-react";
+import { AlertCircle, CheckCircle2, Info, Loader2 } from "lucide-react";
 import { useWallet } from "@/hooks/useWallet";
 import {
   YieldOpportunity,
   YieldPosition,
+  usePendingRedeems,
   useVaultExit,
   getProtocolInfo,
 } from "@/hooks/useOptimizer";
+import { formatUserError } from "@/lib/yo/error-messages";
 
 interface PositionsListProps {
   positions: YieldPosition[];
@@ -53,40 +55,107 @@ export const formatEarned = (earned: string): string => {
   return num.toFixed(2);
 };
 
+type ExitState = "idle" | "confirming" | "loading" | "success" | "failed";
+
+interface PositionExitState {
+  state: ExitState;
+  percentage: 25 | 50 | 75 | 100;
+  error: string | null;
+  redeemStatus: "instant" | "queued" | null;
+}
+
+const DEFAULT_EXIT_STATE: PositionExitState = {
+  state: "idle",
+  percentage: 100,
+  error: null,
+  redeemStatus: null,
+};
+
 export function PositionsList({ positions, yields, isLoading, onExitSuccess }: PositionsListProps) {
   const { wallet, isReady } = useWallet();
-  const [exitingId, setExitingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [positionStates, setPositionStates] = useState<Record<string, PositionExitState>>({});
   const vaultExit = useVaultExit();
+  const pendingRedeems = usePendingRedeems(wallet?.address as `0x${string}` | undefined);
 
   // Find the yield opportunity for a position to get APY
   const getYieldForPosition = (yieldId: string) => {
     return yields.find((y) => y.id === yieldId);
   };
 
+  const getPositionState = (positionId: string): PositionExitState => {
+    return positionStates[positionId] || DEFAULT_EXIT_STATE;
+  };
+
+  const setPositionState = (positionId: string, state: PositionExitState) => {
+    setPositionStates((prev) => ({ ...prev, [positionId]: state }));
+  };
+
   const handleExit = async (position: YieldPosition) => {
     if (!wallet?.address) {
-      setError("No wallet connected");
+      setPositionState(position.id, {
+        ...getPositionState(position.id),
+        state: "failed",
+        error: "No wallet connected",
+      });
       return;
     }
 
-    setError(null);
-    setExitingId(position.id);
+    const currentState = getPositionState(position.id);
+    const totalShares = BigInt(position.shares);
+    const sharesToRedeem = (totalShares * BigInt(currentState.percentage)) / 100n;
+
+    if (sharesToRedeem <= 0n) {
+      setPositionState(position.id, {
+        ...currentState,
+        state: "failed",
+        error: "Withdrawal amount is too small.",
+      });
+      return;
+    }
+
+    setPositionState(position.id, {
+      ...currentState,
+      state: "loading",
+      error: null,
+      redeemStatus: null,
+    });
 
     try {
-      await vaultExit.mutateAsync({
+      const response = await vaultExit.mutateAsync({
         vaultAddress: position.vaultAddress,
-        shares: position.shares.toString(),
+        shares: sharesToRedeem.toString(),
         protocol: position.protocol,
+      });
+
+      setPositionState(position.id, {
+        ...currentState,
+        state: "success",
+        error: null,
+        redeemStatus: response.redeemStatus || "instant",
       });
       onExitSuccess();
     } catch (err: any) {
       console.error("[Yield] Exit error:", err);
-      setError(err.message || "Failed to exit position");
-    } finally {
-      setExitingId(null);
+      setPositionState(position.id, {
+        ...currentState,
+        state: "failed",
+        error: formatUserError(err),
+        redeemStatus: null,
+      });
     }
   };
+
+  const pendingVaults = useMemo(() => {
+    const set = new Set<string>();
+    for (const entry of pendingRedeems.data?.pendingRedeems || []) {
+      const hasPendingAssets = BigInt(entry.pendingAssets) > 0n;
+      const hasPendingShares = BigInt(entry.pendingShares) > 0n;
+      if (hasPendingAssets || hasPendingShares) {
+        set.add(entry.vaultAddress.toLowerCase());
+      }
+    }
+    return set;
+  }, [pendingRedeems.data?.pendingRedeems]);
 
   if (isLoading) {
     return (
@@ -125,8 +194,6 @@ export function PositionsList({ positions, yields, isLoading, onExitSuccess }: P
 
   return (
     <div className="flex w-full flex-col gap-4">
-      {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</div>}
-
       {/* Testnet disclaimer */}
       <div className="rounded-xl bg-blue-50 p-4">
         <div className="flex items-start gap-3">
@@ -142,7 +209,8 @@ export function PositionsList({ positions, yields, isLoading, onExitSuccess }: P
       {positions.map((position) => {
         const yieldOpp = getYieldForPosition(position.yieldId);
         const apy = position.apy;
-        const isExiting = exitingId === position.id;
+        const positionState = getPositionState(position.id);
+        const isPendingWithdrawal = pendingVaults.has(position.vaultAddress.toLowerCase());
         const displayAmount = formatUsdAmount(position.amountUsd, position.amount);
         const protocolInfo = getProtocolInfo(position.protocol);
         const vaultName = position.vaultName ?? yieldOpp?.metadata?.name ?? protocolInfo.name;
@@ -172,6 +240,11 @@ export function PositionsList({ positions, yields, isLoading, onExitSuccess }: P
                     >
                       {protocolInfo.name}
                     </span>
+                    {isPendingWithdrawal && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                        Pending Withdrawal
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -204,13 +277,116 @@ export function PositionsList({ positions, yields, isLoading, onExitSuccess }: P
             {/* Vault description */}
             {vaultDescription && <p className="mt-2 text-xs text-gray-400">{vaultDescription}</p>}
 
+            {positionState.state === "confirming" && (
+              <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-3">
+                <p className="text-sm font-medium text-gray-900">Select withdrawal amount</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {[25, 50, 75, 100].map((percent) => (
+                    <button
+                      key={percent}
+                      onClick={() =>
+                        setPositionState(position.id, {
+                          ...positionState,
+                          percentage: percent as 25 | 50 | 75 | 100,
+                        })
+                      }
+                      className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                        positionState.percentage === percent
+                          ? "border-primary text-primary bg-primary/10"
+                          : "border-gray-200 text-gray-600 hover:border-gray-300"
+                      }`}
+                    >
+                      {percent}%
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3 space-y-1 text-xs text-gray-600">
+                  <p>
+                    Principal: $
+                    {(
+                      Number(position.amountUsd || position.amount || "0") *
+                      (positionState.percentage / 100)
+                    ).toFixed(2)}
+                  </p>
+                  <p>
+                    Estimated yield: $
+                    {(
+                      Number(rewards?.totalEarned || "0") *
+                      (positionState.percentage / 100)
+                    ).toFixed(2)}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {positionState.state === "loading" && (
+              <div className="mt-4 flex items-center gap-2 rounded-lg bg-blue-50 p-3 text-sm text-blue-700">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Processing withdrawal...
+              </div>
+            )}
+
+            {positionState.state === "success" && (
+              <div
+                className={`mt-4 flex items-center gap-2 rounded-lg p-3 text-sm ${
+                  positionState.redeemStatus === "queued"
+                    ? "bg-amber-50 text-amber-700"
+                    : "bg-green-50 text-green-700"
+                }`}
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                {positionState.redeemStatus === "queued"
+                  ? "Withdrawal Queued"
+                  : "Withdrawal Confirmed"}
+              </div>
+            )}
+
+            {positionState.state === "failed" && positionState.error && (
+              <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                  <p>{positionState.error}</p>
+                </div>
+              </div>
+            )}
+
             {/* Exit button */}
             <button
-              onClick={() => handleExit(position)}
-              disabled={isExiting}
+              onClick={() => {
+                if (positionState.state === "idle") {
+                  setPositionState(position.id, {
+                    ...positionState,
+                    state: "confirming",
+                    error: null,
+                  });
+                  return;
+                }
+
+                if (positionState.state === "confirming") {
+                  void handleExit(position);
+                  return;
+                }
+
+                if (positionState.state === "failed") {
+                  setPositionState(position.id, {
+                    ...positionState,
+                    state: "confirming",
+                    error: null,
+                  });
+                }
+              }}
+              disabled={positionState.state === "loading" || positionState.state === "success"}
               className="mt-4 w-full rounded-xl border border-gray-200 py-3 text-center text-sm font-medium text-gray-900 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isExiting ? "Exiting..." : "Exit position"}
+              {positionState.state === "idle" && "Exit position"}
+              {positionState.state === "confirming" &&
+                `Confirm withdrawal (${positionState.percentage}%)`}
+              {positionState.state === "loading" && "Processing withdrawal..."}
+              {positionState.state === "success" &&
+                (positionState.redeemStatus === "queued"
+                  ? "Withdrawal Queued"
+                  : "Withdrawal Confirmed")}
+              {positionState.state === "failed" && "Try Again"}
             </button>
           </div>
         );
