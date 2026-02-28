@@ -37,6 +37,15 @@ import {
 
 const CHAIN_ID = CHAIN_CONFIG.chainId; // 8453 (Base)
 
+// Relax history item validation (SDK expects strict types, API returns inconsistent data)
+const relaxedHistoryItemSchema = z.object({
+  type: z.string(),
+  timestamp: z.number().optional(),
+  assets: z.object({ raw: z.union([z.number(), z.string()]), formatted: z.string() }).optional(),
+  shares: z.object({ raw: z.union([z.number(), z.string()]), formatted: z.string() }).optional(),
+  txHash: z.string().optional(),
+});
+
 // Relax idleBalances validation (SDK bug: expects string for raw, API returns number)
 const relaxedSnapshotSchema = vaultSnapshotSchema.extend({
   stats: vaultSnapshotSchema.shape.stats.extend({
@@ -200,21 +209,60 @@ export class YoApiClient {
             // Convert directly using underlying decimals — avoids fragile share ratio math
             const assetsUsd = Number(pos.assets) / 10 ** config.underlying.decimals;
 
-            // Fetch tx history to find earliest deposit timestamp
+            // Fetch history + performance in parallel (both non-critical)
+            // getUserHistory uses direct fetch + relaxed schema to avoid SDK Zod validation failures
+            const [historyResult, perfResult] = await Promise.allSettled([
+              this.yoClient.apiClient
+                .fetch(
+                  `/api/v1/history/user/${this.yoClient.network}/${config.address}/${userAddress}`
+                )
+                .then((res: any) => {
+                  const parsed = apiResponseSchema(z.array(relaxedHistoryItemSchema)).parse(res);
+                  return parsed.data;
+                }),
+              this.yoClient.getUserPerformance(config.address, userAddress),
+            ]);
+
             let enteredAt: number | undefined;
-            try {
-              const history = await this.yoClient.getUserHistory(config.address, userAddress);
-              const firstDeposit = history
-                .filter((h: { type: string }) => h.type === "deposit")
-                .sort(
-                  (a: { timestamp: number }, b: { timestamp: number }) => a.timestamp - b.timestamp
-                )[0];
+            if (historyResult.status === "fulfilled") {
+              const firstDeposit = historyResult.value
+                .filter((h: any) => h.type === "deposit" && h.timestamp != null)
+                .sort((a: any, b: any) => a.timestamp - b.timestamp)[0];
               if (firstDeposit) {
-                // SDK returns Unix seconds, convert to ms
+                // API returns Unix seconds, convert to ms
                 enteredAt = firstDeposit.timestamp * 1000;
               }
-            } catch {
-              // Non-critical — position still displays without enteredAt
+            } else {
+              console.warn(
+                `[YoApiClient] getUserHistory failed for ${config.symbol}:`,
+                historyResult.reason
+              );
+            }
+
+            let unrealizedPnl: number | undefined;
+            let realizedPnl: number | undefined;
+            if (perfResult.status === "fulfilled") {
+              const perf = perfResult.value;
+              const decimals = config.underlying.decimals;
+              if (perf.unrealized?.raw != null) {
+                const raw =
+                  typeof perf.unrealized.raw === "number"
+                    ? perf.unrealized.raw
+                    : parseFloat(perf.unrealized.raw);
+                unrealizedPnl = raw / 10 ** decimals;
+              }
+              if (perf.realized?.raw != null) {
+                const raw =
+                  typeof perf.realized.raw === "number"
+                    ? perf.realized.raw
+                    : parseFloat(perf.realized.raw);
+                realizedPnl = raw / 10 ** decimals;
+              }
+            } else {
+              console.warn(
+                `[YoApiClient] getUserPerformance failed for ${config.symbol}:`,
+                perfResult.reason
+              );
             }
 
             positions.push({
@@ -225,6 +273,8 @@ export class YoApiClient {
               assets: pos.assets,
               assetsUsd,
               enteredAt,
+              unrealizedPnl,
+              realizedPnl,
             });
           }
         } catch (error) {
