@@ -15,6 +15,7 @@ import {
   YO_PARTNER_ID,
   applyYoSlippage,
 } from "@/lib/yo/constants";
+import { yoApiClient } from "@/lib/yo/api-client";
 import { erc20Abi } from "@yo-protocol/core";
 
 export interface YoRedeemParams {
@@ -29,6 +30,7 @@ export interface YoRedeemResult {
   success: boolean;
   txHash?: string;
   userOpHash?: string;
+  redeemStatus?: "instant" | "queued";
   error?: string;
 }
 
@@ -49,6 +51,7 @@ export async function executeYoVaultRedeem(params: YoRedeemParams): Promise<YoRe
         success: true,
         txHash: `0x${Math.random().toString(16).slice(2)}${Math.random().toString(16).slice(2)}`,
         userOpHash: `0xUserOp${Math.random().toString(16).slice(2)}`,
+        redeemStatus: "instant",
       };
     }
 
@@ -106,11 +109,15 @@ export async function executeYoVaultRedeem(params: YoRedeemParams): Promise<YoRe
     });
 
     console.log("[YoRedeem] Transaction confirmed:", receipt.receipt.transactionHash);
+    const pending = await yoApiClient.fetchPendingRedemptions(params.vaultAddress, params.receiver);
+    const redeemStatus =
+      pending.pendingAssets > 0n || pending.pendingShares > 0n ? "queued" : "instant";
 
     return {
       success: true,
       txHash: receipt.receipt.transactionHash,
       userOpHash,
+      redeemStatus,
     };
   } catch (error: any) {
     console.error("[YoRedeem] Execution error:", error);

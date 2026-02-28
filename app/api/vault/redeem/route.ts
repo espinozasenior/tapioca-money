@@ -150,19 +150,22 @@ export async function POST(request: NextRequest) {
 
     if (!result.success) {
       let userMessage = result.error || "Vault redeem failed";
+      const isRateLimit =
+        result.error?.includes("operation limit") || result.error?.includes("0x3e4983f6");
+      const isValidationFailure =
+        !isRateLimit &&
+        (result.error?.includes("AA23") || result.error?.includes("validateUserOp"));
       if (result.error?.includes("0xace2a47e")) {
         userMessage =
           "This vault rejected the redeem (error 0xace2a47e). " +
           "The vault may restrict access to agent-operated accounts. " +
           "Please redeem directly from your wallet.";
-      } else if (
-        result.error?.includes("operation limit") ||
-        result.error?.includes("0x3e4983f6") ||
-        result.error?.includes("AA23")
-      ) {
+      } else if (isRateLimit) {
         userMessage =
           "Agent daily operation limit reached. " +
           "Please re-register your agent to reset the limit, or try again tomorrow.";
+      } else if (isValidationFailure) {
+        userMessage = "Session key validation failed. Please re-register your agent.";
       }
       console.error("[Vault Redeem] Execution failed:", result.error);
       return NextResponse.json({ error: userMessage }, { status: 500 });
@@ -175,6 +178,7 @@ export async function POST(request: NextRequest) {
       success: true,
       txHash: result.txHash,
       userOpHash: result.userOpHash,
+      redeemStatus: "redeemStatus" in result ? result.redeemStatus : undefined,
     });
   } catch (error: any) {
     console.error("[Vault Redeem] Error:", error);
