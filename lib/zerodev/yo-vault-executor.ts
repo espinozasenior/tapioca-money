@@ -115,13 +115,16 @@ export async function executeYoVaultRedeem(params: YoRedeemParams): Promise<YoRe
   } catch (error: any) {
     console.error("[YoRedeem] Execution error:", error);
     const msg: string = error.message || "";
-    const isRateLimit =
-      msg.includes("AA23") || msg.includes("0x3e4983f6") || msg.includes("validateUserOp");
+    const isRateLimit = msg.includes("0x3e4983f6");
+    const isValidationFailure =
+      !isRateLimit && (msg.includes("AA23") || msg.includes("validateUserOp"));
     return {
       success: false,
       error: isRateLimit
         ? "Agent daily operation limit reached. Please re-register your agent to reset the limit, or try again tomorrow."
-        : msg,
+        : isValidationFailure
+          ? "Session key validation failed. Please re-register your agent to update permissions."
+          : msg,
     };
   }
 }
