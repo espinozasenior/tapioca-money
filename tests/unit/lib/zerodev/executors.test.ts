@@ -160,7 +160,7 @@ describe("ZeroDev Executors", () => {
     });
 
     it("should handle rate limit errors", async () => {
-      mockSendUserOperation.mockRejectedValue(new Error("AA23: limit exceeded"));
+      mockSendUserOperation.mockRejectedValue(new Error("0x3e4983f6: rate limit exceeded"));
 
       const result = await executeVaultRedeem({
         ...params,
@@ -169,6 +169,18 @@ describe("ZeroDev Executors", () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("Agent daily operation limit reached");
+    });
+
+    it("should handle AA23 validation failures", async () => {
+      mockSendUserOperation.mockRejectedValue(new Error("AA23 reverted 0x007e472e"));
+
+      const result = await executeVaultRedeem({
+        ...params,
+        serializedAccount: "serialized",
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Session key validation failed");
     });
   });
 });
