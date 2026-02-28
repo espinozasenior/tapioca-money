@@ -57,17 +57,18 @@ const relaxedSnapshotSchema = vaultSnapshotSchema.extend({
  * YO Protocol Client
  */
 export class YoApiClient {
+  private publicClient: any;
   private yoClient;
 
   constructor() {
-    const publicClient = createPublicClient({
+    this.publicClient = createPublicClient({
       chain: base,
       transport: http(CHAIN_CONFIG.rpcUrl),
     });
 
     this.yoClient = createYoClient({
       chainId: CHAIN_ID as any,
-      publicClient: publicClient as any,
+      publicClient: this.publicClient as any,
       partnerId: YO_PARTNER_ID,
     });
   }
@@ -333,6 +334,25 @@ export class YoApiClient {
    */
   async previewRedeem(vaultAddress: Address, shares: bigint): Promise<bigint> {
     return this.yoClient.quotePreviewRedeem(vaultAddress, shares);
+  }
+
+  /**
+   * Read pending redemption amounts for a user in a specific YO vault.
+   */
+  async fetchPendingRedemptions(
+    vaultAddress: Address,
+    userAddress: Address
+  ): Promise<{ pendingAssets: bigint; pendingShares: bigint }> {
+    try {
+      const pending = await this.yoClient.getPendingRedemptions(vaultAddress, userAddress);
+      const pendingAssets = BigInt(pending.assets?.raw ?? 0);
+      const pendingShares = BigInt(pending.shares?.raw ?? 0);
+
+      return { pendingAssets, pendingShares };
+    } catch (error: any) {
+      console.warn("[YoApiClient] getPendingRedemptions failed:", error);
+      return { pendingAssets: 0n, pendingShares: 0n };
+    }
   }
 }
 
