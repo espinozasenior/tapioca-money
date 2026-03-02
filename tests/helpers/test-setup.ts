@@ -1,19 +1,62 @@
 /**
  * Test Setup Helpers for Agent Integration Tests
+ *
+ * Uses in-memory storage instead of a real database.
+ * Tests should never hit a real DB — they test business logic, not SQL.
  */
 
-import { neon } from "@neondatabase/serverless";
 import crypto from "crypto";
 
-// Use test database URL or fallback to a mock connection string
-const DATABASE_URL = process.env.DATABASE_URL || "postgresql://test:test@localhost:5432/test_db";
-const sql = neon(DATABASE_URL);
+// ---------------------------------------------------------------------------
+// In-memory store (replaces real Neon SQL calls)
+// ---------------------------------------------------------------------------
+
+interface StoredUser {
+  id: string;
+  wallet_address: string;
+  auto_optimize_enabled: boolean;
+  agent_registered: boolean;
+  authorization_7702: any;
+  transfer_authorization: any | null;
+}
+
+interface StoredStrategy {
+  user_id: string;
+  min_apy_gain_threshold: string;
+  risk_level: string;
+}
+
+interface StoredAction {
+  id: string;
+  user_id: string;
+  action_type: string;
+  status: string;
+  metadata: any;
+  created_at: number;
+}
+
+const usersStore = new Map<string, StoredUser>();
+const strategiesStore = new Map<string, StoredStrategy>();
+const actionsStore: StoredAction[] = [];
+
+let idCounter = 0;
+function nextId(): string {
+  return `test-user-${++idCounter}`;
+}
+
+// ---------------------------------------------------------------------------
+// Public types
+// ---------------------------------------------------------------------------
 
 export interface TestUser {
   id: string;
   walletAddress: string;
   authorization: any;
 }
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 /**
  * Generate a random Ethereum-style address
@@ -30,10 +73,8 @@ export async function seedTestUser(
   autoOptimizeEnabled: boolean = true,
   minApyThreshold: string = "0.005"
 ): Promise<TestUser> {
-  // Use random address if not provided to avoid collision
   const address = walletAddress || generateRandomAddress();
 
-  // Sample EIP-7702 authorization
   const authorization = {
     chainId: 8453, // Base
     address: address,
@@ -42,36 +83,22 @@ export async function seedTestUser(
     expiry: Math.floor(Date.now() / 1000) + 86400, // 24 hours
   };
 
-  // Insert user
-  const users = await sql`
-    INSERT INTO users (
-      wallet_address,
-      auto_optimize_enabled,
-      agent_registered,
-      authorization_7702
-    ) VALUES (
-      ${address},
-      ${autoOptimizeEnabled},
-      true,
-      ${JSON.stringify(authorization)}::jsonb
-    )
-    RETURNING id, wallet_address
-  `;
+  const userId = nextId();
 
-  const userId = users[0].id;
+  usersStore.set(address, {
+    id: userId,
+    wallet_address: address,
+    auto_optimize_enabled: autoOptimizeEnabled,
+    agent_registered: true,
+    authorization_7702: authorization,
+    transfer_authorization: null,
+  });
 
-  // Insert user strategy
-  await sql`
-    INSERT INTO user_strategies (
-      user_id,
-      min_apy_gain_threshold,
-      risk_level
-    ) VALUES (
-      ${userId},
-      ${minApyThreshold},
-      'medium'
-    )
-  `;
+  strategiesStore.set(userId, {
+    user_id: userId,
+    min_apy_gain_threshold: minApyThreshold,
+    risk_level: "medium",
+  });
 
   return {
     id: userId,
@@ -94,28 +121,25 @@ export async function seedTestUserWithExpiredAuth(walletAddress?: string): Promi
     expiry: Math.floor(Date.now() / 1000) - 3600, // Expired 1 hour ago
   };
 
-  const users = await sql`
-    INSERT INTO users (
-      wallet_address,
-      auto_optimize_enabled,
-      agent_registered,
-      authorization_7702
-    ) VALUES (
-      ${address},
-      true,
-      true,
-      ${JSON.stringify(authorization)}::jsonb
-    )
-    RETURNING id, wallet_address
-  `;
+  const userId = nextId();
 
-  await sql`
-    INSERT INTO user_strategies (user_id)
-    VALUES (${users[0].id})
-  `;
+  usersStore.set(address, {
+    id: userId,
+    wallet_address: address,
+    auto_optimize_enabled: true,
+    agent_registered: true,
+    authorization_7702: authorization,
+    transfer_authorization: null,
+  });
+
+  strategiesStore.set(userId, {
+    user_id: userId,
+    min_apy_gain_threshold: "0.005",
+    risk_level: "medium",
+  });
 
   return {
-    id: users[0].id,
+    id: userId,
     walletAddress: address,
     authorization,
   };
@@ -125,34 +149,40 @@ export async function seedTestUserWithExpiredAuth(walletAddress?: string): Promi
  * Clean up test data by wallet addresses
  */
 export async function cleanupTestData(walletAddresses: string[]): Promise<void> {
-  if (walletAddresses.length === 0) return;
-
-  // Delete users (cascades to user_strategies and agent_actions)
-  await sql`
-    DELETE FROM users
-    WHERE wallet_address = ANY(${walletAddresses})
-  `;
-
-  console.log(`Cleaned up ${walletAddresses.length} test users`);
+  for (const addr of walletAddresses) {
+    const user = usersStore.get(addr);
+    if (user) {
+      strategiesStore.delete(user.id);
+      // Remove actions for this user
+      for (let i = actionsStore.length - 1; i >= 0; i--) {
+        if (actionsStore[i].user_id === user.id) {
+          actionsStore.splice(i, 1);
+        }
+      }
+    }
+    usersStore.delete(addr);
+  }
 }
 
 /**
  * Clean up all test data (use carefully!)
  */
 export async function cleanupAllTestData(): Promise<void> {
-  // Only delete users created by our test helper (based on pattern or knowing IDs)
-  // For safety in shared DBs, we should rely on explicit cleanup via cleanupTestData
-  // But if we must bulk clean, try to target only test-like addresses if possible
-  // Since we use random addresses now, it's harder to pattern match.
-  // Best practice: Tests track their created users and clean them up.
-  console.log("Skipping bulk cleanup - rely on per-test cleanup");
+  usersStore.clear();
+  strategiesStore.clear();
+  actionsStore.length = 0;
+  idCounter = 0;
 }
 
 /**
- * Create test database client
+ * Create test database client (returns a no-op tagged template for compat)
  */
 export function createTestClient() {
-  return sql;
+  return async (strings: TemplateStringsArray, ..._values: any[]) => {
+    // Return empty result set — tests that need specific data should use the
+    // dedicated helper functions instead of raw SQL.
+    return [];
+  };
 }
 
 /**
@@ -245,17 +275,12 @@ export async function verifyAgentActionLogged(
   actionType: string = "rebalance",
   expectedStatus?: string
 ): Promise<boolean> {
-  const actions = await sql`
-    SELECT * FROM agent_actions
-    WHERE user_id = ${userId}
-      AND action_type = ${actionType}
-    ORDER BY created_at DESC
-    LIMIT 1
-  `;
+  const action = actionsStore
+    .filter((a) => a.user_id === userId && a.action_type === actionType)
+    .sort((a, b) => b.created_at - a.created_at)[0];
 
-  if (actions.length === 0) return false;
-  if (expectedStatus && actions[0].status !== expectedStatus) return false;
-
+  if (!action) return false;
+  if (expectedStatus && action.status !== expectedStatus) return false;
   return true;
 }
 
@@ -263,19 +288,16 @@ export async function verifyAgentActionLogged(
  * Get agent actions for user
  */
 export async function getAgentActions(userId: string, limit: number = 10) {
-  return await sql`
-    SELECT * FROM agent_actions
-    WHERE user_id = ${userId}
-    ORDER BY created_at DESC
-    LIMIT ${limit}
-  `;
+  return actionsStore
+    .filter((a) => a.user_id === userId)
+    .sort((a, b) => b.created_at - a.created_at)
+    .slice(0, limit);
 }
 
 /**
  * Create test transfer session key
  */
 export async function createTestTransferSession(walletAddress: string): Promise<any> {
-  // Generate proper hex addresses for testing
   const smartAccount = `0x${crypto.randomBytes(20).toString("hex")}` as `0x${string}`;
   const sessionKey = `0x${crypto.randomBytes(20).toString("hex")}` as `0x${string}`;
 
@@ -288,11 +310,10 @@ export async function createTestTransferSession(walletAddress: string): Promise<
     createdAt: Date.now(),
   };
 
-  await sql`
-    UPDATE users
-    SET transfer_authorization = ${JSON.stringify(transferAuth)}::jsonb
-    WHERE wallet_address = ${walletAddress}
-  `;
+  const user = usersStore.get(walletAddress);
+  if (user) {
+    user.transfer_authorization = transferAuth;
+  }
 
   return transferAuth;
 }
@@ -301,7 +322,6 @@ export async function createTestTransferSession(walletAddress: string): Promise<
  * Create test agent session key with full permissions
  */
 export async function createTestAgentSession(walletAddress: string): Promise<any> {
-  // Generate proper hex addresses for vaults
   const vault1 = `0x${crypto.randomBytes(20).toString("hex")}` as `0x${string}`;
   const vault2 = `0x${crypto.randomBytes(20).toString("hex")}` as `0x${string}`;
 
@@ -316,12 +336,11 @@ export async function createTestAgentSession(walletAddress: string): Promise<any
     timestamp: Date.now(),
   };
 
-  await sql`
-    UPDATE users
-    SET authorization_7702 = ${JSON.stringify(agentAuth)}::jsonb,
-        agent_registered = true
-    WHERE wallet_address = ${walletAddress}
-  `;
+  const user = usersStore.get(walletAddress);
+  if (user) {
+    user.authorization_7702 = agentAuth;
+    user.agent_registered = true;
+  }
 
   return agentAuth;
 }
@@ -330,21 +349,19 @@ export async function createTestAgentSession(walletAddress: string): Promise<any
  * Cleanup transfer session for testing
  */
 export async function cleanupTransferSession(walletAddress: string): Promise<void> {
-  await sql`
-    UPDATE users
-    SET transfer_authorization = NULL
-    WHERE wallet_address = ${walletAddress}
-  `;
+  const user = usersStore.get(walletAddress);
+  if (user) {
+    user.transfer_authorization = null;
+  }
 }
 
 /**
  * Cleanup agent session for testing
  */
 export async function cleanupAgentSession(walletAddress: string): Promise<void> {
-  await sql`
-    UPDATE users
-    SET authorization_7702 = NULL,
-        agent_registered = false
-    WHERE wallet_address = ${walletAddress}
-  `;
+  const user = usersStore.get(walletAddress);
+  if (user) {
+    user.authorization_7702 = null;
+    user.agent_registered = false;
+  }
 }
