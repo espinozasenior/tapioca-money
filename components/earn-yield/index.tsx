@@ -16,12 +16,13 @@ import { parseUnits } from "viem";
 interface EarnYieldModalProps {
   open: boolean;
   onClose: () => void;
+  initialYield?: YieldOpportunity;
 }
 
 type Step = "list" | "deposit" | "processing" | "success";
 type Tab = "opportunities" | "positions";
 
-export function EarnYieldModal({ open, onClose }: EarnYieldModalProps) {
+export function EarnYieldModal({ open, onClose, initialYield }: EarnYieldModalProps) {
   const { wallet } = useWallet();
   const { balances } = useBalance();
   const { yields, isLoading: yieldsLoading, error: yieldsError } = useYields();
@@ -33,9 +34,17 @@ export function EarnYieldModal({ open, onClose }: EarnYieldModalProps) {
   } = useYieldPositions(wallet?.address);
   const { refetch: refetchActivityFeed } = useActivityFeed();
 
-  const [step, setStep] = useState<Step>("list");
+  const [step, setStep] = useState<Step>(initialYield ? "deposit" : "list");
   const [activeTab, setActiveTab] = useState<Tab>("opportunities");
-  const [selectedYield, setSelectedYield] = useState<YieldOpportunity | null>(null);
+  const [selectedYield, setSelectedYield] = useState<YieldOpportunity | null>(initialYield ?? null);
+
+  // Sync when initialYield changes (e.g. opening from AccountCard)
+  React.useEffect(() => {
+    if (open && initialYield) {
+      setSelectedYield(initialYield);
+      setStep("deposit");
+    }
+  }, [open, initialYield]);
 
   const handleSelectYield = (yieldOpp: YieldOpportunity) => {
     setSelectedYield(yieldOpp);
@@ -43,7 +52,7 @@ export function EarnYieldModal({ open, onClose }: EarnYieldModalProps) {
   };
 
   const handleBack = () => {
-    if (step === "deposit") {
+    if (step === "deposit" && !initialYield) {
       setStep("list");
       setSelectedYield(null);
     } else {
@@ -83,8 +92,9 @@ export function EarnYieldModal({ open, onClose }: EarnYieldModalProps) {
     }
   };
 
-  const showBackButton = step === "deposit";
-  const showCloseButton = step === "list";
+  const cameFromCard = !!initialYield;
+  const showBackButton = step === "deposit" && !cameFromCard;
+  const showCloseButton = step === "list" || (step === "deposit" && cameFromCard);
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleDone()}>
