@@ -11,6 +11,34 @@
 - [x] **Step 7:** Verify executor compatibility — `rebalance-executor`, `deposit-executor`, `vault-executor`, `transfer-executor` all compatible (they accept `smartAccountAddress` which equals `eoaAddress` for 7702)
 - [x] **Step 8:** TypeScript build verification — No type errors in modified files
 
+## Pendle PT-yoUSD Integration (Completed)
+
+- [x] **Phase 1:** Foundation — `lib/pendle/constants.ts`, `types.ts`, `api-client.ts`, `lib/redis/pendle-cache.ts`
+- [x] **Phase 2:** Session Key Permissions — Added Pendle Router V4 to CallPolicy + approvedVaults
+- [x] **Phase 3:** Opportunity Card — PT-yoUSD appears in yield list with "YO · Pendle" branding, fixed APY badge, maturity date
+- [x] **Phase 4:** Deposit Flow — 4-call atomic batch (USDC → yoUSD → PT-yoUSD) via `pendle-deposit-executor.ts`
+- [x] **Phase 5:** Position Tracking — PT balance read on-chain, maturity countdown in PositionsList
+- [x] **Phase 6:** Redeem Flow — Pre-maturity (AMM sell) and at-maturity (1:1 redeem) paths via `pendle-redeem-executor.ts`
+- [x] **Phase 7:** Agent Integration — Decision engine evaluates PT as downstream YO optimization, auto-redeem matured PT in cron
+- [x] **Phase 8:** Tests — 27 new tests across 6 test files, all 436 tests pass
+
+## Reset Agent Delegation (Completed)
+
+- [x] Add "Reset Agent Delegation" button to WalletDetails modal (two-click confirm)
+- [x] Fix Privy `signAuthorization` (embedded wallets only, not external)
+- [x] Server-side relayer for EIP-7702 undelegation (`RELAYER_PRIVATE_KEY` env var)
+- [x] DB cleanup: reset `authorization_7702`, `agent_registered`, `auto_optimize_enabled`
+- [x] Block external wallets with clear error message during registration
+- [x] All 439 tests pass
+
+## External Wallet Support (Future — ERC-5792)
+
+- [ ] Implement `wallet_sendCalls` (ERC-5792) flow for external wallets (Brave, MetaMask)
+- [ ] Two-phase registration: delegate via `wallet_sendCalls`, then register kernel account
+- [ ] Must NOT break Privy embedded wallet flow — keep both paths
+- [ ] Test with Brave wallet and MetaMask
+- [ ] Research: check if ZeroDev SDK supports already-delegated accounts without `eip7702Auth`
+
 ## Pending Verification (Testnet)
 
 - [ ] Create 7702 kernel account on Base Sepolia

@@ -25,8 +25,10 @@ const WITHDRAW_SELECTOR = "0xb460af94" as Hex; // withdraw(uint256,address,addre
 const TRANSFER_SELECTOR = "0xa9059cbb" as Hex; // transfer(address,uint256)
 const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as `0x${string}`;
 
-// Maximum USDC amount per session key call (10,000 USDC with 6 decimals)
-const MAX_USDC_PER_CALL = BigInt(10_000) * BigInt(1e6);
+// Maximum USDC amount per session key call (10,000.000001 USDC with 6 decimals)
+// The +1 forces a new permissionHash to break the re-registration deadlock
+// where the old validator blocks new installations with the same hash.
+const MAX_USDC_PER_CALL = BigInt(10_000) * BigInt(1e6) + 1n;
 
 // EntryPoint V0.7 object (required format for ZeroDev SDK v5)
 const ENTRYPOINT_V07 = {
@@ -172,6 +174,40 @@ async function createAndSerializeAccount(
     valueLimit: 0n,
   });
 
+  // Pendle Router V4 permissions — deposit (swap token→PT), early exit (swap PT→token), maturity redeem
+  const {
+    PENDLE_ROUTER_V4,
+    PENDLE_SWAP_EXACT_TOKEN_FOR_PT_SELECTOR,
+    PENDLE_SWAP_EXACT_PT_FOR_TOKEN_SELECTOR,
+    PENDLE_REDEEM_PY_TO_TOKEN_SELECTOR,
+    PT_YOUSD_TOKEN,
+  } = await import("@/lib/pendle/constants");
+  permissions.push({
+    target: PENDLE_ROUTER_V4 as `0x${string}`,
+    selector: PENDLE_SWAP_EXACT_TOKEN_FOR_PT_SELECTOR,
+    valueLimit: 0n,
+  });
+  permissions.push({
+    target: PENDLE_ROUTER_V4 as `0x${string}`,
+    selector: PENDLE_SWAP_EXACT_PT_FOR_TOKEN_SELECTOR,
+    valueLimit: 0n,
+  });
+  permissions.push({
+    target: PENDLE_ROUTER_V4 as `0x${string}`,
+    selector: PENDLE_REDEEM_PY_TO_TOKEN_SELECTOR,
+    valueLimit: 0n,
+  });
+  // yoUSD vault approve (for Pendle deposit step 3) is covered by the vault loop above —
+  // registerAgentSecure explicitly pushes yoUSD vault into approvedVaults to guarantee this.
+  // Approve Pendle Router to spend PT token (for early exit)
+  permissions.push({
+    target: PT_YOUSD_TOKEN as `0x${string}`,
+    abi: parseAbi(["function approve(address spender, uint256 amount) returns (bool)"]),
+    functionName: "approve",
+    args: [null, null],
+    valueLimit: 0n,
+  });
+
   const callPolicy = toCallPolicy({
     policyVersion: CallPolicyVersion.V0_0_5,
     permissions,
@@ -289,7 +325,30 @@ export async function registerAgentSecure(
       approvedVaults.push(YO_GATEWAY_ADDRESS as `0x${string}`);
     }
 
-    console.log("[ZeroDev 7702] Fetched", approvedVaults.length, "vaults (including YO Gateway)");
+    // Include Pendle Router V4 for PT-yoUSD operations
+    const { PENDLE_ROUTER_V4 } = await import("@/lib/pendle/constants");
+    if (!approvedVaults.some((v) => v.toLowerCase() === PENDLE_ROUTER_V4.toLowerCase())) {
+      approvedVaults.push(PENDLE_ROUTER_V4 as `0x${string}`);
+    }
+
+    // Include yoUSD vault for Pendle deposit step 3 (yoUSD.approve → Pendle Router)
+    // The vault loop in createAndSerializeAccount adds approve permissions for each vault,
+    // but yoUSD vault may not appear in /api/optimize results at registration time
+    const { YO_VAULTS } = await import("@/lib/yo/constants");
+    const yousdVaultAddress = YO_VAULTS.yoUSD.address as `0x${string}`;
+    if (!approvedVaults.some((v) => v.toLowerCase() === yousdVaultAddress.toLowerCase())) {
+      approvedVaults.push(yousdVaultAddress);
+    }
+
+    console.log(
+      "[ZeroDev 7702] approvedVaults includes yoUSD vault:",
+      approvedVaults.some((v) => v.toLowerCase() === yousdVaultAddress.toLowerCase())
+    );
+    console.log(
+      "[ZeroDev 7702] Fetched",
+      approvedVaults.length,
+      "vaults (including YO Gateway + Pendle Router)"
+    );
 
     // 2. Create and serialize the kernel account client-side
     // This captures the enable signature from the EOA (sudo)
@@ -413,19 +472,20 @@ export async function revokeSessionKey(address: string, accessToken: string): Pr
  */
 export async function undelegateEoa(
   userAddress: `0x${string}`,
-  walletClient: any
+  walletClient: any,
+  signedAuthorization: any
 ): Promise<`0x${string}`> {
   console.log("[ZeroDev 7702] Starting on-chain undelegation for:", userAddress);
 
-  // Sign authorization to delegate to address(0) — effectively removes delegation
-  const authorization = await walletClient.signAuthorization({
-    contractAddress: "0x0000000000000000000000000000000000000000" as `0x${string}`,
-  });
-
-  // Submit Type 4 transaction to remove delegation
+  // Submit Type 4 transaction with pre-signed authorization to remove delegation.
+  // Explicit gas required — providers don't auto-estimate for EIP-7702 Type 4 txs.
+  // Base cost: 21000 (intrinsic) + ~2500 (EIP-7702 per-auth overhead) + buffer.
   const txHash = await walletClient.sendTransaction({
     to: userAddress,
-    authorizationList: [authorization],
+    data: "0x" as `0x${string}`,
+    value: BigInt(0),
+    authorizationList: [signedAuthorization],
+    gas: BigInt(30000),
   });
 
   console.log("[ZeroDev 7702] Undelegation tx submitted:", txHash);
