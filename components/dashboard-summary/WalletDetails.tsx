@@ -1,5 +1,7 @@
 import { useAuth, useWallet } from "@/hooks/useWallet";
 import { useBalance } from "@/hooks/useBalance";
+import { useAgent } from "@/hooks/useOptimizer";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Dialog, DialogContent, DialogTitle } from "../common/Dialog";
 import { Details } from "../common/Details";
@@ -23,6 +25,14 @@ export function WalletDetails({ onClose, open }: { onClose: () => void; open: bo
   const { wallet, walletType } = useWallet();
   const { user } = useAuth();
   const { displayableBalance, isLoading: isBalanceLoading } = useBalance();
+  const { undelegate, isUndelegating, undelegateError } = useAgent();
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  useEffect(() => {
+    if (!confirmReset) return;
+    const timer = setTimeout(() => setConfirmReset(false), 5000);
+    return () => clearTimeout(timer);
+  }, [confirmReset]);
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -69,7 +79,28 @@ export function WalletDetails({ onClose, open }: { onClose: () => void; open: bo
             ]}
           />
         </div>
-        <div className="mt-auto w-full pt-8">
+        <div className="mt-auto flex w-full flex-col gap-3 pt-8">
+          {undelegateError && (
+            <p className="text-center text-sm text-red-500">{undelegateError.message}</p>
+          )}
+          <button
+            onClick={() => {
+              if (confirmReset) {
+                undelegate();
+                setConfirmReset(false);
+              } else {
+                setConfirmReset(true);
+              }
+            }}
+            disabled={isUndelegating}
+            className="w-full rounded-full border border-red-300 bg-white px-6 py-3.5 text-base font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+          >
+            {isUndelegating
+              ? "Resetting..."
+              : confirmReset
+                ? "Confirm — requires re-registration"
+                : "Reset Agent Delegation"}
+          </button>
           <button
             onClick={onClose}
             className="w-full rounded-full border border-gray-200 bg-white px-6 py-3.5 text-base font-semibold text-gray-900 transition hover:bg-gray-50"
