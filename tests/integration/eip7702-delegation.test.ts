@@ -232,32 +232,27 @@ describe("buildRebalanceCalls — previewRedeem & No MAX_UINT256", () => {
 // ─── Undelegation Tests ─────────────────────────────────────────────────────
 
 describe("undelegateEoa — On-chain Delegation Removal", () => {
-  test("12. undelegateEoa signs authorization with contractAddress = address(0)", async () => {
+  test("12. undelegateEoa sends transaction with pre-signed authorization and explicit gas", async () => {
     const { undelegateEoa } = await import("@/lib/zerodev/client-secure");
 
+    const mockSignedAuth = { r: "0x1234", s: "0x5678", yParity: 0 };
     const mockWalletClient = {
-      signAuthorization: vi.fn().mockResolvedValue({
-        r: "0x1234",
-        s: "0x5678",
-        yParity: 0,
-      }),
       sendTransaction: vi.fn().mockResolvedValue("0xtxhash123"),
     };
 
     const txHash = await undelegateEoa(
       "0x1234567890123456789012345678901234567890",
-      mockWalletClient
+      mockWalletClient,
+      mockSignedAuth
     );
 
-    // Verify signAuthorization called with address(0)
-    expect(mockWalletClient.signAuthorization).toHaveBeenCalledWith({
-      contractAddress: "0x0000000000000000000000000000000000000000",
-    });
-
-    // Verify sendTransaction called with authorizationList
+    // Verify sendTransaction called with pre-signed authorizationList and explicit gas
     expect(mockWalletClient.sendTransaction).toHaveBeenCalledWith({
       to: "0x1234567890123456789012345678901234567890",
-      authorizationList: [{ r: "0x1234", s: "0x5678", yParity: 0 }],
+      data: "0x",
+      value: BigInt(0),
+      authorizationList: [mockSignedAuth],
+      gas: BigInt(30000),
     });
 
     expect(txHash).toBe("0xtxhash123");

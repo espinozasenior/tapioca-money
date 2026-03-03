@@ -5,12 +5,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "./useWallet";
 import { useWalletSelection } from "./useWalletSelection";
 import { usePrivy, useSign7702Authorization } from "@privy-io/react-auth";
-import { createWalletClient, custom, type WalletClient } from "viem";
+import { createWalletClient, custom } from "viem";
 import { base } from "viem/chains";
 
 export interface YieldOpportunity {
   id: string;
-  protocol: "morpho" | "aave" | "moonwell" | "yo";
+  protocol: "morpho" | "aave" | "moonwell" | "yo" | "pendle";
   name: string;
   asset: string;
   apy: number;
@@ -21,6 +21,8 @@ export interface YieldOpportunity {
     name: string;
     description?: string;
     vaultAddress?: `0x${string}`;
+    subtype?: "pendle-pt";
+    maturityTimestamp?: number;
   };
   // Native Morpho vault fields for safety display
   totalAssetsUsd?: number | null;
@@ -35,7 +37,7 @@ export interface YieldOpportunity {
 export interface YieldPosition {
   id: string;
   yieldId: string;
-  protocol: "morpho" | "aave" | "moonwell" | "yo";
+  protocol: "morpho" | "aave" | "moonwell" | "yo" | "pendle";
   vaultAddress: `0x${string}`;
   vaultName?: string;
   vaultDescription?: string;
@@ -250,6 +252,17 @@ export function useAgent() {
         }
         console.log("[Agent Registration] Delegation target verified:", implAddress);
 
+        // EIP-7702 authorization signing requires Privy embedded wallet.
+        // External wallets (Brave, MetaMask) don't expose a standalone
+        // signAuthorization RPC — they only sign it internally when sending
+        // Type 4 transactions, which doesn't fit the ZeroDev registration flow.
+        if (activeWallet.walletClientType !== "privy") {
+          throw new Error(
+            "Agent registration requires your Privy embedded wallet. " +
+              "Please switch to it in the wallet selector."
+          );
+        }
+
         const signedAuth = await signAuthorization({
           contractAddress: implAddress,
           chainId: 8453,
@@ -327,10 +340,6 @@ export function useAgent() {
   const undelegate = useMutation({
     mutationFn: async () => {
       if (!address) throw new Error("No wallet connected");
-      if (!supportsSmartAccount || !activeWallet)
-        throw new Error(
-          "Undelegation requires an EVM wallet. Please switch to an Ethereum wallet."
-        );
 
       // Get access token for API authentication
       const accessToken = await getAccessToken();
@@ -338,21 +347,35 @@ export function useAgent() {
         throw new Error("Failed to get access token");
       }
 
-      // Get active wallet's Ethereum provider
-      const provider = await activeWallet.raw.getEthereumProvider();
-
-      // Create Viem wallet client
-      const walletClient = createWalletClient({
-        chain: base,
-        transport: custom(provider),
+      // Sign authorization to delegate to address(0) (removes delegation).
+      // Requires Privy embedded wallet — same limitation as registration.
+      const signedAuth = await signAuthorization({
+        contractAddress: "0x0000000000000000000000000000000000000000" as `0x${string}`,
+        chainId: 8453,
       });
 
-      // Import ZeroDev client functions
-      const { undelegateEoa, revokeSessionKey } = await import("@/lib/zerodev/client-secure");
+      // Serialize BigInt fields for JSON transport
+      const serializedAuth = JSON.parse(
+        JSON.stringify(signedAuth, (_key, value) =>
+          typeof value === "bigint" ? `0x${value.toString(16)}` : value
+        )
+      );
 
-      // Undelegate EOA and revoke session key
-      await undelegateEoa(address as `0x${string}`, walletClient);
-      await revokeSessionKey(address as `0x${string}`, accessToken);
+      // Server relayer sends the Type 4 tx (Privy embedded wallets can't send
+      // EIP-7702 txs directly — their RPC doesn't support Type 4).
+      const response = await fetch("/api/agent/undelegate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ signedAuthorization: serializedAuth }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || `Undelegation failed (${response.status})`);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["agent-status", address] });
@@ -460,6 +483,7 @@ export function getProtocolColor(protocol: string): string {
     aave: "#B6509E",
     moonwell: "#7B3FE4",
     yo: "#FF6B35",
+    pendle: "#2563EB",
   };
   return colors[protocol] || "#888";
 }
@@ -470,6 +494,7 @@ export function getProtocolInfo(protocol: string) {
     aave: { name: "Aave", color: "#B6509E", icon: "👻" },
     moonwell: { name: "Moonwell", color: "#7B3FE4", icon: "🌙" },
     yo: { name: "YO Protocol", color: "#FF6B35", icon: "🟠" },
+    pendle: { name: "YO · Pendle", color: "#2563EB", icon: "🔒" },
   };
   return info[protocol] || { name: protocol, color: "#888", icon: "💰" };
 }

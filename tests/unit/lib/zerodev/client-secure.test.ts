@@ -162,20 +162,20 @@ describe("Client Secure (ZeroDev)", () => {
   });
 
   describe("undelegateEoa", () => {
-    it("should sign authorization and send transaction", async () => {
+    it("should send transaction with pre-signed authorization and explicit gas", async () => {
       const mockWalletClient = {
-        signAuthorization: vi.fn().mockResolvedValue("mockAuth"),
         sendTransaction: vi.fn().mockResolvedValue("0xtxhash"),
       };
+      const mockSignedAuth = { r: "0x1234", s: "0x5678", yParity: 0 };
 
-      const result = await undelegateEoa(mockAddress, mockWalletClient);
+      const result = await undelegateEoa(mockAddress, mockWalletClient, mockSignedAuth);
 
-      expect(mockWalletClient.signAuthorization).toHaveBeenCalledWith({
-        contractAddress: "0x0000000000000000000000000000000000000000",
-      });
       expect(mockWalletClient.sendTransaction).toHaveBeenCalledWith({
         to: mockAddress,
-        authorizationList: ["mockAuth"],
+        data: "0x",
+        value: BigInt(0),
+        authorizationList: [mockSignedAuth],
+        gas: BigInt(30000),
       });
       expect(result).toBe("0xtxhash");
     });
@@ -211,8 +211,8 @@ describe("Client Secure (ZeroDev)", () => {
       expect(result.smartAccountAddress).toBe(mockAddress);
       expect(result.sessionKeyAddress).toBe("0xsessionKey");
       expect(result.approvedVaults).toEqual(expect.arrayContaining(["0xvault1", "0xvault2"]));
-      // YO Gateway address is also included for session key scoping
-      expect(result.approvedVaults).toHaveLength(3);
+      // YO Gateway + Pendle Router + yoUSD vault addresses are also included for session key scoping
+      expect(result.approvedVaults).toHaveLength(5);
       // serializedAccount is not returned, but sent to server
 
       // Verify fetch calls
