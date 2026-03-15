@@ -49,11 +49,13 @@ export class YieldDecisionEngine {
    *
    * @param userAddress - User wallet address
    * @param targetedVaults - Optional list of vault addresses that should use lower threshold (APY monitor detected drops)
+   * @param prefetchedVaults - Optional pre-fetched vault lists to avoid redundant API calls (P0-1 fix)
    * @returns Rebalancing decision with reasoning
    */
   async evaluateRebalancing(
     userAddress: `0x${string}`,
-    targetedVaults?: string[] | null
+    targetedVaults?: string[] | null,
+    prefetchedVaults?: { morpho: MorphoVault[]; yo: YoVault[] }
   ): Promise<RebalanceDecision> {
     try {
       // 1. Fetch user's current positions from BOTH protocols in parallel
@@ -108,38 +110,45 @@ export class YieldDecisionEngine {
         pos.assetsUsd > max.assetsUsd ? pos : max
       );
 
-      // 3. Fetch current vault APY based on protocol
+      // 3. Use prefetched vaults if available, otherwise fetch (P0-1 fix)
+      const morphoVaults = prefetchedVaults?.morpho
+        ?? await this.morphoClient.fetchVaults(CHAIN_ID, ASSET_SYMBOL, 50);
+      const yoVaults = prefetchedVaults?.yo
+        ?? await this.yoClient.fetchVaults(CHAIN_ID, ASSET_SYMBOL);
+
+      // 4. Get current vault APY -- look up from vault list first to avoid extra API call
       let currentApy = 0;
       if (currentPosition.protocol === "morpho") {
-        const vaultDetails = await this.morphoClient.fetchVault(
-          currentPosition.vaultAddress,
-          CHAIN_ID
+        const matchedMorpho = morphoVaults.find(
+          (v) => v.address.toLowerCase() === currentPosition.vaultAddress.toLowerCase()
         );
-        if (!vaultDetails) {
-          return {
-            shouldRebalance: false,
-            reason: "Could not fetch current Morpho vault details",
-            currentVault: null,
-            targetVault: null,
-            apyImprovement: 0,
-            estimatedAnnualGain: 0,
-            breakEvenDays: 0,
-          };
+        if (matchedMorpho) {
+          currentApy = matchedMorpho.avgNetApy ?? matchedMorpho.netApy ?? 0;
+        } else {
+          // Vault not in list -- fetch individually as fallback
+          const vaultDetails = await this.morphoClient.fetchVault(
+            currentPosition.vaultAddress,
+            CHAIN_ID
+          );
+          if (!vaultDetails) {
+            return {
+              shouldRebalance: false,
+              reason: "Could not fetch current Morpho vault details",
+              currentVault: null,
+              targetVault: null,
+              apyImprovement: 0,
+              estimatedAnnualGain: 0,
+              breakEvenDays: 0,
+            };
+          }
+          currentApy = vaultDetails.avgNetApy ?? vaultDetails.netApy ?? 0;
         }
-        currentApy = vaultDetails.avgNetApy ?? vaultDetails.netApy ?? 0;
       } else {
-        const yoVaults = await this.yoClient.fetchVaults(CHAIN_ID, ASSET_SYMBOL);
         const matchedVault = yoVaults.find(
           (v) => v.address.toLowerCase() === currentPosition.vaultAddress.toLowerCase()
         );
         currentApy = matchedVault?.apy ?? 0;
       }
-
-      // 4. Fetch all available vaults from BOTH protocols in parallel
-      const [morphoVaults, yoVaults] = await Promise.all([
-        this.morphoClient.fetchVaults(CHAIN_ID, ASSET_SYMBOL, 50),
-        this.yoClient.fetchVaults(CHAIN_ID, ASSET_SYMBOL),
-      ]);
 
       type NormalizedVault = {
         protocol: Protocol;
@@ -192,7 +201,7 @@ export class YieldDecisionEngine {
       }
 
       // 5. Find best vault by APY across all protocols
-      const bestVault = eligibleVaults.sort((a, b) => b.apy - a.apy)[0];
+      let bestVault = eligibleVaults.sort((a, b) => b.apy - a.apy)[0];
 
       // 6. Calculate APY improvement
       const apyImprovement = bestVault.apy - currentApy;
@@ -277,11 +286,27 @@ export class YieldDecisionEngine {
 
   /**
    * Get Morpho positions with APY data
+   *
+   * @param userAddress - User wallet address
+   * @param prefetchedMorphoVaults - Optional pre-fetched vault list to look up APY without N+1 fetchVault calls (P1-3 fix)
    */
   async getMorphoPositionsWithApy(
-    userAddress: `0x${string}`
+    userAddress: `0x${string}`,
+    prefetchedMorphoVaults?: MorphoVault[]
   ): Promise<(MorphoUserPosition & { apy: number })[]> {
     const positions = await this.morphoClient.fetchUserPositions(userAddress, CHAIN_ID);
+
+    if (prefetchedMorphoVaults) {
+      // Look up APY from the already-fetched vault list (no N+1 API calls)
+      return positions.map((pos) => {
+        const matched = prefetchedMorphoVaults.find(
+          (v) => v.address.toLowerCase() === pos.vault.address.toLowerCase()
+        );
+        return { ...pos, apy: matched?.avgNetApy ?? matched?.netApy ?? 0 };
+      });
+    }
+
+    // Fallback: fetch each vault individually (original behavior)
     const enrichedPositions = await Promise.all(
       positions.map(async (pos) => {
         const vaultDetails = await this.morphoClient.fetchVault(pos.vault.address, CHAIN_ID);
@@ -293,14 +318,16 @@ export class YieldDecisionEngine {
 
   /**
    * Get YO positions with APY data
+   *
+   * @param userAddress - User wallet address
+   * @param prefetchedYoVaults - Optional pre-fetched vault list to look up APY without redundant fetchVaults call (P1 fix)
    */
   async getYoPositionsWithApy(
-    userAddress: `0x${string}`
+    userAddress: `0x${string}`,
+    prefetchedYoVaults?: YoVault[]
   ): Promise<(YoUserPosition & { apy: number })[]> {
-    const [positions, vaults] = await Promise.all([
-      this.yoClient.fetchUserPositions(userAddress, CHAIN_ID),
-      this.yoClient.fetchVaults(CHAIN_ID),
-    ]);
+    const positions = await this.yoClient.fetchUserPositions(userAddress, CHAIN_ID);
+    const vaults = prefetchedYoVaults ?? await this.yoClient.fetchVaults(CHAIN_ID);
     return positions.map((pos) => {
       const vault = vaults.find((v) => v.address.toLowerCase() === pos.vaultAddress.toLowerCase());
       return { ...pos, apy: vault?.apy ?? 0 };

@@ -60,12 +60,12 @@ export async function getCachedYoVaults(
     const cached = await cache.get(key);
     if (cached) {
       const parsed = JSON.parse(cached, bigIntReviver);
-      console.log("[YoCache] Hit: vaults", { chainId, assetKey, count: parsed.length });
+
       // Don't return stale empty arrays — force a re-fetch
       if (parsed.length === 0) return null;
       return parsed;
     }
-    console.log("[YoCache] Miss: vaults", { chainId, assetKey });
+
     return null;
   } catch (error: any) {
     console.error("[YoCache] Error reading vaults cache:", error.message);
@@ -82,7 +82,7 @@ export async function setCachedYoVaults(
   const key = vaultsCacheKey(chainId, assetKey);
   try {
     await cache.set(key, JSON.stringify(vaults, bigIntReplacer), CACHE_TTL.VAULTS);
-    console.log("[YoCache] Set: vaults", { chainId, assetKey, count: vaults.length });
+
   } catch (error: any) {
     console.error("[YoCache] Error caching vaults:", error.message);
   }
@@ -99,10 +99,10 @@ export async function getCachedYoUserPositions(
   try {
     const cached = await cache.get(key);
     if (cached) {
-      console.log("[YoCache] Hit: positions", { userAddress, chainId });
+
       return JSON.parse(cached, bigIntReviver);
     }
-    console.log("[YoCache] Miss: positions", { userAddress, chainId });
+
     return null;
   } catch (error: any) {
     console.error("[YoCache] Error reading positions cache:", error.message);
@@ -119,7 +119,7 @@ export async function setCachedYoUserPositions(
   const key = userPositionsCacheKey(userAddress, chainId);
   try {
     await cache.set(key, JSON.stringify(positions, bigIntReplacer), CACHE_TTL.USER_POSITIONS);
-    console.log("[YoCache] Set: positions", { userAddress, chainId, count: positions.length });
+
   } catch (error: any) {
     console.error("[YoCache] Error caching positions:", error.message);
   }
@@ -137,7 +137,7 @@ export async function getCachedYoBestVault(
   try {
     const cached = await cache.get(key);
     if (cached) {
-      console.log("[YoCache] Hit: bestVault", { chainId, assetSymbol, minTvlUsd });
+
       return JSON.parse(cached, bigIntReviver);
     }
     return null;
@@ -158,7 +158,7 @@ export async function setCachedYoBestVault(
   try {
     if (vault) {
       await cache.set(key, JSON.stringify(vault, bigIntReplacer), CACHE_TTL.BEST_VAULT);
-      console.log("[YoCache] Set: bestVault", { chainId, assetSymbol, vault: vault.name });
+
     }
   } catch (error: any) {
     console.error("[YoCache] Error caching best vault:", error.message);
@@ -175,7 +175,7 @@ export async function invalidateYoUserPositions(
   const key = userPositionsCacheKey(userAddress, chainId);
   try {
     await cache.del(key);
-    console.log("[YoCache] Invalidated: positions", { userAddress, chainId });
+
   } catch (error: any) {
     console.error("[YoCache] Error invalidating positions:", error.message);
   }
