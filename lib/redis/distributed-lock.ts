@@ -24,6 +24,8 @@ export interface LockResult {
  * Returns { acquired: true, lockId } if lock was acquired,
  * or { acquired: false } if another process holds the lock.
  *
+ * Uses atomic SET NX EX to prevent race conditions where two workers
+ * both check, see no lock, and both set (P2-3 fix).
  * Lock auto-expires after ttlSeconds to prevent deadlocks.
  */
 export async function acquireUserLock(
@@ -34,14 +36,12 @@ export async function acquireUserLock(
   const key = `${LOCK_PREFIX}:${userAddress.toLowerCase()}`;
   const lockId = randomUUID();
 
-  // Check if lock already exists
-  const existing = await cache.get(key);
-  if (existing) {
+  // Atomic set-if-not-exists with TTL -- single operation, no race condition
+  const acquired = await cache.setNX(key, lockId, ttlSeconds);
+  if (!acquired) {
     return { acquired: false };
   }
 
-  // Set lock with TTL (auto-release on crash/timeout)
-  await cache.set(key, lockId, ttlSeconds);
   return { acquired: true, lockId };
 }
 

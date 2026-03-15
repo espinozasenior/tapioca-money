@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
-import { YieldDecisionEngine } from "@/lib/agent/decision-engine";
+import { yieldDecisionEngine } from "@/lib/agent/decision-engine";
 import { executeRebalance } from "@/lib/agent/rebalance-executor";
 import { formatUnits } from "viem";
 import { decryptAuthorization } from "@/lib/security/session-encryption";
 import { timingSafeEqual } from "crypto";
 import { isSessionRevoked } from "@/lib/security/session-revocation";
+import { AgentSession } from "@/lib/agent/agent-session";
 import { acquireUserLock, releaseUserLock } from "@/lib/redis/distributed-lock";
 import { getUserOpCount, incrementUserOpCount } from "@/lib/redis/rate-limiter";
 
@@ -23,9 +24,10 @@ const CRON_USEROP_RESERVE = 3;
  */
 async function processUsersInParallel(
   users: any[],
-  processFn: (user: any, summary: CronSummary, targetedVaults?: string[] | null) => Promise<void>,
+  processFn: (user: any, summary: CronSummary, targetedVaults?: string[] | null, prefetchedVaults?: { morpho: any[]; yo: any[] }) => Promise<void>,
   summary: CronSummary,
-  targetedVaults?: string[] | null
+  targetedVaults?: string[] | null,
+  prefetchedVaults?: { morpho: any[]; yo: any[] }
 ): Promise<void> {
   console.log(
     `[Cron] Processing ${users.length} users in batches of ${BATCH_SIZE} with concurrency ${CONCURRENCY}`
@@ -63,7 +65,7 @@ async function processUsersInParallel(
 
           try {
             summary.processed++;
-            await processFn(user, summary, targetedVaults);
+            await processFn(user, summary, targetedVaults, prefetchedVaults);
           } catch (error: any) {
             summary.errors++;
             summary.details.push({
@@ -184,13 +186,15 @@ export async function POST(request: NextRequest) {
       console.log(`[Cron] Targeted rebalance mode: ${targetedVaults.length} vaults affected`);
     }
 
-    // 2. Query active users with valid session keys
+    // 2. Query active users -- lightweight query without authorization_7702 blob (P0-2 fix)
+    // The session type is extracted via SQL JSON operator to filter invalid sessions
+    // without fetching the full 2-10KB authorization blob per user.
     const activeUsers = await sql`
       SELECT
         u.id,
         u.wallet_address,
-        u.authorization_7702,
-        COALESCE(s.min_apy_gain_threshold, '0.005') as min_apy_gain_threshold
+        COALESCE(s.min_apy_gain_threshold, '0.005') as min_apy_gain_threshold,
+        u.authorization_7702->>'type' as session_type
       FROM users u
       LEFT JOIN user_strategies s ON u.id = s.user_id
       WHERE u.auto_optimize_enabled = true
@@ -200,10 +204,19 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Cron] Found ${activeUsers.length} active users to process`);
 
+    // 2b. Pre-fetch vault lists ONCE before the user loop (P0 fix)
+    // Eliminates ~2,000 redundant API/Redis round-trips per 1,000 users
+    const [prefetchedMorphoVaults, prefetchedYoVaults] = await Promise.all([
+      yieldDecisionEngine.getAvailableMorphoVaults(),
+      yieldDecisionEngine.getAvailableYoVaults(),
+    ]);
+    const prefetchedVaults = { morpho: prefetchedMorphoVaults, yo: prefetchedYoVaults };
+    console.log(`[Cron] Pre-fetched ${prefetchedMorphoVaults.length} Morpho + ${prefetchedYoVaults.length} YO vaults`);
+
     // 3. Process users in parallel batches (90% time reduction)
     // Old sequential: 83 min for 10k users
     // New parallel: ~8 min for 10k users
-    await processUsersInParallel(activeUsers, processUserRebalance, summary, targetedVaults);
+    await processUsersInParallel(activeUsers, processUserRebalance, summary, targetedVaults, prefetchedVaults);
 
     const duration = Date.now() - startTime;
     console.log(`[Cron] Cycle complete in ${duration}ms:`, {
@@ -233,20 +246,28 @@ export async function POST(request: NextRequest) {
 
 /**
  * Process rebalancing for a single user
+ *
+ * Optimized flow (P0-2 + P2-1):
+ * 1. Check session type from lightweight SQL field (no authorization blob)
+ * 2. Evaluate rebalancing decision FIRST (most users won't need it)
+ * 3. Only fetch + decrypt authorization_7702 for users that WILL rebalance
  */
 async function processUserRebalance(
   user: any,
   summary: CronSummary,
-  targetedVaults?: string[] | null
+  targetedVaults?: string[] | null,
+  prefetchedVaults?: { morpho: any[]; yo: any[] }
 ): Promise<void> {
   const userAddress = user.wallet_address as `0x${string}`;
   const userId = user.id;
-  const encryptedAuthorization = user.authorization_7702;
+  // session_type comes from lightweight SQL: authorization_7702->>'type'
+  const sessionType = user.session_type;
 
   console.log(`[Cron] Processing ${userAddress}...`);
 
-  // 1. Validate session key
-  if (!encryptedAuthorization || encryptedAuthorization.type !== "zerodev-7702-session") {
+  // 1. Validate session type from lightweight field (no decryption needed)
+  const sessionProbe = AgentSession.fromRaw({ type: sessionType });
+  if (!sessionProbe || !sessionProbe.isValidType()) {
     summary.skipped++;
     summary.details.push({
       address: userAddress,
@@ -257,7 +278,42 @@ async function processUserRebalance(
     return;
   }
 
-  // Decrypt authorization (only when needed for execution)
+  // 2. Evaluate rebalancing decision FIRST -- before fetching/decrypting authorization (P2-1 fix)
+  // Uses singleton engine instead of new instance per user (P1-1 fix)
+  // Pass pre-fetched vaults to avoid redundant API calls per user (P0 fix)
+  const decision = await yieldDecisionEngine.evaluateRebalancing(userAddress, targetedVaults, prefetchedVaults);
+
+  // 3. Check if should rebalance -- skip BEFORE expensive decrypt
+  if (!decision.shouldRebalance) {
+    summary.skipped++;
+    summary.details.push({
+      address: userAddress,
+      action: "skipped",
+      reason: decision.reason,
+      apyImprovement: decision.apyImprovement,
+    });
+    console.log(`[Cron] Skipped ${userAddress}: ${decision.reason}`);
+    return;
+  }
+
+  // 4. Only NOW fetch the full authorization_7702 blob (P0-2 fix: deferred fetch)
+  const authRows = await sql`
+    SELECT authorization_7702
+    FROM users
+    WHERE id = ${userId}
+  `;
+  const encryptedAuthorization = authRows[0]?.authorization_7702;
+  if (!encryptedAuthorization) {
+    summary.errors++;
+    summary.details.push({
+      address: userAddress,
+      action: "error",
+      reason: "Could not fetch authorization for rebalancing user",
+    });
+    return;
+  }
+
+  // 5. Decrypt authorization AFTER decision check (P2-1 fix: no wasted CPU)
   const authorization = decryptAuthorization(encryptedAuthorization);
 
   // Check if session key expired
@@ -284,28 +340,10 @@ async function processUserRebalance(
     return;
   }
 
-  // 2. Evaluate rebalancing decision via Morpho API
-  const decisionEngine = new YieldDecisionEngine();
-  const decision = await decisionEngine.evaluateRebalancing(userAddress, targetedVaults);
-
-  // 3. Check if should rebalance
-  if (!decision.shouldRebalance) {
-    summary.skipped++;
-    summary.details.push({
-      address: userAddress,
-      action: "skipped",
-      reason: decision.reason,
-      apyImprovement: decision.apyImprovement,
-    });
-    console.log(`[Cron] Skipped ${userAddress}: ${decision.reason}`);
-    return;
-  }
-
-  // 4. Check simulation mode
+  // 6. Check simulation mode
   const simulationMode = process.env.AGENT_SIMULATION_MODE === "true";
 
   if (simulationMode) {
-    // Simulation mode - just log
     console.log("[SIMULATION] Would execute rebalance:", {
       user: userAddress,
       from: decision.currentVault?.name,
@@ -338,7 +376,7 @@ async function processUserRebalance(
     return;
   }
 
-  // 5. Real execution via ZeroDev (using session key - no agent wallet needed!)
+  // 7. Real execution via ZeroDev (using session key - no agent wallet needed!)
   const result = await executeRebalanceTransaction(userId, userAddress, authorization, decision);
 
   if (result.success) {
@@ -350,7 +388,7 @@ async function processUserRebalance(
       apyImprovement: decision.apyImprovement,
       taskId: result.taskId,
     });
-    console.log(`[Cron] ✓ Rebalanced ${userAddress}: Task ${result.taskId}`);
+    console.log(`[Cron] Rebalanced ${userAddress}: Task ${result.taskId}`);
     await incrementUserOpCount(userAddress);
   } else {
     summary.errors++;
@@ -359,7 +397,7 @@ async function processUserRebalance(
       action: "error",
       reason: result.error || "Execution failed",
     });
-    console.error(`[Cron] ✗ Failed ${userAddress}:`, result.error);
+    console.error(`[Cron] Failed ${userAddress}:`, result.error);
   }
 }
 
@@ -389,7 +427,11 @@ async function executeRebalanceTransaction(
     const serializedAccount = authorization.serializedAccount;
     const sessionPrivateKey = authorization.sessionPrivateKey;
     // EIP-7702: eoaAddress IS the smart account address (single address model)
-    const smartAccountAddress = authorization.eoaAddress;
+    // ERC-4337: smartWalletAddress is the Privy Kernel smart wallet (separate address)
+    const smartAccountAddress =
+      authorization.type === "zerodev-erc4337-session"
+        ? authorization.smartWalletAddress
+        : authorization.eoaAddress;
 
     if (!serializedAccount && !sessionPrivateKey) {
       throw new Error(
