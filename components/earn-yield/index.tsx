@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useWallet } from "@/hooks/useWallet";
+import { useWalletSelection } from "@/hooks/useWalletSelection";
 import { Check, ArrowLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogClose } from "../common/Dialog";
 import { ScrollArea } from "../common/ScrollArea";
@@ -24,14 +25,17 @@ type Tab = "opportunities" | "positions";
 
 export function EarnYieldModal({ open, onClose, initialYield }: EarnYieldModalProps) {
   const { wallet } = useWallet();
+  const { agentAddress } = useWalletSelection();
   const { balances } = useBalance();
   const { yields, isLoading: yieldsLoading, error: yieldsError } = useYields();
+  // Use agentAddress for position queries: EOA for 7702, smart wallet for 4337
+  const positionQueryAddress = agentAddress ?? wallet?.address;
   const {
     positions,
     positionCount,
     isLoading: positionsLoading,
     refetch: refetchPositions,
-  } = useYieldPositions(wallet?.address);
+  } = useYieldPositions(positionQueryAddress ?? undefined);
   const { refetch: refetchActivityFeed } = useActivityFeed();
 
   const [step, setStep] = useState<Step>(initialYield ? "deposit" : "list");

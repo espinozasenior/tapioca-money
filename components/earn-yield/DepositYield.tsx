@@ -1,6 +1,7 @@
 import React, { useReducer, useCallback } from "react";
 import { useWallet } from "@/hooks/useWallet";
 import { usePrivy } from "@privy-io/react-auth";
+import { useWalletSelection } from "@/hooks/useWalletSelection";
 import { AmountInput } from "../common/AmountInput";
 import { PrimaryButton } from "../common/PrimaryButton";
 import { useBalance } from "@/hooks/useBalance";
@@ -76,6 +77,10 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
     register,
     isRegistering,
   } = useAgent();
+  const { activeWallet, supportsEip7702, smartWalletAddress, agentAddress } = useWalletSelection();
+  const isExternalWallet = activeWallet?.walletClientType !== "privy" && activeWallet?.chainType === "ethereum";
+  // User can register if they have either 7702 support OR an ERC-4337 smart wallet
+  const canRegister = supportsEip7702 || !!smartWalletAddress;
   const [state, dispatch] = useReducer(depositReducer, initialState);
 
   const isAmountValid =
@@ -193,8 +198,21 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
               ? "You need to register your agent before making deposits. This enables gasless transactions on your behalf."
               : "Your agent session has expired. Please re-register to continue making deposits."}
           </p>
-          <PrimaryButton onClick={() => register()} disabled={isRegistering}>
-            {isRegistering ? "Registering..." : "Register Agent"}
+          {isExternalWallet && !canRegister && (
+            <p className="mb-4 text-sm text-yellow-700">
+              Your wallet doesn&apos;t support agent registration yet.
+              Please switch to your Privy embedded wallet or re-login.
+            </p>
+          )}
+          {isExternalWallet && canRegister && !supportsEip7702 && (
+            <p className="mb-4 text-sm text-blue-600">
+              Your agent will use a smart wallet. After registration, deposit USDC to{" "}
+              <span className="font-mono text-xs">{smartWalletAddress?.slice(0, 8)}...{smartWalletAddress?.slice(-6)}</span>{" "}
+              to start earning.
+            </p>
+          )}
+          <PrimaryButton onClick={() => register()} disabled={isRegistering || !canRegister}>
+            {isRegistering ? "Registering..." : !canRegister ? "Wallet Not Supported" : "Register Agent"}
           </PrimaryButton>
         </div>
       </div>
@@ -279,13 +297,20 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
         <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
           <p>{state.error}</p>
           {state.isVaultNotApproved && (
-            <PrimaryButton
-              onClick={() => register()}
-              disabled={isRegistering}
-              className="mt-3 w-full"
-            >
-              {isRegistering ? "Registering..." : "Re-Register Agent"}
-            </PrimaryButton>
+            <>
+              {!canRegister && (
+                <p className="mt-2 text-xs text-red-500">
+                  Switch to your Privy embedded wallet or re-login to re-register.
+                </p>
+              )}
+              <PrimaryButton
+                onClick={() => register()}
+                disabled={isRegistering || !canRegister}
+                className="mt-3 w-full"
+              >
+                {isRegistering ? "Registering..." : "Re-Register Agent"}
+              </PrimaryButton>
+            </>
           )}
         </div>
       )}

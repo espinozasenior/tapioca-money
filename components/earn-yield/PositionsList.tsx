@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import Image from "next/image";
 import { AlertCircle, CheckCircle2, Info, Loader2 } from "lucide-react";
 import { useWallet } from "@/hooks/useWallet";
+import { useWalletSelection } from "@/hooks/useWalletSelection";
 import {
   YieldOpportunity,
   YieldPosition,
@@ -73,9 +74,11 @@ const DEFAULT_EXIT_STATE: PositionExitState = {
 
 export function PositionsList({ positions, yields, isLoading, onExitSuccess }: PositionsListProps) {
   const { wallet, isReady } = useWallet();
+  const { agentAddress } = useWalletSelection();
   const [positionStates, setPositionStates] = useState<Record<string, PositionExitState>>({});
   const vaultExit = useVaultExit();
-  const pendingRedeems = usePendingRedeems(wallet?.address as `0x${string}` | undefined);
+  const pendingQueryAddress = (agentAddress ?? wallet?.address) as `0x${string}` | undefined;
+  const pendingRedeems = usePendingRedeems(pendingQueryAddress);
 
   // Find the yield opportunity for a position to get APY
   const getYieldForPosition = (yieldId: string) => {

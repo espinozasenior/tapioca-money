@@ -20,6 +20,7 @@ import { createWalletClient, createPublicClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { base } from "viem/chains";
 import { authenticateRequest, unauthorizedResponse } from "@/lib/auth/middleware";
+import { buildWalletAddresses, resolveAgentRegistration, resetAgentRegistration } from "@/lib/agent/resolve-registration";
 import { CHAIN_CONFIG } from "@/lib/config";
 
 const sql = neon(process.env.DATABASE_URL!);
@@ -32,7 +33,8 @@ export async function POST(request: NextRequest) {
       return unauthorizedResponse(authResult.error);
     }
     const userWalletAddress = authResult.walletAddress;
-    if (!userWalletAddress) {
+    const addresses = buildWalletAddresses(authResult);
+    if (!addresses) {
       return unauthorizedResponse("No wallet linked to account");
     }
 
@@ -72,15 +74,11 @@ export async function POST(request: NextRequest) {
     console.log("[Undelegate] Processing undelegation for:", userWalletAddress);
 
     // 4. Verify user has an active registration
-    const users = await sql`
-      SELECT authorization_7702
-      FROM users
-      WHERE wallet_address = ${userWalletAddress}
-    `;
-
-    if (users.length === 0) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    const resolved = await resolveAgentRegistration(sql, addresses);
+    if (!resolved.ok) {
+      return NextResponse.json({ error: "No active agent registration found" }, { status: 404 });
     }
+    const { registeredAddress } = resolved;
 
     // 5. Create relayer wallet client
     const relayerAccount = privateKeyToAccount(relayerKey as `0x${string}`);
@@ -95,7 +93,7 @@ export async function POST(request: NextRequest) {
     // 6. Send Type 4 transaction with user's signed authorization.
     //    The relayer pays gas; the auth targets the user's EOA.
     const txHash = await walletClient.sendTransaction({
-      to: userWalletAddress as `0x${string}`,
+      to: registeredAddress as `0x${string}`,
       data: "0x" as `0x${string}`,
       value: BigInt(0),
       authorizationList: [signedAuthorization],
@@ -111,17 +109,11 @@ export async function POST(request: NextRequest) {
     const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
     console.log("[Undelegate] Confirmed in block:", receipt.blockNumber);
 
-    // 8. Reset all agent state so UI shows clean unregistered state
-    await sql`
-      UPDATE users
-      SET authorization_7702 = NULL,
-          agent_registered = false,
-          auto_optimize_enabled = false,
-          updated_at = NOW()
-      WHERE wallet_address = ${userWalletAddress}
-    `;
+    // 8. Reset all agent state so UI shows clean unregistered state.
+    // Use the actual DB address where registration is stored, not the JWT address.
+    await resetAgentRegistration(sql, registeredAddress);
 
-    console.log("[Undelegate] DB authorization cleared for:", userWalletAddress);
+    console.log("[Undelegate] DB authorization cleared for:", registeredAddress);
 
     return NextResponse.json({
       success: true,
