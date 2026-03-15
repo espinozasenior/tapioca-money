@@ -1,6 +1,7 @@
 import { useAuth, useWallet } from "@/hooks/useWallet";
 import { useBalance } from "@/hooks/useBalance";
 import { useAgent } from "@/hooks/useOptimizer";
+import { useWalletSelection } from "@/hooks/useWalletSelection";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Dialog, DialogContent, DialogTitle } from "../common/Dialog";
@@ -25,8 +26,13 @@ export function WalletDetails({ onClose, open }: { onClose: () => void; open: bo
   const { wallet, walletType } = useWallet();
   const { user } = useAuth();
   const { displayableBalance, isLoading: isBalanceLoading } = useBalance();
-  const { undelegate, isUndelegating, undelegateError } = useAgent();
+  const { undelegate, isUndelegating, undelegateError, isRegistered } = useAgent();
+  const { supportsEip7702, agentAddress } = useWalletSelection();
   const [confirmReset, setConfirmReset] = useState(false);
+
+  // ERC-4337 users: revoke session key only (no on-chain undelegation needed)
+  // EIP-7702 users: full on-chain delegation reset
+  const isErc4337User = isRegistered && !supportsEip7702;
 
   useEffect(() => {
     if (!confirmReset) return;
@@ -83,6 +89,13 @@ export function WalletDetails({ onClose, open }: { onClose: () => void; open: bo
           {undelegateError && (
             <p className="text-center text-sm text-red-500">{undelegateError.message}</p>
           )}
+          {agentAddress && agentAddress.toLowerCase() !== wallet?.address?.toLowerCase() && (
+            <div className="rounded-lg bg-blue-50 p-3 text-xs text-blue-700">
+              <p className="font-medium">Smart Wallet (ERC-4337)</p>
+              <p className="mt-1 font-mono">{agentAddress}</p>
+              <p className="mt-1 text-blue-600">Your agent operates on this address. Deposit USDC here.</p>
+            </div>
+          )}
           <button
             onClick={() => {
               if (confirmReset) {
@@ -99,7 +112,9 @@ export function WalletDetails({ onClose, open }: { onClose: () => void; open: bo
               ? "Resetting..."
               : confirmReset
                 ? "Confirm — requires re-registration"
-                : "Reset Agent Delegation"}
+                : isErc4337User
+                  ? "Revoke Session Key"
+                  : "Reset Agent Delegation"}
           </button>
           <button
             onClick={onClose}

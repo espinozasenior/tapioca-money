@@ -9,14 +9,11 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
-import {
-  decryptAuthorization,
-  SessionKey7702Authorization,
-} from "@/lib/security/session-encryption";
+import { SessionKey7702Authorization } from "@/lib/security/session-encryption";
 import { authenticateRequest, unauthorizedResponse } from "@/lib/auth/middleware";
+import { buildWalletAddresses, resolveAndDecryptRegistration, verifyVaultApproval } from "@/lib/agent/resolve-registration";
 import { executeVaultRedeem } from "@/lib/zerodev/vault-executor";
 import { executeYoVaultRedeem } from "@/lib/zerodev/yo-vault-executor";
-import { YO_GATEWAY_ADDRESS } from "@/lib/yo/constants";
 import { incrementUserOpCount } from "@/lib/redis/rate-limiter";
 
 const sql = neon(process.env.DATABASE_URL!);
@@ -30,7 +27,8 @@ export async function POST(request: NextRequest) {
     }
 
     const userWalletAddress = authResult.walletAddress;
-    if (!userWalletAddress) {
+    const addresses = buildWalletAddresses(authResult);
+    if (!addresses) {
       return unauthorizedResponse("No wallet linked to account");
     }
 
@@ -57,93 +55,50 @@ export async function POST(request: NextRequest) {
       shares,
     });
 
-    // 3. Fetch user authorization from database
-    const users = await sql`
-      SELECT authorization_7702
-      FROM users
-      WHERE wallet_address = ${userWalletAddress}
-    `;
-
-    if (users.length === 0) {
-      return NextResponse.json(
-        { error: "User not found. Please register agent first." },
-        { status: 404 }
-      );
+    // 3. Resolve agent registration + decrypt authorization
+    const resolved = await resolveAndDecryptRegistration(sql, addresses);
+    if (!resolved.ok) {
+      return NextResponse.json({ error: resolved.message }, { status: resolved.statusCode });
     }
+    const { decryptedAuth, accountAddress, authorizationData } = resolved;
 
-    const authorizationData = users[0].authorization_7702 as SessionKey7702Authorization | null;
-
-    if (!authorizationData) {
-      return NextResponse.json(
-        { error: "Agent not registered. Please register your agent to enable vault operations." },
-        { status: 400 }
-      );
-    }
-
-    // 4. Validate authorization type
-    if (authorizationData.type !== "zerodev-7702-session") {
-      return NextResponse.json(
-        { error: "Invalid authorization type. Please re-register agent." },
-        { status: 400 }
-      );
-    }
-
-    // 5. Check if session key is expired
-    const now = Math.floor(Date.now() / 1000);
-    if (authorizationData.expiry && authorizationData.expiry < now) {
-      return NextResponse.json(
-        { error: "Session key expired. Please re-register agent." },
-        { status: 400 }
-      );
-    }
-
-    // 6. Decrypt session key
-    const decryptedAuth = decryptAuthorization(authorizationData);
-
-    // 7. Verify vault/gateway is approved
+    // 4. Verify vault/gateway is approved
     const approvedVaults = authorizationData.approvedVaults || [];
-    const normalizedVaultAddress = vaultAddress.toLowerCase();
-
-    if (protocol === "yo") {
-      const gatewayApproved = approvedVaults.some(
-        (v: string) => v.toLowerCase() === YO_GATEWAY_ADDRESS.toLowerCase()
-      );
-      if (approvedVaults.length > 0 && !gatewayApproved) {
-        return NextResponse.json(
-          { error: "YO Gateway not approved. Please re-register agent." },
-          { status: 403 }
-        );
-      }
-    } else if (approvedVaults.length > 0) {
-      const isApproved = approvedVaults.some(
-        (v: string) => v.toLowerCase() === normalizedVaultAddress
-      );
-      if (!isApproved) {
-        return NextResponse.json(
-          { error: "Vault not approved. Please re-register agent with updated vault list." },
-          { status: 403 }
-        );
-      }
+    const approval = verifyVaultApproval(approvedVaults, vaultAddress, protocol);
+    if (!approval.approved) {
+      return NextResponse.json({ error: approval.message }, { status: 403 });
     }
 
-    // 8. Execute vault redeem
+    // 5. Validate serializedAccount before passing to executors
+    if (!decryptedAuth.serializedAccount) {
+      return NextResponse.json(
+        { error: "Session key data incomplete. Please re-register agent." },
+        { status: 400 }
+      );
+    }
+
+    // 6. Execute vault redeem
     let result;
     if (protocol === "yo") {
       result = await executeYoVaultRedeem({
-        smartAccountAddress: decryptedAuth.eoaAddress,
+        smartAccountAddress: accountAddress,
         vaultAddress: vaultAddress as `0x${string}`,
         shares: BigInt(shares),
-        receiver: decryptedAuth.eoaAddress,
-        serializedAccount: decryptedAuth.serializedAccount!,
+        receiver: accountAddress,
+        serializedAccount: decryptedAuth.serializedAccount,
       });
     } else {
+      // Legacy fields only exist on 7702 sessions
+      const legacy7702 = decryptedAuth.type === "zerodev-7702-session"
+        ? decryptedAuth as SessionKey7702Authorization
+        : undefined;
       result = await executeVaultRedeem({
-        smartAccountAddress: decryptedAuth.eoaAddress,
+        smartAccountAddress: accountAddress,
         vaultAddress: vaultAddress as `0x${string}`,
         shares: BigInt(shares),
-        receiver: decryptedAuth.eoaAddress,
+        receiver: accountAddress,
         serializedAccount: decryptedAuth.serializedAccount,
-        sessionPrivateKey: decryptedAuth.sessionPrivateKey as `0x${string}` | undefined,
+        sessionPrivateKey: legacy7702?.sessionPrivateKey as `0x${string}` | undefined,
         approvedVaults: approvedVaults as `0x${string}`[],
       });
     }

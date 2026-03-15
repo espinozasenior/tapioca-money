@@ -1,9 +1,11 @@
 import { useYieldPositions } from "../../hooks/useOptimizer";
 import { useWallet } from "@/hooks/useWallet";
+import { useWalletSelection } from "@/hooks/useWalletSelection";
 
 export function RewardsBalance() {
   const { wallet } = useWallet();
-  const { positions, isLoading } = useYieldPositions(wallet?.address);
+  const { agentAddress } = useWalletSelection();
+  const { positions, isLoading } = useYieldPositions(agentAddress ?? wallet?.address);
 
   // Calculate total rewards across all positions
   const totalRewards = positions.reduce((sum, position) => {

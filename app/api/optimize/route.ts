@@ -31,12 +31,17 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const decision = await yieldDecisionEngine.evaluateRebalancing(address);
+    // Pass pre-fetched vaults to avoid redundant API calls (P0-1 fix)
+    const decision = await yieldDecisionEngine.evaluateRebalancing(
+      address,
+      null,
+      { morpho: morphoVaults, yo: yoVaults }
+    );
 
-    // Fetch positions from both protocols in parallel
+    // Pass pre-fetched morpho vaults to avoid N+1 fetchVault calls (P1-3 fix)
     const [morphoPositions, yoPositions] = await Promise.all([
-      yieldDecisionEngine.getMorphoPositionsWithApy(address),
-      yieldDecisionEngine.getYoPositionsWithApy(address),
+      yieldDecisionEngine.getMorphoPositionsWithApy(address, morphoVaults),
+      yieldDecisionEngine.getYoPositionsWithApy(address, yoVaults),
     ]);
 
     const transformedMorphoPositions = morphoPositions.map((p) =>
