@@ -1,4 +1,5 @@
 import { useWallet } from "./useWallet";
+import { useWalletSelection } from "./useWalletSelection";
 import { useQuery } from "@tanstack/react-query";
 import { YieldPosition, useYieldPositions } from "./useOptimizer";
 
@@ -25,6 +26,7 @@ function yieldPositionToActivityEvent(position: YieldPosition): ActivityEvent {
 
 export function useActivityFeed() {
   const { wallet } = useWallet();
+  const { agentAddress } = useWalletSelection();
 
   // Fetch wallet activity
   const walletActivityQuery = useQuery({
@@ -33,8 +35,8 @@ export function useActivityFeed() {
     enabled: !!wallet?.address,
   });
 
-  // Fetch yield positions - uses optimizer API
-  const { positions, isLoading: positionsLoading } = useYieldPositions(wallet?.address);
+  // Fetch yield positions - uses agentAddress (smart wallet for 4337, EOA for 7702)
+  const { positions, isLoading: positionsLoading } = useYieldPositions(agentAddress ?? wallet?.address);
 
   // Combine and sort events
   const combinedEvents = (() => {
