@@ -28,40 +28,97 @@ const ENTRYPOINT_V07 = {
  * which captures the enable signature from the EOA (sudo). The server deserializes
  * it and gets a fully configured kernel account — no EOA private key needed.
  *
+ * Handles the "duplicate permissionHash" issue: The Kernel V3.3 only allows one
+ * installation per validator contract. After the first UserOp installs the permission,
+ * all subsequent deserializations must skip the enable signature. We detect this by
+ * checking if the delegation code is already on-chain.
+ *
  * @param serializedAccount - Base64 serialized permission account from registration
  * @returns A kernel client ready to call sendUserOperation()
  */
-export async function createDeserializedKernelClient(serializedAccount: string) {
+export async function createDeserializedKernelClient(
+  serializedAccount: string,
+  options?: { preInstalled?: boolean }
+) {
   console.log("[KernelClient] Creating kernel client from serialized account...");
 
-  // 1. Create public client
-  const publicClient = createPublicClient({
-    chain: base,
-    transport: http(CHAIN_CONFIG.rpcUrl),
-  });
-
-  // 2. Import ZeroDev SDK
-  const { createKernelAccountClient } = await import("@zerodev/sdk");
-  const { KERNEL_V3_3 } = await import("@zerodev/sdk/constants");
-  const { deserializePermissionAccount } = await import("@zerodev/permissions");
+  const shouldPatch = options?.preInstalled ?? false;
 
   // NOTE: EIP-7702 authorization nonce replay protection is handled by the protocol.
   // The authorization nonce is the EOA's transaction nonce at signing time.
   // Once the delegation tx is mined, that nonce is consumed and cannot be replayed.
   // The EntryPoint contract also manages UserOp nonces independently via 2D nonces.
-  // No explicit nonce validation is needed here.
 
-  // 3. Deserialize the account (restores enable signature, session key, policies, eip7702Auth)
+  const kernelClient = await _buildKernelClient(serializedAccount, shouldPatch);
+
+  // Wrap sendUserOperation with automatic retry for "duplicate permissionHash".
+  // After re-registration with a new permissionHash, the first UserOp installs the validator
+  // (enable signature included). On subsequent calls, the enable signature causes "duplicate
+  // permissionHash" — we catch this and retry with preInstalled=true (skipping enable sig).
+  // This is transparent to all callers — no executor changes needed.
+  if (!shouldPatch) {
+    const originalSendUserOp = kernelClient.sendUserOperation.bind(kernelClient);
+    kernelClient.sendUserOperation = async (args: any) => {
+      try {
+        return await originalSendUserOp(args);
+      } catch (error: any) {
+        const isDuplicate =
+          error?.details?.includes?.("duplicate permissionHash") ||
+          error?.message?.includes?.("duplicate permissionHash");
+        if (!isDuplicate) throw error;
+
+        console.log(
+          "[KernelClient] duplicate permissionHash — retrying with preInstalled=true"
+        );
+        const patchedClient = await _buildKernelClient(serializedAccount, true);
+        return await patchedClient.sendUserOperation(args);
+      }
+    };
+  }
+
+  return kernelClient;
+}
+
+/** Internal: build a kernel client with or without enable signature */
+async function _buildKernelClient(serializedAccount: string, preInstalled: boolean) {
+  const publicClient = createPublicClient({
+    chain: base,
+    transport: http(CHAIN_CONFIG.rpcUrl),
+  });
+
+  const { createKernelAccountClient } = await import("@zerodev/sdk");
+  const { KERNEL_V3_3 } = await import("@zerodev/sdk/constants");
+  const { deserializePermissionAccount } = await import("@zerodev/permissions");
+
+  const effectiveAccount = preInstalled
+    ? patchSerializedAccount(serializedAccount)
+    : serializedAccount;
+
+  const logSuffix = preInstalled ? " (preInstalled=true)" : " (with enable signature)";
+  console.log("[KernelClient] Deserializing account" + logSuffix);
+
   const kernelAccount = await deserializePermissionAccount(
     publicClient,
     ENTRYPOINT_V07,
     KERNEL_V3_3,
-    serializedAccount
+    effectiveAccount
   );
 
   console.log("[KernelClient] Account deserialized:", kernelAccount.address);
 
-  // 4. Create Kernel account client with bundler
+  // Fix AA14: deserializePermissionAccount restores factory/factoryData from serialization
+  // time, but for EIP-7702 accounts, the factory's CREATE2 address won't match the EOA.
+  // If the account already has on-chain code (EIP-7702 delegation or deployed proxy),
+  // strip factory info so the UserOp doesn't include initCode.
+  const onChainCode = await publicClient.getCode({ address: kernelAccount.address });
+  if (onChainCode && onChainCode !== "0x") {
+    const { factory: origFactory } = await kernelAccount.getFactoryArgs();
+    if (origFactory) {
+      console.log("[KernelClient] Account deployed on-chain — stripping factory to prevent AA14");
+      kernelAccount.getFactoryArgs = async () => ({ factory: undefined, factoryData: undefined });
+    }
+  }
+
   const bundlerUrl =
     process.env.ZERODEV_BUNDLER_URL ||
     `https://rpc.zerodev.app/api/v3/${process.env.ZERODEV_PROJECT_ID}/chain/8453`;
@@ -75,6 +132,63 @@ export async function createDeserializedKernelClient(serializedAccount: string) 
   console.log("[KernelClient] Kernel client created from deserialized account");
   return kernelClient;
 }
+
+/**
+ * Send a UserOp with AA23 retry logic.
+ *
+ * The Kernel V3.3 permission validator requires an enable signature on the FIRST UserOp
+ * to install the permission set. Subsequent UserOps MUST skip it (isPreInstalled=true)
+ * or they get AA23 "duplicate permissionHash".
+ *
+ * Strategy: try with preInstalled=true first (optimized for the common case where
+ * the permission is already installed). If AA23, retry without the patch (new permission
+ * set after re-registration needs the enable signature to install).
+ */
+export async function sendUserOperationWithRetry(
+  serializedAccount: string,
+  calls: any[]
+): Promise<{ userOpHash: string; kernelClient: any }> {
+  // Common case: permission already installed → skip enable signature
+  let kernelClient = await createDeserializedKernelClient(serializedAccount, {
+    preInstalled: true,
+  });
+  try {
+    const userOpHash = await kernelClient.sendUserOperation({ calls });
+    return { userOpHash, kernelClient };
+  } catch (firstError: any) {
+    const isAA23 =
+      firstError?.details?.includes?.("AA23") || firstError?.message?.includes?.("AA23");
+    if (!isAA23) throw firstError;
+
+    // AA23 with preInstalled=true → new permission set after re-registration.
+    // Retry with enable signature to install the new permission validator.
+    console.log("[KernelClient] AA23 with preInstalled=true — retrying with enable signature");
+    kernelClient = await createDeserializedKernelClient(serializedAccount);
+    const userOpHash = await kernelClient.sendUserOperation({ calls });
+    return { userOpHash, kernelClient };
+  }
+}
+
+/**
+ * Patch serialized account to skip the enable signature.
+ * Used when the permission validator is already installed on-chain
+ * (e.g., after the first UserOp with this permission set succeeded).
+ */
+function patchSerializedAccount(serializedAccount: string): string {
+  try {
+    const decoded = Buffer.from(serializedAccount, "base64").toString("utf-8");
+    const params = JSON.parse(decoded);
+    if (params.isPreInstalled) return serializedAccount;
+
+    console.log("[KernelClient] Patching isPreInstalled=true (permission already installed)");
+    params.isPreInstalled = true;
+    params.enableSignature = undefined;
+    return Buffer.from(JSON.stringify(params)).toString("base64");
+  } catch {
+    return serializedAccount;
+  }
+}
+
 
 export interface CreateSessionKernelClientParams {
   /** The account address (EOA address with EIP-7702 delegation) */

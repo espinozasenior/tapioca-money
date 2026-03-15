@@ -30,6 +30,7 @@ interface StoreSessionRequest {
   serializedAccount: string; // Base64 serialized kernel account from client
   approvedVaults: string[];
   expiry: number;
+  type?: "zerodev-7702-session" | "zerodev-erc4337-session"; // Default: 7702
 }
 
 /**
@@ -39,7 +40,8 @@ interface StoreSessionRequest {
 export async function POST(request: NextRequest) {
   try {
     const body: StoreSessionRequest = await request.json();
-    const { address, sessionKeyAddress, serializedAccount, approvedVaults, expiry } = body;
+    const { address, smartAccountAddress, sessionKeyAddress, serializedAccount, approvedVaults, expiry } = body;
+    const sessionType = body.type ?? "zerodev-7702-session";
 
     // Validate required fields
     if (!address) {
@@ -69,9 +71,8 @@ export async function POST(request: NextRequest) {
 
     console.log("[Session Key] Storing serialized account for:", address);
 
-    // Create authorization object and encrypt
-    const authorization = {
-      type: "zerodev-7702-session" as const,
+    // Create authorization object and encrypt — supports both 7702 and 4337 types
+    const baseAuth = {
       eoaAddress: address as `0x${string}`,
       sessionKeyAddress: sessionKeyAddress as `0x${string}`,
       serializedAccount, // Will be encrypted
@@ -79,6 +80,17 @@ export async function POST(request: NextRequest) {
       expiry,
       timestamp: Date.now(),
     };
+
+    const authorization = sessionType === "zerodev-erc4337-session"
+      ? {
+          ...baseAuth,
+          type: "zerodev-erc4337-session" as const,
+          smartWalletAddress: (smartAccountAddress || address) as `0x${string}`,
+        }
+      : {
+          ...baseAuth,
+          type: "zerodev-7702-session" as const,
+        };
 
     const encryptedAuth = encryptAuthorization(authorization);
     const authJson = JSON.stringify(encryptedAuth);

@@ -1,11 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   useWallets as useEthWallets,
   usePrivy,
   type ConnectedWallet as EthConnectedWallet,
 } from "@privy-io/react-auth";
+import { useSmartWallets } from "@privy-io/react-auth/smart-wallets";
 import { useWallets as useSolWallets } from "@privy-io/react-auth/solana";
 
 export type WalletType = "embedded" | "external-evm" | "solana";
@@ -34,6 +35,12 @@ interface WalletSelectionContextValue {
   isEvmWallet: boolean;
   /** Whether the active wallet is a Solana wallet */
   isSolanaWallet: boolean;
+  /** Whether the active wallet supports EIP-7702 (Privy embedded only) */
+  supportsEip7702: boolean;
+  /** Privy smart wallet address (ERC-4337 counterfactual Kernel) */
+  smartWalletAddress: string | null;
+  /** Address where the agent operates: EOA for 7702, smart wallet for 4337 */
+  agentAddress: string | null;
 }
 
 const WalletSelectionContext = createContext<WalletSelectionContextValue | null>(null);
@@ -56,7 +63,13 @@ export function WalletSelectionProvider({ children }: { children: React.ReactNod
   const { wallets: ethWallets } = useEthWallets();
   const { wallets: solWallets } = useSolWallets();
   const { user, authenticated } = usePrivy();
+  const { client: smartWalletClient } = useSmartWallets();
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
+  // Track whether the current selection was explicitly chosen by the user
+  // (via selectWallet or restored from localStorage). Auto-selections are
+  // re-evaluated when new wallets connect to avoid the race condition where
+  // embedded wallets load before the external wallet and "stick".
+  const isManualSelection = useRef(false);
 
   const connectedWallets: WalletEntry[] = useMemo(() => {
     const eth: WalletEntry[] = ethWallets.map((w) => ({
@@ -81,33 +94,55 @@ export function WalletSelectionProvider({ children }: { children: React.ReactNod
     const stored = localStorage.getItem(getStorageKey(user.id));
     if (stored && connectedWallets.some((w) => w.address === stored)) {
       setSelectedAddress(stored);
+      isManualSelection.current = true;
     }
   }, [authenticated, user?.id, connectedWallets]);
 
-  // Auto-select logic: if nothing selected, pick a default
+  // Auto-select logic: pick the best wallet by priority.
+  // Re-evaluates on every connectedWallets change unless the user
+  // explicitly chose a wallet (manual selection is sticky).
   useEffect(() => {
     if (connectedWallets.length === 0) {
       setSelectedAddress(null);
       return;
     }
 
-    // If current selection is still valid, keep it
-    if (selectedAddress && connectedWallets.some((w) => w.address === selectedAddress)) {
+    // If user explicitly selected and it's still valid, keep it
+    if (
+      isManualSelection.current &&
+      selectedAddress &&
+      connectedWallets.some((w) => w.address === selectedAddress)
+    ) {
       return;
     }
 
-    // Default: prefer embedded wallet, then first EVM, then first any
-    const embedded = connectedWallets.find((w) => w.walletClientType === "privy");
+    // Default: prefer external EVM wallet (user's "real" wallet), then embedded, then first any.
+    // External wallet is the identity stored in the DB — selecting embedded would cause
+    // status queries to use the wrong address after refresh.
     const evmExternal = connectedWallets.find(
       (w) => w.walletClientType !== "privy" && w.chainType === "ethereum"
     );
-    const fallback = embedded ?? evmExternal ?? connectedWallets[0];
+    const embedded = connectedWallets.find(
+      (w) => w.walletClientType === "privy" && w.chainType === "ethereum"
+    );
+    const fallback = evmExternal ?? embedded ?? connectedWallets[0];
+
+    if (fallback.address !== selectedAddress) {
+      console.log(
+        "[WalletSelection] Auto-selecting wallet:",
+        fallback.address,
+        `(${fallback.walletClientType})`,
+        "| available:",
+        connectedWallets.map((w) => `${w.address.slice(0, 8)}...(${w.walletClientType})`).join(", ")
+      );
+    }
     setSelectedAddress(fallback.address);
   }, [connectedWallets, selectedAddress]);
 
   const selectWallet = useCallback(
     (address: string) => {
       setSelectedAddress(address);
+      isManualSelection.current = true;
       if (user?.id) {
         localStorage.setItem(getStorageKey(user.id), address);
       }
@@ -125,6 +160,25 @@ export function WalletSelectionProvider({ children }: { children: React.ReactNod
   const isSolanaWallet = activeWalletType === "solana";
   const supportsSmartAccount = isEvmWallet;
 
+  // EIP-7702 is only available via Privy embedded wallets (they have the signAuthorization hook)
+  const supportsEip7702 = activeWalletType === "embedded";
+
+  // Privy smart wallet address (ERC-4337 Kernel, auto-created when SmartWalletsProvider is active)
+  const smartWalletAddress = useMemo(
+    () => (user as any)?.smartWallet?.address ?? null,
+    [user]
+  );
+
+  // Address where the agent operates:
+  // - EIP-7702 users: EOA = smart account (same address)
+  // - ERC-4337 users: Privy Kernel smart wallet (separate address, funds live here)
+  const agentAddress = useMemo(() => {
+    if (!activeWallet) return null;
+    if (supportsEip7702) return activeWallet.address;
+    if (smartWalletAddress) return smartWalletAddress;
+    return null;
+  }, [activeWallet, supportsEip7702, smartWalletAddress]);
+
   const value = useMemo<WalletSelectionContextValue>(
     () => ({
       activeWallet,
@@ -134,6 +188,9 @@ export function WalletSelectionProvider({ children }: { children: React.ReactNod
       supportsSmartAccount,
       isEvmWallet,
       isSolanaWallet,
+      supportsEip7702,
+      smartWalletAddress,
+      agentAddress,
     }),
     [
       activeWallet,
@@ -143,6 +200,9 @@ export function WalletSelectionProvider({ children }: { children: React.ReactNod
       supportsSmartAccount,
       isEvmWallet,
       isSolanaWallet,
+      supportsEip7702,
+      smartWalletAddress,
+      agentAddress,
     ]
   );
 
