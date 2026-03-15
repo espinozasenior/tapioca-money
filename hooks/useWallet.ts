@@ -105,11 +105,12 @@ export function useWallet() {
   const isReady = ready && authenticated && !!wallet;
 
   // Create a public client for balance queries (memoized to prevent recreating on every render)
+  // Uses configured RPC URL to avoid rate-limited public endpoint (P1-2 fix)
   const publicClient = useMemo(
     () =>
       createPublicClient({
         chain: base,
-        transport: http(),
+        transport: http(process.env.NEXT_PUBLIC_BASE_RPC_URL || undefined),
       }),
     []
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { PrivyProvider, dataSuffix } from "@privy-io/react-auth";
+import { SmartWalletsProvider } from "@privy-io/react-auth/smart-wallets";
 import { toSolanaWalletConnectors } from "@privy-io/react-auth/solana";
 import { BUILDER_CODE_SUFFIX } from "@/lib/builder-code";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -29,7 +30,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <PrivyProvider
         appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID!}
         config={{
-          loginMethods: ["email", "google", "wallet"],
+          loginMethods: ["email", "wallet"],
           appearance: {
             theme: "light",
             accentColor: "#676FFF",
@@ -45,7 +46,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           },
           embeddedWallets: {
             ethereum: {
-              createOnLogin: "users-without-wallets", // Only create embedded wallet for email/Google users
+              createOnLogin: "all-users", // All users get embedded wallet (needed for ERC-4337 fallback)
             },
           },
           externalWallets: {
@@ -57,7 +58,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
           plugins: [dataSuffix(BUILDER_CODE_SUFFIX)],
         }}
       >
-        <WalletSelectionProvider>{children}</WalletSelectionProvider>
+        <SmartWalletsProvider>
+          <WalletSelectionProvider>{children}</WalletSelectionProvider>
+        </SmartWalletsProvider>
       </PrivyProvider>
     </QueryClientProvider>
   );

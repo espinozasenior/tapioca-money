@@ -60,35 +60,18 @@ export function serializeSignedAuth(auth: any) {
 }
 
 /**
- * Create and serialize a kernel account client-side.
+ * Shared session key + permission builder.
  *
- * Uses ZeroDev's official serialize/deserialize pattern for two-party execution.
- * The client (with EOA access) creates the full kernel account, which captures
- * the enable signature from the sudo validator. The serialized data is then
- * sent to the server, which can deserialize and execute UserOps without the EOA.
+ * Extracts the duplicated session key generation, permission construction,
+ * and policy creation from the three createAndSerialize* variants.
  *
- * This will prompt the user to sign the enable typed data via Privy (1 extra signature).
- *
- * @param userAddress - User's EOA address
- * @param signedEip7702Auth - Raw signed EIP-7702 authorization from Privy
- * @param walletClient - Viem WalletClient from Privy provider
- * @param approvedVaults - List of approved vault addresses for scoped permissions
+ * @returns Session key material and the ready-to-use permission validator
  */
-async function createAndSerializeAccount(
-  userAddress: `0x${string}`,
-  signedEip7702Auth: any,
-  walletClient: any,
-  approvedVaults: `0x${string}`[]
-): Promise<{ serializedAccount: string; sessionKeyAddress: `0x${string}`; expiry: number }> {
-  console.log("[ZeroDev 7702] Creating serialized account client-side...");
-
+async function buildSessionKeyAndPermissions(approvedVaults: `0x${string}`[]) {
   // Dynamic imports to minimize client bundle (tree-shaken)
   const { generatePrivateKey, privateKeyToAccount } = await import("viem/accounts");
-  const { createKernelAccount } = await import("@zerodev/sdk");
   const { KERNEL_V3_3 } = await import("@zerodev/sdk/constants");
-  const { toPermissionValidator, serializePermissionAccount } = await import(
-    "@zerodev/permissions"
-  );
+  const { toPermissionValidator } = await import("@zerodev/permissions");
   const {
     toCallPolicy,
     CallPolicyVersion,
@@ -102,7 +85,7 @@ async function createAndSerializeAccount(
   // 1. Generate session key pair (client-side)
   const sessionPrivateKey = generatePrivateKey();
   const sessionKeyAccount = privateKeyToAccount(sessionPrivateKey);
-  console.log("[ZeroDev 7702] Session key address:", sessionKeyAccount.address);
+  console.log("[ZeroDev] Session key address:", sessionKeyAccount.address);
 
   // 2. Create public client
   const publicClient = createPublicClient({
@@ -160,7 +143,6 @@ async function createAndSerializeAccount(
   }
 
   // YO Gateway permissions — deposit and redeem via Gateway
-  // Import dynamically to avoid circular deps and keep client-secure lean
   const { YO_GATEWAY_ADDRESS, YO_GATEWAY_DEPOSIT_SELECTOR, YO_GATEWAY_REDEEM_SELECTOR } =
     await import("@/lib/yo/constants");
   permissions.push({
@@ -171,40 +153,6 @@ async function createAndSerializeAccount(
   permissions.push({
     target: YO_GATEWAY_ADDRESS as `0x${string}`,
     selector: YO_GATEWAY_REDEEM_SELECTOR,
-    valueLimit: 0n,
-  });
-
-  // Pendle Router V4 permissions — deposit (swap token→PT), early exit (swap PT→token), maturity redeem
-  const {
-    PENDLE_ROUTER_V4,
-    PENDLE_SWAP_EXACT_TOKEN_FOR_PT_SELECTOR,
-    PENDLE_SWAP_EXACT_PT_FOR_TOKEN_SELECTOR,
-    PENDLE_REDEEM_PY_TO_TOKEN_SELECTOR,
-    PT_YOUSD_TOKEN,
-  } = await import("@/lib/pendle/constants");
-  permissions.push({
-    target: PENDLE_ROUTER_V4 as `0x${string}`,
-    selector: PENDLE_SWAP_EXACT_TOKEN_FOR_PT_SELECTOR,
-    valueLimit: 0n,
-  });
-  permissions.push({
-    target: PENDLE_ROUTER_V4 as `0x${string}`,
-    selector: PENDLE_SWAP_EXACT_PT_FOR_TOKEN_SELECTOR,
-    valueLimit: 0n,
-  });
-  permissions.push({
-    target: PENDLE_ROUTER_V4 as `0x${string}`,
-    selector: PENDLE_REDEEM_PY_TO_TOKEN_SELECTOR,
-    valueLimit: 0n,
-  });
-  // yoUSD vault approve (for Pendle deposit step 3) is covered by the vault loop above —
-  // registerAgentSecure explicitly pushes yoUSD vault into approvedVaults to guarantee this.
-  // Approve Pendle Router to spend PT token (for early exit)
-  permissions.push({
-    target: PT_YOUSD_TOKEN as `0x${string}`,
-    abi: parseAbi(["function approve(address spender, uint256 amount) returns (bool)"]),
-    functionName: "approve",
-    args: [null, null],
     valueLimit: 0n,
   });
 
@@ -236,9 +184,46 @@ async function createAndSerializeAccount(
     kernelVersion: KERNEL_V3_3,
   });
 
-  // 6. Wrap Privy wallet as a LocalAccount (type: "local") for the SDK
-  // The SDK's createKernelAccount checks eip7702Account.type === "local"
-  // to create the sudo validator. toAccount() produces the right type.
+  return {
+    sessionPrivateKey,
+    sessionKeyAccount,
+    permissionValidator,
+    expiryTimestamp,
+    publicClient,
+  };
+}
+
+/**
+ * Create and serialize a kernel account client-side.
+ *
+ * Uses ZeroDev's official serialize/deserialize pattern for two-party execution.
+ * The client (with EOA access) creates the full kernel account, which captures
+ * the enable signature from the sudo validator. The serialized data is then
+ * sent to the server, which can deserialize and execute UserOps without the EOA.
+ *
+ * This will prompt the user to sign the enable typed data via Privy (1 extra signature).
+ *
+ * @param userAddress - User's EOA address
+ * @param signedEip7702Auth - Raw signed EIP-7702 authorization from Privy
+ * @param walletClient - Viem WalletClient from Privy provider
+ * @param approvedVaults - List of approved vault addresses for scoped permissions
+ */
+async function createAndSerializeAccount(
+  userAddress: `0x${string}`,
+  signedEip7702Auth: any,
+  walletClient: any,
+  approvedVaults: `0x${string}`[]
+): Promise<{ serializedAccount: string; sessionKeyAddress: `0x${string}`; expiry: number }> {
+  console.log("[ZeroDev 7702] Creating serialized account client-side...");
+
+  const { createKernelAccount } = await import("@zerodev/sdk");
+  const { KERNEL_V3_3 } = await import("@zerodev/sdk/constants");
+  const { serializePermissionAccount } = await import("@zerodev/permissions");
+
+  const { sessionPrivateKey, sessionKeyAccount, permissionValidator, expiryTimestamp, publicClient } =
+    await buildSessionKeyAndPermissions(approvedVaults);
+
+  // Wrap Privy wallet as a LocalAccount (type: "local") for the SDK
   const eoaLocalAccount = toAccount({
     address: userAddress,
     signMessage: async ({ message }) => walletClient.signMessage({ message }),
@@ -248,7 +233,7 @@ async function createAndSerializeAccount(
     signTypedData: async (typedData) => walletClient.signTypedData(typedData),
   });
 
-  // 7. Create kernel account with EOA as sudo + session key as regular
+  // Create kernel account with EOA as sudo + session key as regular
   console.log("[ZeroDev 7702] Creating kernel account (EOA=sudo, sessionKey=regular)...");
   const kernelAccount = await createKernelAccount(publicClient, {
     plugins: {
@@ -263,23 +248,20 @@ async function createAndSerializeAccount(
 
   console.log("[ZeroDev 7702] Kernel account created:", kernelAccount.address);
 
-  // 8. Serialize the account (captures enable signature via sudo/EOA signing)
-  // This triggers a Privy signing popup for the enable typed data
+  // Serialize the account (captures enable signature via sudo/EOA signing)
   console.log("[ZeroDev 7702] Serializing account (user signs enable data)...");
   const serialized = await serializePermissionAccount(
     kernelAccount,
-    sessionPrivateKey, // Embedded for server-side deserialization
+    sessionPrivateKey,
     undefined, // Auto-generate enable signature (sudo signs)
     signedEip7702Auth // Embed EIP-7702 auth
   );
-
-  const expiry = expiryTimestamp;
 
   console.log("[ZeroDev 7702] Account serialized successfully");
   return {
     serializedAccount: serialized,
     sessionKeyAddress: sessionKeyAccount.address as `0x${string}`,
-    expiry,
+    expiry: expiryTimestamp,
   };
 }
 
@@ -325,29 +307,10 @@ export async function registerAgentSecure(
       approvedVaults.push(YO_GATEWAY_ADDRESS as `0x${string}`);
     }
 
-    // Include Pendle Router V4 for PT-yoUSD operations
-    const { PENDLE_ROUTER_V4 } = await import("@/lib/pendle/constants");
-    if (!approvedVaults.some((v) => v.toLowerCase() === PENDLE_ROUTER_V4.toLowerCase())) {
-      approvedVaults.push(PENDLE_ROUTER_V4 as `0x${string}`);
-    }
-
-    // Include yoUSD vault for Pendle deposit step 3 (yoUSD.approve → Pendle Router)
-    // The vault loop in createAndSerializeAccount adds approve permissions for each vault,
-    // but yoUSD vault may not appear in /api/optimize results at registration time
-    const { YO_VAULTS } = await import("@/lib/yo/constants");
-    const yousdVaultAddress = YO_VAULTS.yoUSD.address as `0x${string}`;
-    if (!approvedVaults.some((v) => v.toLowerCase() === yousdVaultAddress.toLowerCase())) {
-      approvedVaults.push(yousdVaultAddress);
-    }
-
-    console.log(
-      "[ZeroDev 7702] approvedVaults includes yoUSD vault:",
-      approvedVaults.some((v) => v.toLowerCase() === yousdVaultAddress.toLowerCase())
-    );
     console.log(
       "[ZeroDev 7702] Fetched",
       approvedVaults.length,
-      "vaults (including YO Gateway + Pendle Router)"
+      "vaults (including YO Gateway)"
     );
 
     // 2. Create and serialize the kernel account client-side
@@ -470,6 +433,449 @@ export async function revokeSessionKey(address: string, accessToken: string): Pr
  * @param walletClient - Viem WalletClient from Privy provider
  * @returns Transaction hash of the undelegation Type 4 transaction
  */
+/**
+ * Delegate an external wallet (Brave, MetaMask) to Kernel V3.3 via a Type 4 transaction.
+ *
+ * External wallets can't sign standalone EIP-7702 authorizations — they only sign
+ * authorization internally when sending Type 4 transactions via `wallet_sendCalls`.
+ * This function sends the delegation tx and waits for on-chain confirmation.
+ *
+ * @param walletClient - Viem WalletClient from external wallet provider
+ * @param userAddress - User's EOA address
+ * @param implAddress - Kernel V3.3 implementation address to delegate to
+ */
+export async function delegateViaExternalWallet(
+  walletClient: any,
+  userAddress: `0x${string}`,
+  implAddress: `0x${string}`
+): Promise<`0x${string}`> {
+  console.log("[ZeroDev 7702] Delegating external wallet to Kernel V3.3...");
+  console.log("[ZeroDev 7702] User:", userAddress, "→ Impl:", implAddress);
+
+  const publicClient = createPublicClient({
+    chain: base,
+    transport: http(CHAIN_CONFIG.rpcUrl),
+  });
+
+  // Pre-check: query wallet_getCapabilities to see if EIP-7702 is supported.
+  // Wallets that don't support Type 4 transactions silently drop the authorizationList
+  // and send a plain Type 2 tx, wasting gas with no delegation.
+  let has7702Support = false;
+  try {
+    const capabilities: Record<string, any> = await walletClient.request({
+      method: "wallet_getCapabilities",
+      params: [userAddress],
+    });
+    // Check Base chain capabilities (chainId 8453 = 0x2105)
+    const baseCaps = capabilities?.["0x2105"] ?? capabilities?.[8453] ?? capabilities?.["8453"];
+    has7702Support = !!(
+      baseCaps?.atomicBatch?.supported ||
+      baseCaps?.atomic?.status === "supported" ||
+      baseCaps?.atomic?.status === "ready"
+    );
+    console.log("[ZeroDev 7702] Wallet capabilities:", { baseCaps, has7702Support });
+  } catch {
+    // wallet_getCapabilities not supported — wallet likely doesn't support 5792/7702
+    console.log("[ZeroDev 7702] wallet_getCapabilities not available");
+  }
+
+  if (!has7702Support) {
+    throw new Error(
+      "Your wallet does not support EIP-7702 delegation yet. " +
+        "Please switch to your Privy embedded wallet in the wallet selector to register the agent."
+    );
+  }
+
+  // Ensure the external wallet is on Base before sending the Type 4 tx.
+  try {
+    await walletClient.switchChain({ id: base.id });
+  } catch (switchError: any) {
+    if (switchError?.code === 4902) {
+      await walletClient.addChain({ chain: base });
+      await walletClient.switchChain({ id: base.id });
+    } else {
+      throw new Error(
+        `Please switch your wallet to Base network. Chain switch failed: ${switchError.message}`
+      );
+    }
+  }
+
+  // Send Type 4 transaction via raw JSON-RPC.
+  // Viem's sendTransaction expects signed auths (nonce, r, s, yParity) in authorizationList.
+  // External wallets that support EIP-7702 sign the authorization internally when they
+  // receive unsigned auths — we bypass viem's formatter and send raw RPC directly.
+  const { numberToHex } = await import("viem");
+  const txHash: `0x${string}` = await walletClient.request({
+    method: "eth_sendTransaction",
+    params: [
+      {
+        type: "0x4",
+        from: userAddress,
+        to: userAddress,
+        data: "0x",
+        value: "0x0",
+        authorizationList: [
+          {
+            address: implAddress,
+            chainId: numberToHex(8453),
+          },
+        ],
+      },
+    ],
+  });
+
+  console.log("[ZeroDev 7702] Delegation tx submitted:", txHash);
+
+  // Wait for confirmation and verify the tx was actually Type 4
+  const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+  console.log("[ZeroDev 7702] Delegation tx confirmed, type:", receipt.type);
+
+  if (receipt.type !== "eip7702") {
+    // Wallet silently sent a regular tx, ignoring authorizationList
+    throw new Error(
+      "Wallet sent a regular transaction instead of EIP-7702 Type 4. " +
+        "Your wallet does not fully support EIP-7702. " +
+        "Please switch to your Privy embedded wallet to register the agent."
+    );
+  }
+
+  // Verify delegation on-chain
+  const status = await checkSmartAccountActive(userAddress);
+  if (!status.active || !status.isDelegation) {
+    throw new Error(
+      "EIP-7702 transaction confirmed but delegation not detected on-chain. " +
+        "Please switch to your Privy embedded wallet to register the agent."
+    );
+  }
+
+  console.log("[ZeroDev 7702] Delegation verified on-chain:", status.implementationAddress);
+  return txHash;
+}
+
+/**
+ * Create and serialize a kernel account for an external wallet.
+ *
+ * Unlike createAndSerializeAccount, this function does NOT pass eip7702Auth.
+ * The delegation is already on-chain (via delegateViaExternalWallet), so the SDK
+ * detects it and the signAuthorization closure returns undefined — no auth in UserOps.
+ *
+ * The external wallet signs the enable typed data via eth_signTypedData_v4.
+ */
+async function createAndSerializeAccountExternal(
+  userAddress: `0x${string}`,
+  walletClient: any,
+  approvedVaults: `0x${string}`[]
+): Promise<{ serializedAccount: string; sessionKeyAddress: `0x${string}`; expiry: number }> {
+  console.log("[ZeroDev 7702] Creating serialized account for external wallet...");
+
+  const { createKernelAccount } = await import("@zerodev/sdk");
+  const { KERNEL_V3_3 } = await import("@zerodev/sdk/constants");
+  const { serializePermissionAccount } = await import("@zerodev/permissions");
+
+  const { sessionPrivateKey, sessionKeyAccount, permissionValidator, expiryTimestamp, publicClient } =
+    await buildSessionKeyAndPermissions(approvedVaults);
+
+  // Wrap external wallet as LocalAccount for the SDK
+  const eoaLocalAccount = toAccount({
+    address: userAddress,
+    signMessage: async ({ message }) => walletClient.signMessage({ message }),
+    signTransaction: async () => {
+      throw new Error("signTransaction not needed for registration");
+    },
+    signTypedData: async (typedData) => walletClient.signTypedData(typedData),
+  });
+
+  // Create kernel account — NO eip7702Auth since delegation is already on-chain
+  console.log("[ZeroDev 7702] Creating kernel account (delegation already on-chain)...");
+  const kernelAccount = await createKernelAccount(publicClient, {
+    plugins: {
+      regular: permissionValidator,
+    },
+    entryPoint: ENTRYPOINT_V07,
+    kernelVersion: KERNEL_V3_3,
+    address: userAddress,
+    eip7702Account: eoaLocalAccount,
+  });
+
+  console.log("[ZeroDev 7702] Kernel account created:", kernelAccount.address);
+
+  // Serialize — NO eip7702Auth arg
+  console.log("[ZeroDev 7702] Serializing account (external wallet signs enable data)...");
+  const serialized = await serializePermissionAccount(
+    kernelAccount,
+    sessionPrivateKey,
+    undefined, // Auto-generate enable signature (sudo signs via external wallet)
+  );
+
+  console.log("[ZeroDev 7702] Account serialized successfully (external wallet)");
+  return {
+    serializedAccount: serialized,
+    sessionKeyAddress: sessionKeyAccount.address as `0x${string}`,
+    expiry: expiryTimestamp,
+  };
+}
+
+/**
+ * Create and serialize a kernel account for ERC-4337 fallback (Privy smart wallet).
+ *
+ * Used when the user's external wallet doesn't support EIP-7702 (e.g. Brave).
+ * The account operates at the Privy Kernel smart wallet address (separate from EOA),
+ * and the embedded wallet (auto-created by Privy for all users) acts as sudo signer.
+ *
+ * NO eip7702Auth, NO eip7702Account — this is a standard ERC-4337 kernel account.
+ *
+ * @param smartWalletAddress - Privy Kernel smart wallet address (where funds live)
+ * @param walletClient - Viem WalletClient from embedded wallet (signer)
+ * @param approvedVaults - Approved vault addresses
+ */
+async function createAndSerializeAccountErc4337(
+  smartWalletAddress: `0x${string}`,
+  walletClient: any,
+  approvedVaults: `0x${string}`[]
+): Promise<{ serializedAccount: string; sessionKeyAddress: `0x${string}`; expiry: number }> {
+  console.log("[ZeroDev 4337] Creating serialized account for ERC-4337 smart wallet...");
+  console.log("[ZeroDev 4337] Smart wallet:", smartWalletAddress);
+
+  const { createKernelAccount } = await import("@zerodev/sdk");
+  const { KERNEL_V3_3 } = await import("@zerodev/sdk/constants");
+  const { serializePermissionAccount } = await import("@zerodev/permissions");
+
+  const { sessionPrivateKey, sessionKeyAccount, permissionValidator, expiryTimestamp, publicClient } =
+    await buildSessionKeyAndPermissions(approvedVaults);
+
+  // Wrap embedded wallet as LocalAccount for sudo signing.
+  // toAccount() supports signMessage/signTypedData (delegated to walletClient).
+  // IMPORTANT: Do NOT pass this as eip7702Account — the SDK would set up an
+  // eip7702Authorization closure that calls signAuthorization, which toAccount()
+  // does not implement (only privateKeyToAccount does). Instead, create a proper
+  // ECDSA validator and pass it as plugins.sudo.
+  const signerAddress = walletClient.account?.address ?? walletClient.account;
+  const eoaLocalAccount = toAccount({
+    address: signerAddress,
+    signMessage: async ({ message }) => walletClient.signMessage({ message }),
+    signTransaction: async () => {
+      throw new Error("signTransaction not needed for registration");
+    },
+    signTypedData: async (typedData) => walletClient.signTypedData(typedData),
+  });
+
+  // Create ECDSA sudo validator from the embedded wallet signer.
+  // This only uses signMessage/signTypedData — no signAuthorization needed.
+  const { signerToEcdsaValidator } = await import("@zerodev/ecdsa-validator");
+  const ecdsaValidator = await signerToEcdsaValidator(publicClient, {
+    signer: eoaLocalAccount,
+    entryPoint: ENTRYPOINT_V07,
+    kernelVersion: KERNEL_V3_3,
+  });
+
+  // Create kernel account — standard ERC-4337, no EIP-7702 involved.
+  // Pass ECDSA validator as plugins.sudo so serializePermissionAccount can
+  // generate the enable signature via signTypedData (not signAuthorization).
+  console.log("[ZeroDev 4337] Creating kernel account (ERC-4337, embedded wallet=sudo)...");
+  const kernelAccount = await createKernelAccount(publicClient, {
+    plugins: {
+      sudo: ecdsaValidator,
+      regular: permissionValidator,
+    },
+    entryPoint: ENTRYPOINT_V07,
+    kernelVersion: KERNEL_V3_3,
+    address: smartWalletAddress, // The Privy smart wallet, NOT the user's EOA
+    // NO eip7702Account — this is standard 4337, no signAuthorization needed
+  });
+
+  console.log("[ZeroDev 4337] Kernel account created:", kernelAccount.address);
+
+  // Serialize — no eip7702Auth needed
+  console.log("[ZeroDev 4337] Serializing account (embedded wallet signs enable data)...");
+  const serialized = await serializePermissionAccount(
+    kernelAccount,
+    sessionPrivateKey,
+    // No 3rd/4th args — standard 4337 serialization
+  );
+
+  console.log("[ZeroDev 4337] Account serialized successfully");
+  return {
+    serializedAccount: serialized,
+    sessionKeyAddress: sessionKeyAccount.address as `0x${string}`,
+    expiry: expiryTimestamp,
+  };
+}
+
+/**
+ * Register agent for an external wallet (Brave, MetaMask).
+ *
+ * This assumes delegation is already on-chain (via delegateViaExternalWallet).
+ * Creates a kernel account without eip7702Auth, serializes it, and sends to server.
+ *
+ * The external wallet signs the enable typed data via eth_signTypedData_v4 prompt.
+ *
+ * @param userAddress - User's EOA address (already delegated on-chain)
+ * @param accessToken - Privy access token for API authentication
+ * @param walletClient - Viem WalletClient from external wallet provider
+ */
+export async function registerAgentSecureExternal(
+  userAddress: `0x${string}`,
+  accessToken: string,
+  walletClient: any
+): Promise<SecureSessionKeyResult> {
+  try {
+    console.log("[ZeroDev 7702] Starting external wallet registration...");
+    console.log("[ZeroDev 7702] User EOA:", userAddress);
+
+    // Verify delegation is active on-chain before proceeding
+    const delegationStatus = await checkSmartAccountActive(userAddress);
+    if (!delegationStatus.active || !delegationStatus.isDelegation) {
+      throw new Error(
+        "Delegation not found on-chain. Call delegateViaExternalWallet first."
+      );
+    }
+
+    // 1. Fetch approved vaults from the optimizer API
+    console.log("[ZeroDev 7702] Fetching vault opportunities...");
+    const optimizeResponse = await fetch("/api/optimize");
+    if (!optimizeResponse.ok) {
+      throw new Error("Failed to fetch vault opportunities");
+    }
+    const { opportunities } = await optimizeResponse.json();
+    const approvedVaults = opportunities
+      .filter((o: any) => o.metadata?.vaultAddress)
+      .map((o: any) => o.metadata.vaultAddress) as `0x${string}`[];
+
+    // Include YO Gateway address
+    const { YO_GATEWAY_ADDRESS } = await import("@/lib/yo/constants");
+    if (!approvedVaults.some((v) => v.toLowerCase() === YO_GATEWAY_ADDRESS.toLowerCase())) {
+      approvedVaults.push(YO_GATEWAY_ADDRESS as `0x${string}`);
+    }
+
+    console.log("[ZeroDev 7702] Fetched", approvedVaults.length, "vaults");
+
+    // 2. Create and serialize the kernel account (no eip7702Auth)
+    const { serializedAccount, sessionKeyAddress, expiry } =
+      await createAndSerializeAccountExternal(userAddress, walletClient, approvedVaults);
+
+    // 3. Send serialized account to server
+    console.log("[ZeroDev 7702] Sending serialized account to server...");
+    const sessionKeyResponse = await fetch("/api/agent/generate-session-key", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        address: userAddress,
+        smartAccountAddress: userAddress,
+        sessionKeyAddress,
+        serializedAccount,
+        approvedVaults,
+        expiry,
+      }),
+    });
+
+    if (!sessionKeyResponse.ok) {
+      const error = await sessionKeyResponse.json();
+      throw new Error(error.error || "Failed to store session data");
+    }
+
+    console.log("[ZeroDev 7702] External wallet registration complete");
+    console.log("[ZeroDev 7702] Session key:", sessionKeyAddress);
+
+    return {
+      smartAccountAddress: userAddress,
+      sessionKeyAddress: sessionKeyAddress as `0x${string}`,
+      expiry,
+      approvedVaults,
+    };
+  } catch (error: any) {
+    console.error("[ZeroDev 7702] External wallet registration failed:", error);
+    throw new Error(`External wallet registration failed: ${error.message}`);
+  }
+}
+
+/**
+ * Register agent via ERC-4337 fallback (Privy smart wallet).
+ *
+ * For wallets that don't support EIP-7702 (e.g. Brave). Uses the Privy
+ * SmartWalletsProvider auto-created Kernel smart wallet as the execution target.
+ * The embedded wallet (auto-created for all users) signs as sudo.
+ *
+ * @param smartWalletAddress - Privy Kernel smart wallet address (user.smartWallet.address)
+ * @param eoaAddress - User's external wallet address (for DB record)
+ * @param accessToken - Privy access token for API authentication
+ * @param walletClient - Viem WalletClient from embedded wallet
+ */
+export async function registerAgentErc4337(
+  smartWalletAddress: `0x${string}`,
+  eoaAddress: `0x${string}`,
+  accessToken: string,
+  walletClient: any
+): Promise<SecureSessionKeyResult> {
+  try {
+    console.log("[ZeroDev 4337] Starting ERC-4337 registration...");
+    console.log("[ZeroDev 4337] Smart wallet:", smartWalletAddress);
+    console.log("[ZeroDev 4337] User EOA:", eoaAddress);
+
+    // 1. Fetch approved vaults from the optimizer API
+    console.log("[ZeroDev 4337] Fetching vault opportunities...");
+    const optimizeResponse = await fetch("/api/optimize");
+    if (!optimizeResponse.ok) {
+      throw new Error("Failed to fetch vault opportunities");
+    }
+    const { opportunities } = await optimizeResponse.json();
+    const approvedVaults = opportunities
+      .filter((o: any) => o.metadata?.vaultAddress)
+      .map((o: any) => o.metadata.vaultAddress) as `0x${string}`[];
+
+    // Include YO Gateway address
+    const { YO_GATEWAY_ADDRESS } = await import("@/lib/yo/constants");
+    if (!approvedVaults.some((v) => v.toLowerCase() === YO_GATEWAY_ADDRESS.toLowerCase())) {
+      approvedVaults.push(YO_GATEWAY_ADDRESS as `0x${string}`);
+    }
+
+    console.log("[ZeroDev 4337] Fetched", approvedVaults.length, "vaults");
+
+    // 2. Create and serialize the kernel account (ERC-4337, no eip7702)
+    const { serializedAccount, sessionKeyAddress, expiry } =
+      await createAndSerializeAccountErc4337(smartWalletAddress, walletClient, approvedVaults);
+
+    // 3. Send serialized account to server with ERC-4337 type
+    console.log("[ZeroDev 4337] Sending serialized account to server...");
+    const sessionKeyResponse = await fetch("/api/agent/generate-session-key", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        address: eoaAddress, // User's external wallet (DB key)
+        smartAccountAddress: smartWalletAddress, // Privy Kernel smart wallet
+        sessionKeyAddress,
+        serializedAccount,
+        approvedVaults,
+        expiry,
+        type: "zerodev-erc4337-session", // Distinguish from 7702
+      }),
+    });
+
+    if (!sessionKeyResponse.ok) {
+      const error = await sessionKeyResponse.json();
+      throw new Error(error.error || "Failed to store session data");
+    }
+
+    console.log("[ZeroDev 4337] ERC-4337 registration complete");
+    console.log("[ZeroDev 4337] Session key:", sessionKeyAddress);
+
+    return {
+      smartAccountAddress: smartWalletAddress,
+      sessionKeyAddress: sessionKeyAddress as `0x${string}`,
+      expiry,
+      approvedVaults,
+    };
+  } catch (error: any) {
+    console.error("[ZeroDev 4337] Registration failed:", error);
+    throw new Error(`ERC-4337 registration failed: ${error.message}`);
+  }
+}
+
 export async function undelegateEoa(
   userAddress: `0x${string}`,
   walletClient: any,
