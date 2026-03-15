@@ -17,6 +17,10 @@ import {
   resetAgentRegistration,
 } from "@/lib/agent/resolve-registration";
 
+// vi.fn() doesn't satisfy SqlClient's tagged-template signature.
+// Cast once here so every call site stays clean.
+const asSql = (fn: ReturnType<typeof vi.fn>) => fn as any;
+
 describe("buildWalletAddresses", () => {
   it("returns allWalletAddresses when present", () => {
     const result = buildWalletAddresses({
@@ -65,7 +69,7 @@ describe("resolveAgentRegistration", () => {
   it("returns not_registered when SQL returns empty", async () => {
     mockSql.mockResolvedValue([]);
 
-    const result = await resolveAgentRegistration(mockSql, ["0xaddr"]);
+    const result = await resolveAgentRegistration(asSql(mockSql), ["0xaddr"]);
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -87,7 +91,7 @@ describe("resolveAgentRegistration", () => {
       },
     ]);
 
-    const result = await resolveAgentRegistration(mockSql, ["0xuser"]);
+    const result = await resolveAgentRegistration(asSql(mockSql), ["0xuser"]);
 
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -109,7 +113,7 @@ describe("resolveAgentRegistration", () => {
       },
     ]);
 
-    const result = await resolveAgentRegistration(mockSql, ["0xuser"]);
+    const result = await resolveAgentRegistration(asSql(mockSql), ["0xuser"]);
 
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -128,7 +132,7 @@ describe("resolveAgentRegistration", () => {
       },
     ]);
 
-    const result = await resolveAgentRegistration(mockSql, ["0xuser"]);
+    const result = await resolveAgentRegistration(asSql(mockSql), ["0xuser"]);
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -148,7 +152,7 @@ describe("resolveAgentRegistration", () => {
       },
     ]);
 
-    const result = await resolveAgentRegistration(mockSql, ["0xuser"]);
+    const result = await resolveAgentRegistration(asSql(mockSql), ["0xuser"]);
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -161,7 +165,7 @@ describe("resolveAgentRegistration", () => {
     mockSql.mockResolvedValue([]);
     const addresses = ["0xaddr1", "0xaddr2"];
 
-    await resolveAgentRegistration(mockSql, addresses);
+    await resolveAgentRegistration(asSql(mockSql), addresses);
 
     // The sql tagged template is called with template strings + the addresses array
     expect(mockSql).toHaveBeenCalledTimes(1);
@@ -182,7 +186,7 @@ describe("resolveAgentRegistration", () => {
       },
     ]);
 
-    const result = await resolveAgentRegistration(mockSql, ["0xuser"]);
+    const result = await resolveAgentRegistration(asSql(mockSql), ["0xuser"]);
 
     expect(result.ok).toBe(true);
   });
@@ -199,7 +203,7 @@ describe("resolveAgentRegistration", () => {
       },
     ]);
 
-    const result = await resolveAgentRegistration(mockSql, ["0xother"]);
+    const result = await resolveAgentRegistration(asSql(mockSql), ["0xother"]);
 
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -234,7 +238,7 @@ describe("resolveAndDecryptRegistration", () => {
       serializedAccount: "decrypted",
     });
 
-    const result = await resolveAndDecryptRegistration(mockSql, ["0xuser"]);
+    const result = await resolveAndDecryptRegistration(asSql(mockSql), ["0xuser"]);
 
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -260,7 +264,7 @@ describe("resolveAndDecryptRegistration", () => {
       serializedAccount: "decrypted",
     });
 
-    const result = await resolveAndDecryptRegistration(mockSql, ["0xuser"]);
+    const result = await resolveAndDecryptRegistration(asSql(mockSql), ["0xuser"]);
 
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -271,7 +275,7 @@ describe("resolveAndDecryptRegistration", () => {
   it("does NOT call decrypt on not_registered error", async () => {
     mockSql.mockResolvedValue([]);
 
-    const result = await resolveAndDecryptRegistration(mockSql, ["0xuser"]);
+    const result = await resolveAndDecryptRegistration(asSql(mockSql), ["0xuser"]);
 
     expect(result.ok).toBe(false);
     expect(mockDecryptAuthorization).not.toHaveBeenCalled();
@@ -288,7 +292,7 @@ describe("resolveAndDecryptRegistration", () => {
       },
     ]);
 
-    const result = await resolveAndDecryptRegistration(mockSql, ["0xuser"]);
+    const result = await resolveAndDecryptRegistration(asSql(mockSql), ["0xuser"]);
 
     expect(result.ok).toBe(false);
     expect(mockDecryptAuthorization).not.toHaveBeenCalled();
@@ -322,7 +326,7 @@ describe("multi-address resolution", () => {
       },
     ]);
 
-    const result = await resolveAgentRegistration(mockSql, [
+    const result = await resolveAgentRegistration(asSql(mockSql), [
       "0xexternal",
       "0xembedded",
     ]);
@@ -346,7 +350,7 @@ describe("multi-address resolution", () => {
       },
     ]);
 
-    const result = await resolveAndDecryptRegistration(mockSql, [
+    const result = await resolveAndDecryptRegistration(asSql(mockSql), [
       "0xinput_addr",
     ]);
 
@@ -445,7 +449,7 @@ describe("resetAgentRegistration", () => {
   });
 
   it("calls sql with the wallet address", async () => {
-    await resetAgentRegistration(mockSql, "0xuser123");
+    await resetAgentRegistration(asSql(mockSql), "0xuser123");
 
     expect(mockSql).toHaveBeenCalledTimes(1);
     const callArgs = mockSql.mock.calls[0];
@@ -454,7 +458,7 @@ describe("resetAgentRegistration", () => {
   });
 
   it("passes a tagged template with UPDATE query", async () => {
-    await resetAgentRegistration(mockSql, "0xaddr");
+    await resetAgentRegistration(asSql(mockSql), "0xaddr");
 
     expect(mockSql).toHaveBeenCalledTimes(1);
     const callArgs = mockSql.mock.calls[0];
