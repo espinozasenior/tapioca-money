@@ -77,6 +77,11 @@ describe("Distributed Lock", () => {
         set: async (key: string, value: string) => {
           store.set(key, value);
         },
+        setNX: async (key: string, value: string, _ttl: number) => {
+          if (store.has(key)) return false;
+          store.set(key, value);
+          return true;
+        },
         del: async (key: string) => {
           store.delete(key);
         },

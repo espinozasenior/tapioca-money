@@ -5,6 +5,7 @@ import {
   requireAuthForAddress,
   unauthorizedResponse,
   forbiddenResponse,
+  _clearUserCacheForTesting,
 } from "@/lib/auth/middleware";
 
 // Mock PrivyClient
@@ -27,6 +28,7 @@ describe("Auth Middleware", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    _clearUserCacheForTesting();
     process.env = {
       ...originalEnv,
       NEXT_PUBLIC_PRIVY_APP_ID: "app-id",
@@ -130,6 +132,45 @@ describe("Auth Middleware", () => {
       const result = await requireAuthForAddress(req, "0xuser"); // lowercase match
 
       expect(result.authenticated).toBe(true);
+    });
+  });
+
+  describe("P0-3: User details cache", () => {
+    it("should cache user details and not call Privy API on second request", async () => {
+      mockVerifyAccessToken.mockResolvedValue({ user_id: "user1" });
+      mockGetUser.mockResolvedValue({
+        linked_accounts: [{ type: "wallet", chainType: "ethereum", address: "0xUser" }],
+      });
+
+      // First request - should call Privy API
+      const req1 = createRequest("Bearer valid-token");
+      await authenticateRequest(req1);
+      expect(mockGetUser).toHaveBeenCalledTimes(1);
+
+      // Second request with same user - should use cache, NOT call Privy API again
+      const req2 = createRequest("Bearer valid-token-2");
+      mockVerifyAccessToken.mockResolvedValue({ user_id: "user1" }); // Same user_id
+      await authenticateRequest(req2);
+      expect(mockGetUser).toHaveBeenCalledTimes(1); // Still only 1 call -- cached!
+    });
+
+    it("should call Privy API for different user_ids", async () => {
+      mockVerifyAccessToken.mockResolvedValueOnce({ user_id: "user1" });
+      mockGetUser.mockResolvedValueOnce({
+        linked_accounts: [{ type: "wallet", chainType: "ethereum", address: "0xUser1" }],
+      });
+
+      await authenticateRequest(createRequest("Bearer token1"));
+
+      mockVerifyAccessToken.mockResolvedValueOnce({ user_id: "user2" });
+      mockGetUser.mockResolvedValueOnce({
+        linked_accounts: [{ type: "wallet", chainType: "ethereum", address: "0xUser2" }],
+      });
+
+      await authenticateRequest(createRequest("Bearer token2"));
+
+      // Two different users -- should call API twice
+      expect(mockGetUser).toHaveBeenCalledTimes(2);
     });
   });
 
