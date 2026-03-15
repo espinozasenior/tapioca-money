@@ -32,6 +32,9 @@ yarn-error.log*
 
 # env files 
 .env
+.env.dev
+.env.prod
+
 
 # vercel
 .vercel
@@ -41,5 +44,6 @@ yarn-error.log*
 next-env.d.ts
 
 .claude
+.claude-flow
 .mux
 certificates
