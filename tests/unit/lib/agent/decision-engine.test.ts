@@ -64,6 +64,8 @@ describe("YieldDecisionEngine", () => {
           assetsUsd: 1000,
         },
       ]);
+      // Vault not found in the vault list, AND individual fetch also returns null
+      mockMorphoClient.fetchVaults.mockResolvedValue([]);
       mockMorphoClient.fetchVault.mockResolvedValue(null);
 
       const result = await decisionEngine.evaluateRebalancing(mockUserAddress);
@@ -232,6 +234,195 @@ describe("YieldDecisionEngine", () => {
 
       expect(positions).toHaveLength(1);
       expect(positions[0].apy).toBe(0.05);
+    });
+  });
+
+  describe("evaluateRebalancing with prefetchedVaults (P0-1)", () => {
+    it("should use prefetched vaults instead of calling fetchVaults", async () => {
+      mockMorphoClient.fetchUserPositions.mockResolvedValue([
+        {
+          vault: { address: mockCurrentVaultAddress },
+          assetsUsd: 1000,
+          shares: "100",
+          assets: "1000",
+        },
+      ]);
+
+      const prefetchedVaults = {
+        morpho: [
+          {
+            address: mockCurrentVaultAddress,
+            name: "Current Vault",
+            avgNetApy: 0.05,
+            totalAssetsUsd: 1000000,
+          },
+          {
+            address: mockBetterVaultAddress,
+            name: "Better Vault",
+            avgNetApy: 0.1,
+            totalAssetsUsd: 1000000,
+          },
+        ],
+        yo: [],
+      };
+
+      const result = await decisionEngine.evaluateRebalancing(
+        mockUserAddress,
+        null,
+        prefetchedVaults as any
+      );
+
+      // Should NOT call fetchVaults since we provided prefetched data
+      expect(mockMorphoClient.fetchVaults).not.toHaveBeenCalled();
+      // Should NOT call fetchVault for current vault APY since it is in prefetched data
+      expect(mockMorphoClient.fetchVault).not.toHaveBeenCalled();
+      // Should still produce a valid rebalance decision
+      expect(result.shouldRebalance).toBe(true);
+      expect(result.targetVault?.address).toBe(mockBetterVaultAddress);
+    });
+
+    it("should fall back to fetching vaults when prefetchedVaults is not provided", async () => {
+      mockMorphoClient.fetchUserPositions.mockResolvedValue([
+        {
+          vault: { address: mockCurrentVaultAddress },
+          assetsUsd: 1000,
+          shares: "100",
+          assets: "1000",
+        },
+      ]);
+      mockMorphoClient.fetchVault.mockResolvedValue({
+        address: mockCurrentVaultAddress,
+        name: "Current Vault",
+        avgNetApy: 0.05,
+      });
+      mockMorphoClient.fetchVaults.mockResolvedValue([
+        {
+          address: mockBetterVaultAddress,
+          name: "Better Vault",
+          avgNetApy: 0.1,
+          totalAssetsUsd: 1000000,
+        },
+      ]);
+
+      const result = await decisionEngine.evaluateRebalancing(mockUserAddress);
+
+      // Without prefetch, should still call fetchVaults
+      expect(mockMorphoClient.fetchVaults).toHaveBeenCalled();
+      expect(result.shouldRebalance).toBe(true);
+    });
+  });
+
+  describe("getMorphoPositionsWithApy with prefetched vaults (P1-3)", () => {
+    it("should look up APY from prefetched vaults instead of calling fetchVault per position", async () => {
+      mockMorphoClient.fetchUserPositions.mockResolvedValue([
+        { vault: { address: mockCurrentVaultAddress, name: "Vault A" }, assets: "100" },
+        { vault: { address: mockBetterVaultAddress, name: "Vault B" }, assets: "200" },
+      ]);
+
+      const prefetchedMorphoVaults = [
+        { address: mockCurrentVaultAddress, name: "Vault A", avgNetApy: 0.05 },
+        { address: mockBetterVaultAddress, name: "Vault B", avgNetApy: 0.08 },
+      ];
+
+      const positions = await decisionEngine.getMorphoPositionsWithApy(
+        mockUserAddress,
+        prefetchedMorphoVaults as any
+      );
+
+      // Should NOT call fetchVault at all -- APY comes from prefetched list
+      expect(mockMorphoClient.fetchVault).not.toHaveBeenCalled();
+      expect(positions).toHaveLength(2);
+      expect(positions[0].apy).toBe(0.05);
+      expect(positions[1].apy).toBe(0.08);
+    });
+
+    it("should fall back to fetchVault per position when no prefetched vaults given", async () => {
+      mockMorphoClient.fetchUserPositions.mockResolvedValue([
+        { vault: { address: mockCurrentVaultAddress }, assets: "100" },
+      ]);
+      mockMorphoClient.fetchVault.mockResolvedValue({ avgNetApy: 0.05 });
+
+      const positions = await decisionEngine.getMorphoPositionsWithApy(mockUserAddress);
+
+      // Without prefetch, should call fetchVault per position
+      expect(mockMorphoClient.fetchVault).toHaveBeenCalledTimes(1);
+      expect(positions[0].apy).toBe(0.05);
+    });
+  });
+
+  describe("getYoPositionsWithApy with prefetched vaults (P1)", () => {
+    let mockYoClient: any;
+
+    beforeEach(async () => {
+      const { yoApiClient } = await import("@/lib/yo/api-client");
+      mockYoClient = yoApiClient;
+    });
+
+    it("should use prefetched YO vaults instead of calling fetchVaults", async () => {
+      const yoVaultAddress = "0x4444444444444444444444444444444444444444";
+      mockYoClient.fetchUserPositions.mockResolvedValue([
+        {
+          vaultId: "yoUSD",
+          vaultAddress: yoVaultAddress,
+          vaultName: "YO USDC",
+          shares: 100n,
+          assets: 1000n,
+          assetsUsd: 1000,
+        },
+      ]);
+
+      const prefetchedYoVaults = [
+        {
+          id: "yoUSD",
+          address: yoVaultAddress,
+          name: "YO USDC",
+          apy: 0.07,
+          tvlUsd: 5000000,
+          totalAssets: 0n,
+          totalShares: 0n,
+          underlying: { address: "0x" as any, symbol: "USDC", decimals: 6 },
+        },
+      ];
+
+      const positions = await decisionEngine.getYoPositionsWithApy(
+        mockUserAddress,
+        prefetchedYoVaults as any
+      );
+
+      // Should NOT call fetchVaults -- APY comes from prefetched list
+      expect(mockYoClient.fetchVaults).not.toHaveBeenCalled();
+      expect(positions).toHaveLength(1);
+      expect(positions[0].apy).toBe(0.07);
+    });
+
+    it("should fall back to fetching vaults when no prefetch provided", async () => {
+      const yoVaultAddress = "0x4444444444444444444444444444444444444444";
+      mockYoClient.fetchUserPositions.mockResolvedValue([
+        {
+          vaultId: "yoUSD",
+          vaultAddress: yoVaultAddress,
+          vaultName: "YO USDC",
+          shares: 100n,
+          assets: 1000n,
+          assetsUsd: 1000,
+        },
+      ]);
+      mockYoClient.fetchVaults.mockResolvedValue([
+        {
+          id: "yoUSD",
+          address: yoVaultAddress,
+          name: "YO USDC",
+          apy: 0.06,
+          tvlUsd: 5000000,
+        },
+      ]);
+
+      const positions = await decisionEngine.getYoPositionsWithApy(mockUserAddress);
+
+      // Without prefetch, should call fetchVaults
+      expect(mockYoClient.fetchVaults).toHaveBeenCalled();
+      expect(positions).toHaveLength(1);
+      expect(positions[0].apy).toBe(0.06);
     });
   });
 });

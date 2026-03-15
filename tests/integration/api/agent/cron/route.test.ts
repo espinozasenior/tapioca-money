@@ -13,8 +13,8 @@ vi.mock("@neondatabase/serverless", () => ({
 import { POST } from "@/app/api/agent/cron/route";
 
 vi.mock("@/lib/agent/decision-engine", () => ({
-  YieldDecisionEngine: class {
-    evaluateRebalancing = vi.fn().mockResolvedValue({
+  yieldDecisionEngine: {
+    evaluateRebalancing: vi.fn().mockResolvedValue({
       shouldRebalance: true,
       reason: "Better APY found",
       currentVault: {
@@ -27,7 +27,9 @@ vi.mock("@/lib/agent/decision-engine", () => ({
       targetVault: { address: "0xnew", name: "New Vault", apy: 0.1 },
       apyImprovement: 0.05,
       estimatedAnnualGain: 50,
-    });
+    }),
+    getAvailableMorphoVaults: vi.fn().mockResolvedValue([]),
+    getAvailableYoVaults: vi.fn().mockResolvedValue([]),
   },
 }));
 
@@ -72,14 +74,24 @@ describe("Cron API", () => {
     vi.clearAllMocks();
     process.env = { ...originalEnv, CRON_SECRET: "test-secret", AGENT_SIMULATION_MODE: "false" };
 
-    // Mock successful SQL query
-    mockSql.mockResolvedValue([
+    // Mock successful SQL queries (two-phase pattern):
+    // Phase 1: Lightweight user list (no authorization blob)
+    mockSql.mockResolvedValueOnce([
       {
         id: "user1",
         wallet_address: "0xuser",
+        min_apy_gain_threshold: "0.005",
+        session_type: "zerodev-7702-session",
+      },
+    ]);
+    // Phase 2: Deferred authorization fetch (only for users that need rebalancing)
+    mockSql.mockResolvedValueOnce([
+      {
         authorization_7702: { type: "zerodev-7702-session", data: "encrypted" },
       },
     ]);
+    // Phase 3: Log action INSERT
+    mockSql.mockResolvedValueOnce([]);
   });
 
   afterEach(() => {
@@ -112,6 +124,16 @@ describe("Cron API", () => {
   });
 
   it("should skip users if lock not acquired", async () => {
+    // Re-setup lightweight user list for this test
+    mockSql.mockResolvedValueOnce([
+      {
+        id: "user1",
+        wallet_address: "0xuser",
+        min_apy_gain_threshold: "0.005",
+        session_type: "zerodev-7702-session",
+      },
+    ]);
+
     const { acquireUserLock } = await import("@/lib/redis/distributed-lock");
     (acquireUserLock as any).mockResolvedValueOnce({ acquired: false });
 

@@ -91,23 +91,27 @@ describe("useOptimizer Hooks", () => {
       getAccessToken: vi.fn().mockResolvedValue("mock-token"),
     });
 
-    mockUseWalletSelection.mockReturnValue({
-      activeWallet: {
+    const mockWalletEntry = {
+      address: "0xuser",
+      walletClientType: "privy",
+      chainType: "ethereum",
+      raw: {
         address: "0xuser",
-        walletClientType: "privy",
-        chainType: "ethereum",
-        raw: {
-          address: "0xuser",
-          getEthereumProvider: vi.fn().mockResolvedValue({
-            request: vi.fn(),
-          }),
-        },
+        getEthereumProvider: vi.fn().mockResolvedValue({
+          request: vi.fn(),
+        }),
       },
+    };
+    mockUseWalletSelection.mockReturnValue({
+      activeWallet: mockWalletEntry,
       activeWalletType: "embedded",
       isEvmWallet: true,
       isSolanaWallet: false,
       supportsSmartAccount: true,
-      allWallets: [],
+      supportsEip7702: true,
+      smartWalletAddress: null,
+      agentAddress: "0xuser",
+      allWallets: [mockWalletEntry],
       selectWallet: vi.fn(),
     });
   });
