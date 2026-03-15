@@ -1,5 +1,13 @@
 # Lessons Learned
 
+## Always switchChain before getting Privy wallet provider
+
+- Privy embedded wallet's internal provider may default to a different chain than expected
+- Calling `signTypedData` fails with `chainId 0x2105 is not current network` if provider is on wrong chain
+- Fix: always call `await wallet.raw.switchChain(8453)` BEFORE `wallet.raw.getEthereumProvider()`
+- This applies to BOTH EIP-7702 and ERC-4337 registration paths
+- The viem `WalletClient` `chain: base` config does NOT force the underlying provider to switch — it's just metadata
+
 ## Session key CallPolicy is immutable — verify all targets at registration time
 
 - `serializePermissionAccount` captures the CallPolicy at registration time — it cannot be extended later
@@ -46,6 +54,33 @@
 - Privy's `signAuthorization` returns objects with BigInt fields (`chainId`, `nonce`)
 - `JSON.stringify` throws "Do not know how to serialize a BigInt" — must convert first
 - Pattern: `JSON.stringify(obj, (_k, v) => typeof v === "bigint" ? \`0x\${v.toString(16)}\` : v)` on client, `Number(hexStr)` on server
+
+## Auth middleware must check ALL linked wallets, not just the first
+
+- `extractWalletAddress` used `.find()` which returns the first match — order depends on Privy's internal `linked_accounts` ordering
+- For ERC-4337 users: DB stores the external wallet address (Brave), but if Privy returns the embedded wallet first, DB lookup returns 404
+- `requireAuthForAddress` failed with "Address does not belong to authenticated user" if the first wallet wasn't the requested one
+- Fix: `extractAllWalletAddresses()` returns ALL ethereum wallet addresses, `requireAuthForAddress` checks `allAddresses.includes(requested)`
+- Also: `extractWalletAddress` now explicitly prefers external wallets over embedded (external = user identity, embedded = auto-created signer)
+- Pattern: never assume ordering from third-party APIs; check all candidates
+
+## eip7702Account vs plugins.sudo — ERC-4337 must NOT use eip7702Account
+
+- `createKernelAccount({ eip7702Account })` sets up an `eip7702Authorization` closure on the kernel account
+- `serializePermissionAccount` triggers this closure, calling `signAuthorization` on the account
+- `toAccount()` from viem does NOT implement `signAuthorization` — only `privateKeyToAccount()` does
+- Result: `AccountTypeNotSupportedError: Account type "local" is not supported`
+- For ERC-4337, use `plugins.sudo` with `signerToEcdsaValidator` from `@zerodev/ecdsa-validator` instead
+- The ECDSA validator only needs `signMessage`/`signTypedData` — which `toAccount()` supports
+- Pattern: `eip7702Account` = EIP-7702 flow (needs real signAuthorization), `plugins.sudo` = standard 4337 flow
+
+## AA14 initCode must return sender — strip factory for deployed accounts
+
+- `deserializePermissionAccount` restores factory/factoryData from serialization time, even when the account is already deployed on-chain
+- For EIP-7702 accounts, the factory's CREATE2 address will never match the EOA → `AA14 initCode must return sender`
+- Fix: after deserialization, call `publicClient.getCode({ address })` — if code exists, override `getFactory`/`getFactoryData` to return `undefined`
+- This applies to both EIP-7702 (delegation code) and ERC-4337 (already-deployed proxy)
+- Pattern: always check on-chain deployment status after deserializing a permission account, before building UserOps
 
 ## YO SDK `.raw` fields are in token units, not USD
 

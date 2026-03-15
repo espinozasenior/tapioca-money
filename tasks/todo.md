@@ -1,5 +1,18 @@
 # EIP-7702 Yield Automation Agent Upgrade
 
+## Dual-Path Registration (EIP-7702 + ERC-4337 Fallback) — March 2026
+
+- [x] Phase 1: `app/providers.tsx` — SmartWalletsProvider, `createOnLogin: "all-users"`
+- [x] Phase 2: `hooks/useWalletSelection.ts` — `supportsEip7702`, `smartWalletAddress`, `agentAddress`
+- [x] Phase 3: `lib/zerodev/client-secure.ts` — `buildSessionKeyAndPermissions()` (shared), `registerAgentErc4337()`
+- [x] Phase 4: `lib/security/session-encryption.ts` — `SessionKeyErc4337Authorization` type
+- [x] Phase 5: `hooks/useOptimizer.ts` — Branch: 7702 (Privy) vs 4337 (external + embedded)
+- [x] Phase 6: Server routes — `generate-session-key`, `deposit`, `redeem`, `cron` accept both session types
+- [x] Phase 7: UI — `DepositYield.tsx` uses `canRegister`, `WalletDetails.tsx` dynamic revoke/reset
+- [x] Phase 8: Address resolution — Position queries use `agentAddress` in earn-yield, rewards, activity
+- [x] Verification: TypeScript build clean, 455/455 tests pass
+- [ ] **Manual**: Enable Smart Wallets in Privy Dashboard (Kernel, Base 8453, ZeroDev bundler URL)
+
 ## Completed Steps
 
 - [x] **Step 1:** Update `lib/security/session-encryption.ts` — Added `SessionKey7702Authorization` interface with `eoaAddress` field (EOA = smart account in 7702)
@@ -31,13 +44,17 @@
 - [x] Block external wallets with clear error message during registration
 - [x] All 439 tests pass
 
-## External Wallet Support (Future — ERC-5792)
+## External Wallet Support — ERC-5792 (Completed)
 
-- [ ] Implement `wallet_sendCalls` (ERC-5792) flow for external wallets (Brave, MetaMask)
-- [ ] Two-phase registration: delegate via `wallet_sendCalls`, then register kernel account
-- [ ] Must NOT break Privy embedded wallet flow — keep both paths
-- [ ] Test with Brave wallet and MetaMask
-- [ ] Research: check if ZeroDev SDK supports already-delegated accounts without `eip7702Auth`
+- [x] Add `delegateViaExternalWallet()` — sends Type 4 tx via `authorizationList`, waits for confirmation, verifies delegation on-chain
+- [x] Add `createAndSerializeAccountExternal()` — creates kernel account without `eip7702Auth` (delegation already on-chain)
+- [x] Add `registerAgentSecureExternal()` — fetches vaults, serializes account, sends to server (same `/api/agent/register` endpoint)
+- [x] Bifurcate `useOptimizer.ts` registration: Privy → `signAuthorization` flow, external → two-phase delegation + registration
+- [x] Privy embedded wallet flow unchanged — no regression
+- [x] Unit tests: `delegateViaExternalWallet`, `registerAgentSecureExternal` (3 tests each)
+- [x] Integration tests: source verification for external wallet flow (tests 26–32)
+- [x] All 451 tests pass (46 test files)
+- [ ] E2E: test with Brave wallet and MetaMask on Base mainnet
 
 ## Pending Verification (Testnet)
 

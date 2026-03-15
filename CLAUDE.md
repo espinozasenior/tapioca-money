@@ -50,6 +50,15 @@
 5. **Document Results**: Add review to 'tasks/todo.md'
 6. **Capture Lessons**: Update 'tasks/lessons.md' after corrections
 
+## Session Key / New Protocol Checklist
+
+When adding a new protocol integration that requires on-chain calls via the smart account:
+
+1. **Add permissions in `createAndSerializeAccount`** (`lib/zerodev/client-secure.ts`) — add every (target, selector) pair to the `permissions` array
+2. **Push ALL target addresses into `approvedVaults` in `registerAgentSecure`** — the vault loop only adds `approve`/`deposit`/`redeem`/`withdraw` for addresses explicitly in `approvedVaults`. If a target is missing, the UserOp reverts with AA23 at gas estimation. Don't assume `/api/optimize` will return the address.
+3. **Verify the API response parser against the real API** — curl the endpoint, inspect the actual JSON shape, and ensure test mocks match. Silent fallthrough to `"0"` or `undefined` causes hard-to-debug on-chain reverts.
+4. **User must re-register** after any CallPolicy change — `serializePermissionAccount` captures permissions at registration time and they are immutable.
+
 ## Core Principles
 
 - **Simplicity First**: Make every change as simple as possible. Impact minimal code.
