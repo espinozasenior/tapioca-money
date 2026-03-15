@@ -10,7 +10,7 @@ import { base } from "viem/chains";
 
 export interface YieldOpportunity {
   id: string;
-  protocol: "morpho" | "aave" | "moonwell" | "yo" | "pendle";
+  protocol: "morpho" | "aave" | "moonwell" | "yo";
   name: string;
   asset: string;
   apy: number;
@@ -21,8 +21,6 @@ export interface YieldOpportunity {
     name: string;
     description?: string;
     vaultAddress?: `0x${string}`;
-    subtype?: "pendle-pt";
-    maturityTimestamp?: number;
   };
   // Native Morpho vault fields for safety display
   totalAssetsUsd?: number | null;
@@ -37,7 +35,7 @@ export interface YieldOpportunity {
 export interface YieldPosition {
   id: string;
   yieldId: string;
-  protocol: "morpho" | "aave" | "moonwell" | "yo" | "pendle";
+  protocol: "morpho" | "aave" | "moonwell" | "yo";
   vaultAddress: `0x${string}`;
   vaultName?: string;
   vaultDescription?: string;
@@ -152,7 +150,8 @@ export function useOptimizer(usdcBalance: bigint = BigInt(0)) {
   const address = wallet?.address as `0x${string}` | undefined;
 
   return useQuery<OptimizerResponse>({
-    queryKey: ["optimizer", address, usdcBalance.toString()],
+    // Balance is passed as API param but doesn't need to invalidate cache (P2-2 fix)
+    queryKey: ["optimizer", address],
     queryFn: async () => {
       if (!address) throw new Error("No wallet connected");
       const res = await fetch(`/api/optimize?address=${address}&balance=${usdcBalance.toString()}`);
@@ -198,20 +197,30 @@ export function useAgent() {
   const address = wallet?.address;
 
   // Access active wallet for ZeroDev integration
-  const { activeWallet, supportsSmartAccount } = useWalletSelection();
-  const { getAccessToken } = usePrivy();
+  const { activeWallet, allWallets, supportsSmartAccount, supportsEip7702, smartWalletAddress } =
+    useWalletSelection();
+  const { getAccessToken, user } = usePrivy();
   const { signAuthorization } = useSign7702Authorization();
 
+  // Collect all EVM addresses for the status check — the registration may
+  // be stored under any of them (external wallet vs embedded wallet).
+  const allEvmAddresses = allWallets
+    .filter((w) => w.chainType === "ethereum")
+    .map((w) => w.address.toLowerCase());
+
   const status = useQuery({
-    queryKey: ["agent-status", address],
+    queryKey: ["agent-status", ...allEvmAddresses],
     queryFn: async () => {
-      if (!address)
+      if (allEvmAddresses.length === 0)
         return { isRegistered: false, autoOptimizeEnabled: false, hasAuthorization: false };
-      const res = await fetch(`/api/agent/register?address=${address}`);
+      const params = allEvmAddresses.length === 1
+        ? `address=${allEvmAddresses[0]}`
+        : `addresses=${allEvmAddresses.join(",")}`;
+      const res = await fetch(`/api/agent/register?${params}`);
       if (!res.ok) throw new Error("Failed to fetch agent status");
       return res.json();
     },
-    enabled: !!address,
+    enabled: allEvmAddresses.length > 0,
   });
 
   const register = useMutation({
@@ -228,77 +237,126 @@ export function useAgent() {
       });
 
       try {
-        const { registerAgentSecure } = await import("@/lib/zerodev/client-secure");
-
         // Get Privy access token for API authentication
         const accessToken = await getAccessToken();
         if (!accessToken) {
           throw new Error("Failed to get access token");
         }
 
-        // Sign EIP-7702 authorization via Privy's native hook
-        // This delegates the EOA's code slot to Kernel V3.3 implementation
-        console.log("[Agent Registration] Signing EIP-7702 authorization...");
-        const { KERNEL_V3_3, KernelVersionToAddressesMap } = await import("@zerodev/sdk/constants");
-        const implAddress = KernelVersionToAddressesMap[KERNEL_V3_3].accountImplementationAddress;
+        let result;
+        const enableErc4337 = process.env.NEXT_PUBLIC_ENABLE_ERC4337_FALLBACK !== "false";
 
-        // Phishing guard: verify delegation target matches expected Kernel V3.3
-        const { verifyDelegationTarget } = await import("@/lib/zerodev/delegation-verification");
-        if (!verifyDelegationTarget(implAddress)) {
+        if (supportsEip7702 && activeWallet.walletClientType === "privy") {
+          // ── Path A: EIP-7702 (Privy embedded wallet) ──
+          const { registerAgentSecure } = await import("@/lib/zerodev/client-secure");
+
+          console.log("[Agent Registration] Signing EIP-7702 authorization...");
+          const { KERNEL_V3_3, KernelVersionToAddressesMap } = await import(
+            "@zerodev/sdk/constants"
+          );
+          const implAddress = KernelVersionToAddressesMap[KERNEL_V3_3].accountImplementationAddress;
+
+          // Phishing guard: verify delegation target matches expected Kernel V3.3
+          const { verifyDelegationTarget } = await import(
+            "@/lib/zerodev/delegation-verification"
+          );
+          if (!verifyDelegationTarget(implAddress)) {
+            throw new Error(
+              `Delegation target mismatch! Expected Kernel V3.3 but got ${implAddress}. ` +
+                `This may indicate a compromised SDK. Aborting registration.`
+            );
+          }
+          console.log("[Agent Registration] Delegation target verified:", implAddress);
+
+          // Ensure Privy embedded wallet is on Base before getting its provider.
+          // Without this, signTypedData fails with "chainId 0x2105 is not current network"
+          // when the wallet provider defaults to a different chain.
+          await activeWallet.raw.switchChain(8453);
+
+          const provider = await activeWallet.raw.getEthereumProvider();
+          const walletClient = createWalletClient({
+            account: address as `0x${string}`,
+            chain: base,
+            transport: custom(provider),
+          });
+
+          console.log("[Agent Registration] Privy wallet — signing EIP-7702 authorization...");
+          const signedAuth = await signAuthorization({
+            contractAddress: implAddress,
+            chainId: 8453,
+          });
+
+          result = await registerAgentSecure(
+            address as `0x${string}`,
+            accessToken,
+            signedAuth,
+            walletClient
+          );
+        } else if (enableErc4337 && smartWalletAddress) {
+          // ── Path B: ERC-4337 fallback (Privy Kernel smart wallet) ──
+          const { registerAgentErc4337 } = await import("@/lib/zerodev/client-secure");
+
+          console.log("[Agent Registration] Using ERC-4337 fallback path...");
+          console.log("[Agent Registration] Smart wallet:", smartWalletAddress);
+
+          // Get the embedded wallet (auto-created by Privy for all users) as the signer.
+          // If multiple embedded wallets exist, prefer the one linked to the Privy user
+          // (user.wallet.address) since that's the one the SmartWalletsProvider uses.
+          const embeddedWallets = allWallets.filter(
+            (w) => w.walletClientType === "privy" && w.chainType === "ethereum"
+          );
+          if (embeddedWallets.length === 0) {
+            throw new Error(
+              "No embedded wallet found. Please log out and log back in to create one."
+            );
+          }
+          // When user.wallet points to an embedded wallet, use that specific one
+          const privyLinkedAddress = user?.wallet?.address?.toLowerCase();
+          const embeddedWallet =
+            (privyLinkedAddress &&
+              embeddedWallets.find((w) => w.address.toLowerCase() === privyLinkedAddress)) ||
+            embeddedWallets[0];
+          if (embeddedWallets.length > 1) {
+            console.warn(
+              "[Agent Registration] Multiple embedded wallets found:",
+              embeddedWallets.map((w) => w.address),
+              "| Using:", embeddedWallet.address
+            );
+          }
+
+          await embeddedWallet.raw.switchChain(8453);
+          const embeddedProvider = await embeddedWallet.raw.getEthereumProvider();
+          const embeddedWalletClient = createWalletClient({
+            account: embeddedWallet.address as `0x${string}`,
+            chain: base,
+            transport: custom(embeddedProvider),
+          });
+
+          result = await registerAgentErc4337(
+            smartWalletAddress as `0x${string}`,
+            address as `0x${string}`,
+            accessToken,
+            embeddedWalletClient
+          );
+        } else {
           throw new Error(
-            `Delegation target mismatch! Expected Kernel V3.3 but got ${implAddress}. ` +
-              `This may indicate a compromised SDK. Aborting registration.`
+            "Your wallet doesn't support smart account registration. " +
+              "Please switch to your Privy embedded wallet or re-login."
           );
         }
-        console.log("[Agent Registration] Delegation target verified:", implAddress);
 
-        // EIP-7702 authorization signing requires Privy embedded wallet.
-        // External wallets (Brave, MetaMask) don't expose a standalone
-        // signAuthorization RPC — they only sign it internally when sending
-        // Type 4 transactions, which doesn't fit the ZeroDev registration flow.
-        if (activeWallet.walletClientType !== "privy") {
-          throw new Error(
-            "Agent registration requires your Privy embedded wallet. " +
-              "Please switch to it in the wallet selector."
-          );
-        }
-
-        const signedAuth = await signAuthorization({
-          contractAddress: implAddress,
-          chainId: 8453,
-        });
-
-        // Create Viem WalletClient from Privy provider for signing enable data
-        console.log("[Agent Registration] Creating wallet client for account serialization...");
-        const provider = await activeWallet.raw.getEthereumProvider();
-        const privyWalletClient = createWalletClient({
-          account: address as `0x${string}`,
-          chain: base,
-          transport: custom(provider),
-        });
-
-        console.log(
-          "[Agent Registration] EIP-7702 authorization signed, creating serialized account..."
-        );
-        const result = await registerAgentSecure(
-          address as `0x${string}`,
-          accessToken,
-          signedAuth,
-          privyWalletClient
-        );
-
-        console.log("[Agent Registration] ✅ Secure registration complete!");
+        console.log("[Agent Registration] Secure registration complete!");
         console.log("[Agent Registration] Session key address:", result.sessionKeyAddress);
         console.log("[Agent Registration] Expiry:", new Date(result.expiry * 1000).toISOString());
 
         return result;
       } catch (error: any) {
-        console.error("[Agent Registration] ❌ Registration failed:", error);
+        console.error("[Agent Registration] Registration failed:", error);
         throw error;
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["agent-status", address] });
+      queryClient.invalidateQueries({ queryKey: ["agent-status"] });
       // Enable auto-optimize through the proper toggle workflow
       toggleAutoOptimize.mutate(true);
     },
@@ -333,7 +391,7 @@ export function useAgent() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["agent-status", address] });
+      queryClient.invalidateQueries({ queryKey: ["agent-status"] });
     },
   });
 
@@ -378,7 +436,7 @@ export function useAgent() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["agent-status", address] });
+      queryClient.invalidateQueries({ queryKey: ["agent-status"] });
     },
   });
 
@@ -483,7 +541,6 @@ export function getProtocolColor(protocol: string): string {
     aave: "#B6509E",
     moonwell: "#7B3FE4",
     yo: "#FF6B35",
-    pendle: "#2563EB",
   };
   return colors[protocol] || "#888";
 }
@@ -494,7 +551,6 @@ export function getProtocolInfo(protocol: string) {
     aave: { name: "Aave", color: "#B6509E", icon: "👻" },
     moonwell: { name: "Moonwell", color: "#7B3FE4", icon: "🌙" },
     yo: { name: "YO Protocol", color: "#FF6B35", icon: "🟠" },
-    pendle: { name: "YO · Pendle", color: "#2563EB", icon: "🔒" },
   };
   return info[protocol] || { name: protocol, color: "#888", icon: "💰" };
 }
