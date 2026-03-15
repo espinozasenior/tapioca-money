@@ -19,7 +19,12 @@ const PREFIX = "encrypted";
 /**
  * Get encryption key from environment variable
  * Throws if key is missing or invalid length
+ *
+ * Caches the parsed Buffer to avoid re-parsing the hex string on every call (P2-6 fix)
  */
+let _cachedKey: Buffer | null = null;
+let _cachedKeySource: string | undefined;
+
 function getEncryptionKey(): Buffer {
   const key = process.env.DATABASE_ENCRYPTION_KEY;
 
@@ -32,8 +37,15 @@ function getEncryptionKey(): Buffer {
     throw new Error("DATABASE_ENCRYPTION_KEY must be 64 hex characters (32 bytes)");
   }
 
+  // Return cached key if env var hasn't changed (handles key rotation and test env changes)
+  if (_cachedKey && _cachedKeySource === key) {
+    return _cachedKey;
+  }
+
   try {
-    return Buffer.from(key, "hex");
+    _cachedKey = Buffer.from(key, "hex");
+    _cachedKeySource = key;
+    return _cachedKey;
   } catch (error) {
     throw new Error("DATABASE_ENCRYPTION_KEY must be a valid hex string");
   }

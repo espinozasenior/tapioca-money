@@ -29,6 +29,17 @@ export interface SessionKey7702Authorization {
   };
 }
 
+export interface SessionKeyErc4337Authorization {
+  type: "zerodev-erc4337-session";
+  eoaAddress: `0x${string}`; // User's external wallet (DB key)
+  smartWalletAddress: `0x${string}`; // Privy Kernel smart wallet (where funds live)
+  sessionKeyAddress: `0x${string}`;
+  serializedAccount?: string; // Base64 serialized kernel account (will be encrypted)
+  approvedVaults: string[];
+  expiry: number;
+  timestamp: number;
+}
+
 export interface TransferSessionAuthorization {
   type: "zerodev-transfer-session";
   smartAccountAddress: `0x${string}`;
@@ -38,7 +49,10 @@ export interface TransferSessionAuthorization {
   createdAt: number;
 }
 
-export type Authorization = SessionKey7702Authorization | TransferSessionAuthorization;
+export type Authorization =
+  | SessionKey7702Authorization
+  | SessionKeyErc4337Authorization
+  | TransferSessionAuthorization;
 
 /**
  * Encrypt the sessionPrivateKey field in an authorization object
@@ -59,8 +73,8 @@ export function encryptAuthorization<T extends Authorization>(auth: T): T {
   ) {
     (cloned as any).serializedAccount = encrypt((cloned as any).serializedAccount);
   }
-  if (cloned.sessionPrivateKey && !isEncrypted(cloned.sessionPrivateKey)) {
-    cloned.sessionPrivateKey = encrypt(cloned.sessionPrivateKey);
+  if ("sessionPrivateKey" in cloned && cloned.sessionPrivateKey && !isEncrypted(cloned.sessionPrivateKey)) {
+    (cloned as any).sessionPrivateKey = encrypt(cloned.sessionPrivateKey);
   }
 
   return cloned;
@@ -82,8 +96,8 @@ export function decryptAuthorization<T extends Authorization>(auth: T): T {
   if ("serializedAccount" in cloned && (cloned as any).serializedAccount) {
     (cloned as any).serializedAccount = decrypt((cloned as any).serializedAccount);
   }
-  if (cloned.sessionPrivateKey) {
-    cloned.sessionPrivateKey = decrypt(cloned.sessionPrivateKey);
+  if ("sessionPrivateKey" in cloned && cloned.sessionPrivateKey) {
+    (cloned as any).sessionPrivateKey = decrypt(cloned.sessionPrivateKey);
   }
 
   return cloned;
@@ -95,5 +109,5 @@ export function decryptAuthorization<T extends Authorization>(auth: T): T {
  * @returns true if sessionPrivateKey is encrypted
  */
 export function isAuthorizationEncrypted(auth: Authorization): boolean {
-  return !!auth.sessionPrivateKey && isEncrypted(auth.sessionPrivateKey);
+  return "sessionPrivateKey" in auth && !!auth.sessionPrivateKey && isEncrypted(auth.sessionPrivateKey);
 }

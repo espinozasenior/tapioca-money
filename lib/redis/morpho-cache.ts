@@ -62,10 +62,10 @@ export async function getCachedVaults(
   try {
     const cached = await cache.get(key);
     if (cached) {
-      console.log("[MorphoCache] Hit: vaults", { chainId, assetSymbol });
+
       return JSON.parse(cached);
     }
-    console.log("[MorphoCache] Miss: vaults", { chainId, assetSymbol });
+
     return null;
   } catch (error: any) {
     console.error("[MorphoCache] Error reading vaults cache:", error.message);
@@ -86,11 +86,7 @@ export async function setCachedVaults(
 
   try {
     await cache.set(key, JSON.stringify(vaults), CACHE_TTL.VAULTS);
-    console.log("[MorphoCache] Set: vaults", {
-      chainId,
-      assetSymbol,
-      count: vaults.length,
-    });
+
   } catch (error: any) {
     console.error("[MorphoCache] Error caching vaults:", error.message);
   }
@@ -109,10 +105,10 @@ export async function getCachedUserPositions(
   try {
     const cached = await cache.get(key);
     if (cached) {
-      console.log("[MorphoCache] Hit: positions", { userAddress, chainId });
+
       return JSON.parse(cached);
     }
-    console.log("[MorphoCache] Miss: positions", { userAddress, chainId });
+
     return null;
   } catch (error: any) {
     console.error("[MorphoCache] Error reading positions cache:", error.message);
@@ -133,11 +129,7 @@ export async function setCachedUserPositions(
 
   try {
     await cache.set(key, JSON.stringify(positions), CACHE_TTL.USER_POSITIONS);
-    console.log("[MorphoCache] Set: positions", {
-      userAddress,
-      chainId,
-      count: positions.length,
-    });
+
   } catch (error: any) {
     console.error("[MorphoCache] Error caching positions:", error.message);
   }
@@ -157,11 +149,7 @@ export async function getCachedBestVault(
   try {
     const cached = await cache.get(key);
     if (cached) {
-      console.log("[MorphoCache] Hit: bestVault", {
-        chainId,
-        assetSymbol,
-        minLiquidityUsd,
-      });
+
       return JSON.parse(cached);
     }
     return null;
@@ -186,11 +174,7 @@ export async function setCachedBestVault(
   try {
     if (vault) {
       await cache.set(key, JSON.stringify(vault), CACHE_TTL.BEST_VAULT);
-      console.log("[MorphoCache] Set: bestVault", {
-        chainId,
-        assetSymbol,
-        vault: vault.name,
-      });
+
     }
   } catch (error: any) {
     console.error("[MorphoCache] Error caching best vault:", error.message);
@@ -206,7 +190,7 @@ export async function invalidateUserPositions(userAddress: string, chainId: numb
 
   try {
     await cache.del(key);
-    console.log("[MorphoCache] Invalidated: positions", { userAddress, chainId });
+
   } catch (error: any) {
     console.error("[MorphoCache] Error invalidating positions:", error.message);
   }

@@ -129,6 +129,8 @@ export async function closeRedisClient(): Promise<void> {
 export interface CacheInterface {
   get(key: string): Promise<string | null>;
   set(key: string, value: string, ttlSeconds?: number): Promise<void>;
+  /** Atomic set-if-not-exists with TTL. Returns true if key was set, false if already exists. (P2-3 fix) */
+  setNX(key: string, value: string, ttlSeconds: number): Promise<boolean>;
   del(key: string): Promise<void>;
   zadd(key: string, score: number, member: string): Promise<void>;
   zrangebyscore(key: string, min: number, max: number): Promise<string[]>;
@@ -154,6 +156,11 @@ export async function getCacheInterface(): Promise<CacheInterface> {
         } else {
           await redis.set(key, value);
         }
+      },
+      async setNX(key: string, value: string, ttlSeconds: number) {
+        // Atomic SET key value NX EX ttl -- single round trip, no race condition (P2-3 fix)
+        const result = await (redis as any).set(key, value, "EX", ttlSeconds, "NX");
+        return result === "OK";
       },
       async del(key: string) {
         await redis.del(key);
@@ -190,6 +197,15 @@ export async function getCacheInterface(): Promise<CacheInterface> {
     async set(key: string, value: string, ttlSeconds?: number) {
       const expiry = ttlSeconds ? Date.now() + ttlSeconds * 1000 : undefined;
       memoryStore.set(key, { value, expiry });
+    },
+    async setNX(key: string, value: string, ttlSeconds: number) {
+      // In-memory atomic set-if-not-exists (single process, so check-then-set is safe)
+      const existing = memoryStore.get(key);
+      if (existing && (!existing.expiry || existing.expiry >= Date.now())) {
+        return false; // Key exists and not expired
+      }
+      memoryStore.set(key, { value, expiry: Date.now() + ttlSeconds * 1000 });
+      return true;
     },
     async del(key: string) {
       memoryStore.delete(key);
