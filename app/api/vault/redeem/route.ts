@@ -27,6 +27,9 @@ export async function POST(request: NextRequest) {
     }
 
     const userWalletAddress = authResult.walletAddress;
+    if (!userWalletAddress) {
+      return unauthorizedResponse("No wallet address in auth result");
+    }
     const addresses = buildWalletAddresses(authResult);
     if (!addresses) {
       return unauthorizedResponse("No wallet linked to account");
