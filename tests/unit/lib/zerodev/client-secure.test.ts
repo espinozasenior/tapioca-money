@@ -5,11 +5,14 @@ import {
   revokeSessionKey,
   undelegateEoa,
   registerAgentSecure,
+  delegateViaExternalWallet,
+  registerAgentSecureExternal,
 } from "@/lib/zerodev/client-secure";
 
 // Mock dependencies
 const mockPublicClient = {
   getBytecode: vi.fn(),
+  waitForTransactionReceipt: vi.fn().mockResolvedValue({ status: "success" }),
 };
 
 vi.mock("viem", async (importOriginal) => {
@@ -211,8 +214,8 @@ describe("Client Secure (ZeroDev)", () => {
       expect(result.smartAccountAddress).toBe(mockAddress);
       expect(result.sessionKeyAddress).toBe("0xsessionKey");
       expect(result.approvedVaults).toEqual(expect.arrayContaining(["0xvault1", "0xvault2"]));
-      // YO Gateway + Pendle Router + yoUSD vault addresses are also included for session key scoping
-      expect(result.approvedVaults).toHaveLength(5);
+      // YO Gateway address is also included for session key scoping
+      expect(result.approvedVaults).toHaveLength(3);
       // serializedAccount is not returned, but sent to server
 
       // Verify fetch calls
@@ -251,6 +254,236 @@ describe("Client Secure (ZeroDev)", () => {
       await expect(
         registerAgentSecure(mockAddress, "token", mockAuth, mockWalletClient)
       ).rejects.toThrow("Storage failed");
+    });
+  });
+
+  describe("delegateViaExternalWallet", () => {
+    it("should check capabilities, switch chain, and send Type 4 tx", async () => {
+      const mockWalletClient = {
+        request: vi.fn()
+          // First call: wallet_getCapabilities
+          .mockResolvedValueOnce({ "0x2105": { atomic: { status: "supported" } } })
+          // Second call: eth_sendTransaction
+          .mockResolvedValueOnce("0xdelegationtx"),
+        switchChain: vi.fn().mockResolvedValue(undefined),
+      };
+      const implAddress = "0x2222222222222222222222222222222222222222" as `0x${string}`;
+
+      // Mock receipt with eip7702 type
+      mockPublicClient.waitForTransactionReceipt.mockResolvedValue({
+        status: "success",
+        type: "eip7702",
+      });
+
+      // Mock delegation verification — return valid delegation bytecode
+      const delegationBytecode = "0xef0100" + implAddress.slice(2);
+      mockPublicClient.getBytecode.mockResolvedValue(delegationBytecode);
+
+      const txHash = await delegateViaExternalWallet(
+        mockWalletClient,
+        mockAddress,
+        implAddress
+      );
+
+      // Verify capability check
+      expect(mockWalletClient.request).toHaveBeenNthCalledWith(1, {
+        method: "wallet_getCapabilities",
+        params: [mockAddress],
+      });
+      expect(mockWalletClient.switchChain).toHaveBeenCalledWith({ id: 8453 });
+      // Verify eth_sendTransaction with type "0x4"
+      expect(mockWalletClient.request).toHaveBeenNthCalledWith(2, {
+        method: "eth_sendTransaction",
+        params: [
+          expect.objectContaining({
+            type: "0x4",
+            from: mockAddress,
+            to: mockAddress,
+            authorizationList: [
+              {
+                address: implAddress,
+                chainId: "0x2105",
+              },
+            ],
+          }),
+        ],
+      });
+      expect(txHash).toBe("0xdelegationtx");
+    });
+
+    it("should throw immediately if wallet lacks 7702 support", async () => {
+      const mockWalletClient = {
+        request: vi.fn()
+          // wallet_getCapabilities returns no 7702 support
+          .mockResolvedValueOnce({ "0x2105": {} }),
+        switchChain: vi.fn(),
+      };
+      const implAddress = "0x2222222222222222222222222222222222222222" as `0x${string}`;
+
+      await expect(
+        delegateViaExternalWallet(mockWalletClient, mockAddress, implAddress)
+      ).rejects.toThrow("does not support EIP-7702");
+
+      // Should NOT have attempted sendTransaction
+      expect(mockWalletClient.request).toHaveBeenCalledTimes(1);
+      expect(mockWalletClient.switchChain).not.toHaveBeenCalled();
+    });
+
+    it("should throw if wallet_getCapabilities is not supported", async () => {
+      const mockWalletClient = {
+        request: vi.fn()
+          // wallet_getCapabilities throws (not supported)
+          .mockRejectedValueOnce(new Error("method not found")),
+        switchChain: vi.fn(),
+      };
+      const implAddress = "0x2222222222222222222222222222222222222222" as `0x${string}`;
+
+      await expect(
+        delegateViaExternalWallet(mockWalletClient, mockAddress, implAddress)
+      ).rejects.toThrow("does not support EIP-7702");
+    });
+
+    it("should add chain if switchChain returns 4902", async () => {
+      const mockWalletClient = {
+        request: vi.fn()
+          .mockResolvedValueOnce({ "0x2105": { atomic: { status: "ready" } } })
+          .mockResolvedValueOnce("0xdelegationtx"),
+        switchChain: vi.fn()
+          .mockRejectedValueOnce({ code: 4902, message: "chain not added" })
+          .mockResolvedValueOnce(undefined),
+        addChain: vi.fn().mockResolvedValue(undefined),
+      };
+      const implAddress = "0x2222222222222222222222222222222222222222" as `0x${string}`;
+
+      mockPublicClient.waitForTransactionReceipt.mockResolvedValue({
+        status: "success",
+        type: "eip7702",
+      });
+      const delegationBytecode = "0xef0100" + implAddress.slice(2);
+      mockPublicClient.getBytecode.mockResolvedValue(delegationBytecode);
+
+      const txHash = await delegateViaExternalWallet(
+        mockWalletClient,
+        mockAddress,
+        implAddress
+      );
+
+      expect(mockWalletClient.addChain).toHaveBeenCalled();
+      expect(mockWalletClient.switchChain).toHaveBeenCalledTimes(2);
+      expect(txHash).toBe("0xdelegationtx");
+    });
+
+    it("should throw if tx type is not eip7702", async () => {
+      const mockWalletClient = {
+        request: vi.fn()
+          .mockResolvedValueOnce({ "0x2105": { atomic: { status: "supported" } } })
+          .mockResolvedValueOnce("0xplaintx"),
+        switchChain: vi.fn().mockResolvedValue(undefined),
+      };
+      const implAddress = "0x2222222222222222222222222222222222222222" as `0x${string}`;
+
+      // Receipt type is regular eip1559, not eip7702
+      mockPublicClient.waitForTransactionReceipt.mockResolvedValue({
+        status: "success",
+        type: "eip1559",
+      });
+
+      await expect(
+        delegateViaExternalWallet(mockWalletClient, mockAddress, implAddress)
+      ).rejects.toThrow("regular transaction instead of EIP-7702");
+    });
+
+    it("should throw if delegation not detected after Type 4 tx", async () => {
+      const mockWalletClient = {
+        request: vi.fn()
+          .mockResolvedValueOnce({ "0x2105": { atomic: { status: "supported" } } })
+          .mockResolvedValueOnce("0xfailedtx"),
+        switchChain: vi.fn().mockResolvedValue(undefined),
+      };
+      const implAddress = "0x3333333333333333333333333333333333333333" as `0x${string}`;
+
+      // Receipt is Type 4 but delegation didn't stick
+      mockPublicClient.waitForTransactionReceipt.mockResolvedValue({
+        status: "success",
+        type: "eip7702",
+      });
+      // Mock: no delegation bytecode found after tx
+      mockPublicClient.getBytecode.mockResolvedValue("0x");
+
+      await expect(
+        delegateViaExternalWallet(mockWalletClient, mockAddress, implAddress)
+      ).rejects.toThrow("delegation not detected on-chain");
+    });
+  });
+
+  describe("registerAgentSecureExternal", () => {
+    const mockWalletClient = {
+      signMessage: vi.fn(),
+      signTypedData: vi.fn(),
+    };
+
+    it("should register external wallet successfully when delegation is on-chain", async () => {
+      // Mock delegation check — active delegation
+      const implBytecode = "0xef0100" + "44".repeat(20);
+      mockPublicClient.getBytecode.mockResolvedValue(implBytecode);
+
+      // Mock /api/optimize response
+      (global.fetch as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            opportunities: [
+              { metadata: { vaultAddress: "0xvault1" } },
+              { metadata: { vaultAddress: "0xvault2" } },
+            ],
+          }),
+        })
+        // Mock /api/agent/generate-session-key response
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ success: true }),
+        });
+
+      const result = await registerAgentSecureExternal(
+        mockAddress,
+        "token",
+        mockWalletClient
+      );
+
+      expect(result.smartAccountAddress).toBe(mockAddress);
+      expect(result.sessionKeyAddress).toBe("0xsessionKey");
+      expect(result.approvedVaults).toEqual(expect.arrayContaining(["0xvault1", "0xvault2"]));
+      expect(result.approvedVaults).toHaveLength(5);
+
+      // Verify server call includes serialized account (no eip7702Auth)
+      expect(global.fetch).toHaveBeenNthCalledWith(
+        2,
+        "/api/agent/generate-session-key",
+        expect.objectContaining({
+          method: "POST",
+          body: expect.stringContaining("mockSerializedAccount"),
+        })
+      );
+    });
+
+    it("should throw if delegation is not on-chain", async () => {
+      // Mock: no delegation
+      mockPublicClient.getBytecode.mockResolvedValue("0x");
+
+      await expect(
+        registerAgentSecureExternal(mockAddress, "token", mockWalletClient)
+      ).rejects.toThrow("Delegation not found on-chain");
+    });
+
+    it("should handle optimization API failure", async () => {
+      // Mock: delegation active
+      mockPublicClient.getBytecode.mockResolvedValue("0xef0100" + "55".repeat(20));
+
+      (global.fetch as any).mockResolvedValueOnce({ ok: false });
+
+      await expect(
+        registerAgentSecureExternal(mockAddress, "token", mockWalletClient)
+      ).rejects.toThrow("Failed to fetch vault opportunities");
     });
   });
 });

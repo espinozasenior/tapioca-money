@@ -457,3 +457,127 @@ describe("Serialize/Deserialize Kernel Account Pattern", () => {
     }
   });
 });
+
+// ─── External Wallet Registration Tests ─────────────────────────────────────
+
+describe("External Wallet Registration — Two-Phase Flow", () => {
+  test("26. delegateViaExternalWallet is exported from client-secure", async () => {
+    const clientSecure = await import("@/lib/zerodev/client-secure");
+    expect(typeof clientSecure.delegateViaExternalWallet).toBe("function");
+  });
+
+  test("27. registerAgentSecureExternal is exported from client-secure", async () => {
+    const clientSecure = await import("@/lib/zerodev/client-secure");
+    expect(typeof clientSecure.registerAgentSecureExternal).toBe("function");
+  });
+
+  test("28. createAndSerializeAccountExternal exists and does not use eip7702Auth", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("lib/zerodev/client-secure.ts", "utf-8");
+
+    // Internal function for external wallet serialization
+    expect(source).toContain("async function createAndSerializeAccountExternal");
+
+    // Extract the external wallet function body — it should NOT contain eip7702Auth
+    const fnStart = source.indexOf("async function createAndSerializeAccountExternal");
+    const fnEnd = source.indexOf("async function createAndSerializeAccountErc4337");
+    const externalFn = source.slice(fnStart, fnEnd);
+
+    // Must NOT pass eip7702Auth — external wallet delegation is already on-chain
+    expect(externalFn).not.toContain("eip7702Auth:");
+    // Must call the shared permission builder
+    expect(externalFn).toContain("buildSessionKeyAndPermissions");
+  });
+
+  test("29. External wallet flow uses authorizationList (not signAuthorization)", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("lib/zerodev/client-secure.ts", "utf-8");
+
+    // delegateViaExternalWallet must use authorizationList in sendTransaction
+    const delegateFnStart = source.indexOf("export async function delegateViaExternalWallet");
+    const delegateFnEnd = source.indexOf("export async function registerAgentSecureExternal");
+    const delegateFn = source.slice(delegateFnStart, delegateFnEnd);
+
+    expect(delegateFn).toContain("wallet_getCapabilities");
+    expect(delegateFn).toContain("authorizationList");
+    expect(delegateFn).toContain("address: implAddress");
+    expect(delegateFn).toContain("numberToHex(8453)");
+    expect(delegateFn).toContain("waitForTransactionReceipt");
+    expect(delegateFn).toContain("checkSmartAccountActive");
+  });
+
+  test("30. External wallet registration verifies delegation before proceeding", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("lib/zerodev/client-secure.ts", "utf-8");
+
+    // registerAgentSecureExternal must check delegation status first
+    const regFnStart = source.indexOf("export async function registerAgentSecureExternal");
+    const regFnEnd = source.indexOf("export async function undelegateEoa");
+    const regFn = source.slice(regFnStart, regFnEnd);
+
+    expect(regFn).toContain("checkSmartAccountActive");
+    expect(regFn).toContain("Delegation not found on-chain");
+  });
+
+  test("31. useOptimizer branches registration: EIP-7702 vs ERC-4337 fallback", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("hooks/useOptimizer.ts", "utf-8");
+
+    // Path A: check walletClientType for EIP-7702 branching
+    expect(source).toContain('activeWallet.walletClientType === "privy"');
+
+    // Privy flow uses signAuthorization + registerAgentSecure
+    expect(source).toContain("signAuthorization");
+    expect(source).toContain("registerAgentSecure");
+
+    // Path B: ERC-4337 fallback via Privy smart wallet
+    expect(source).toContain("registerAgentErc4337");
+    expect(source).toContain("smartWalletAddress");
+
+    // Feature flag for rollback
+    expect(source).toContain("NEXT_PUBLIC_ENABLE_ERC4337_FALLBACK");
+  });
+
+  test("32. All registration paths share the same permission builder", async () => {
+    const fs = await import("fs");
+    const source = fs.readFileSync("lib/zerodev/client-secure.ts", "utf-8");
+
+    // After refactor, all three createAndSerialize* variants use buildSessionKeyAndPermissions.
+    // Verify the shared function exists and contains all protocol permissions.
+
+    const sharedFnStart = source.indexOf("async function buildSessionKeyAndPermissions(");
+    expect(sharedFnStart).toBeGreaterThan(-1);
+
+    const sharedFnEnd = source.indexOf("async function createAndSerializeAccount(");
+    const sharedFn = source.slice(sharedFnStart, sharedFnEnd);
+
+    // Shared builder must include YO Gateway permissions
+    expect(sharedFn).toContain("YO_GATEWAY_DEPOSIT_SELECTOR");
+    expect(sharedFn).toContain("YO_GATEWAY_REDEEM_SELECTOR");
+
+    // Must include USDC approve and transfer
+    expect(sharedFn).toContain("USDC_ADDRESS");
+
+    // Must include rate limit and timestamp policies
+    expect(sharedFn).toContain("toRateLimitPolicy");
+    expect(sharedFn).toContain("toTimestampPolicy");
+
+    // Verify all three createAndSerialize* functions call buildSessionKeyAndPermissions
+    const embeddedFn = source.slice(
+      source.indexOf("async function createAndSerializeAccount("),
+      source.indexOf("async function createAndSerializeAccountExternal(")
+    );
+    const externalFn = source.slice(
+      source.indexOf("async function createAndSerializeAccountExternal("),
+      source.indexOf("async function createAndSerializeAccountErc4337(")
+    );
+    const erc4337Fn = source.slice(
+      source.indexOf("async function createAndSerializeAccountErc4337("),
+      source.indexOf("export async function registerAgentSecureExternal")
+    );
+
+    expect(embeddedFn).toContain("buildSessionKeyAndPermissions");
+    expect(externalFn).toContain("buildSessionKeyAndPermissions");
+    expect(erc4337Fn).toContain("buildSessionKeyAndPermissions");
+  });
+});

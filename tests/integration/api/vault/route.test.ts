@@ -51,10 +51,12 @@ describe("Vault API", () => {
     (authenticateRequest as any).mockResolvedValue({
       authenticated: true,
       walletAddress: mockUserAddress,
+      allWalletAddresses: [mockUserAddress],
     });
 
     mockSql.mockResolvedValue([
       {
+        wallet_address: mockUserAddress,
         authorization_7702: {
           type: "zerodev-7702-session",
           expiry: Math.floor(Date.now() / 1000) + 3600,
@@ -111,7 +113,7 @@ describe("Vault API", () => {
       expect(res.status).toBe(401);
     });
 
-    it("should return 404 if user not found", async () => {
+    it("should return 400 if not registered", async () => {
       mockSql.mockResolvedValue([]);
 
       const req = createRequest("http://localhost/api/vault/deposit", {
@@ -120,12 +122,13 @@ describe("Vault API", () => {
       });
       const res = await depositPOST(req);
 
-      expect(res.status).toBe(404);
+      expect(res.status).toBe(400);
     });
 
     it("should return 400 if session expired", async () => {
       mockSql.mockResolvedValue([
         {
+          wallet_address: mockUserAddress,
           authorization_7702: {
             type: "zerodev-7702-session",
             expiry: Math.floor(Date.now() / 1000) - 3600, // Expired
@@ -148,6 +151,7 @@ describe("Vault API", () => {
     it("should return 403 if vault not approved", async () => {
       mockSql.mockResolvedValue([
         {
+          wallet_address: mockUserAddress,
           authorization_7702: {
             type: "zerodev-7702-session",
             expiry: Math.floor(Date.now() / 1000) + 3600,

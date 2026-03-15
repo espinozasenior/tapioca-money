@@ -271,7 +271,14 @@ describe("Agent Auth API", () => {
     });
 
     it("should update status successfully", async () => {
-      mockSql.mockResolvedValue([{ authorization_7702: {} }]); // User found
+      mockSql.mockResolvedValueOnce([{
+        wallet_address: mockUserAddress,
+        authorization_7702: {
+          type: "zerodev-7702-session",
+          expiry: Math.floor(Date.now() / 1000) + 3600,
+          approvedVaults: [],
+        },
+      }]).mockResolvedValue([]); // UPDATE returns empty
 
       const req = createRequest("http://localhost/api/agent/register", "PATCH", validBody);
       const res = await updateStatusPATCH(req);
