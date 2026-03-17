@@ -78,7 +78,8 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
     isRegistering,
   } = useAgent();
   const { activeWallet, supportsEip7702, smartWalletAddress, agentAddress } = useWalletSelection();
-  const isExternalWallet = activeWallet?.walletClientType !== "privy" && activeWallet?.chainType === "ethereum";
+  const isExternalWallet =
+    activeWallet?.walletClientType !== "privy" && activeWallet?.chainType === "ethereum";
   // User can register if they have either 7702 support OR an ERC-4337 smart wallet
   const canRegister = supportsEip7702 || !!smartWalletAddress;
   const [state, dispatch] = useReducer(depositReducer, initialState);
@@ -200,19 +201,25 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
           </p>
           {isExternalWallet && !canRegister && (
             <p className="mb-4 text-sm text-yellow-700">
-              Your wallet doesn&apos;t support agent registration yet.
-              Please switch to your Privy embedded wallet or re-login.
+              Your wallet doesn&apos;t support agent registration yet. Please switch to your Privy
+              embedded wallet or re-login.
             </p>
           )}
           {isExternalWallet && canRegister && !supportsEip7702 && (
             <p className="mb-4 text-sm text-blue-600">
               Your agent will use a smart wallet. After registration, deposit USDC to{" "}
-              <span className="font-mono text-xs">{smartWalletAddress?.slice(0, 8)}...{smartWalletAddress?.slice(-6)}</span>{" "}
+              <span className="font-mono text-xs">
+                {smartWalletAddress?.slice(0, 8)}...{smartWalletAddress?.slice(-6)}
+              </span>{" "}
               to start earning.
             </p>
           )}
           <PrimaryButton onClick={() => register()} disabled={isRegistering || !canRegister}>
-            {isRegistering ? "Registering..." : !canRegister ? "Wallet Not Supported" : "Register Agent"}
+            {isRegistering
+              ? "Registering..."
+              : !canRegister
+                ? "Wallet Not Supported"
+                : "Register Agent"}
           </PrimaryButton>
         </div>
       </div>

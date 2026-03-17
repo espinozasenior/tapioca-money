@@ -20,7 +20,11 @@ import { createWalletClient, createPublicClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { base } from "viem/chains";
 import { authenticateRequest, unauthorizedResponse } from "@/lib/auth/middleware";
-import { buildWalletAddresses, resolveAgentRegistration, resetAgentRegistration } from "@/lib/agent/resolve-registration";
+import {
+  buildWalletAddresses,
+  resolveAgentRegistration,
+  resetAgentRegistration,
+} from "@/lib/agent/resolve-registration";
 import { CHAIN_CONFIG } from "@/lib/config";
 
 const sql = neon(process.env.DATABASE_URL!);
@@ -51,24 +55,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { signedAuthorization: rawAuth } = body;
     if (!rawAuth) {
-      return NextResponse.json(
-        { error: "Missing signedAuthorization" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing signedAuthorization" }, { status: 400 });
     }
 
     // Restore numeric fields that were hex-serialized on the client
     const signedAuthorization = {
       ...rawAuth,
-      chainId: typeof rawAuth.chainId === "string"
-        ? Number(rawAuth.chainId)
-        : rawAuth.chainId,
-      nonce: typeof rawAuth.nonce === "string"
-        ? Number(rawAuth.nonce)
-        : rawAuth.nonce,
-      yParity: typeof rawAuth.yParity === "string"
-        ? Number(rawAuth.yParity)
-        : rawAuth.yParity,
+      chainId: typeof rawAuth.chainId === "string" ? Number(rawAuth.chainId) : rawAuth.chainId,
+      nonce: typeof rawAuth.nonce === "string" ? Number(rawAuth.nonce) : rawAuth.nonce,
+      yParity: typeof rawAuth.yParity === "string" ? Number(rawAuth.yParity) : rawAuth.yParity,
     };
 
     console.log("[Undelegate] Processing undelegation for:", userWalletAddress);
@@ -122,9 +117,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("[Undelegate] Failed:", error);
-    return NextResponse.json(
-      { error: error.message || "Undelegation failed" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || "Undelegation failed" }, { status: 500 });
   }
 }

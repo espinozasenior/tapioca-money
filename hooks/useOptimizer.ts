@@ -213,9 +213,10 @@ export function useAgent() {
     queryFn: async () => {
       if (allEvmAddresses.length === 0)
         return { isRegistered: false, autoOptimizeEnabled: false, hasAuthorization: false };
-      const params = allEvmAddresses.length === 1
-        ? `address=${allEvmAddresses[0]}`
-        : `addresses=${allEvmAddresses.join(",")}`;
+      const params =
+        allEvmAddresses.length === 1
+          ? `address=${allEvmAddresses[0]}`
+          : `addresses=${allEvmAddresses.join(",")}`;
       const res = await fetch(`/api/agent/register?${params}`);
       if (!res.ok) throw new Error("Failed to fetch agent status");
       return res.json();
@@ -257,9 +258,7 @@ export function useAgent() {
           const implAddress = KernelVersionToAddressesMap[KERNEL_V3_3].accountImplementationAddress;
 
           // Phishing guard: verify delegation target matches expected Kernel V3.3
-          const { verifyDelegationTarget } = await import(
-            "@/lib/zerodev/delegation-verification"
-          );
+          const { verifyDelegationTarget } = await import("@/lib/zerodev/delegation-verification");
           if (!verifyDelegationTarget(implAddress)) {
             throw new Error(
               `Delegation target mismatch! Expected Kernel V3.3 but got ${implAddress}. ` +
@@ -320,7 +319,8 @@ export function useAgent() {
             console.warn(
               "[Agent Registration] Multiple embedded wallets found:",
               embeddedWallets.map((w) => w.address),
-              "| Using:", embeddedWallet.address
+              "| Using:",
+              embeddedWallet.address
             );
           }
 

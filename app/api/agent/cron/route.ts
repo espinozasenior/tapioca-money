@@ -24,7 +24,12 @@ const CRON_USEROP_RESERVE = 3;
  */
 async function processUsersInParallel(
   users: any[],
-  processFn: (user: any, summary: CronSummary, targetedVaults?: string[] | null, prefetchedVaults?: { morpho: any[]; yo: any[] }) => Promise<void>,
+  processFn: (
+    user: any,
+    summary: CronSummary,
+    targetedVaults?: string[] | null,
+    prefetchedVaults?: { morpho: any[]; yo: any[] }
+  ) => Promise<void>,
   summary: CronSummary,
   targetedVaults?: string[] | null,
   prefetchedVaults?: { morpho: any[]; yo: any[] }
@@ -211,12 +216,20 @@ export async function POST(request: NextRequest) {
       yieldDecisionEngine.getAvailableYoVaults(),
     ]);
     const prefetchedVaults = { morpho: prefetchedMorphoVaults, yo: prefetchedYoVaults };
-    console.log(`[Cron] Pre-fetched ${prefetchedMorphoVaults.length} Morpho + ${prefetchedYoVaults.length} YO vaults`);
+    console.log(
+      `[Cron] Pre-fetched ${prefetchedMorphoVaults.length} Morpho + ${prefetchedYoVaults.length} YO vaults`
+    );
 
     // 3. Process users in parallel batches (90% time reduction)
     // Old sequential: 83 min for 10k users
     // New parallel: ~8 min for 10k users
-    await processUsersInParallel(activeUsers, processUserRebalance, summary, targetedVaults, prefetchedVaults);
+    await processUsersInParallel(
+      activeUsers,
+      processUserRebalance,
+      summary,
+      targetedVaults,
+      prefetchedVaults
+    );
 
     const duration = Date.now() - startTime;
     console.log(`[Cron] Cycle complete in ${duration}ms:`, {
@@ -281,7 +294,11 @@ async function processUserRebalance(
   // 2. Evaluate rebalancing decision FIRST -- before fetching/decrypting authorization (P2-1 fix)
   // Uses singleton engine instead of new instance per user (P1-1 fix)
   // Pass pre-fetched vaults to avoid redundant API calls per user (P0 fix)
-  const decision = await yieldDecisionEngine.evaluateRebalancing(userAddress, targetedVaults, prefetchedVaults);
+  const decision = await yieldDecisionEngine.evaluateRebalancing(
+    userAddress,
+    targetedVaults,
+    prefetchedVaults
+  );
 
   // 3. Check if should rebalance -- skip BEFORE expensive decrypt
   if (!decision.shouldRebalance) {

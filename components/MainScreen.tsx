@@ -17,7 +17,9 @@ export function MainScreen({ walletAddress }: MainScreenProps) {
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
   const [showEarnYieldModal, setShowEarnYieldModal] = useState(false);
-  const [selectedVaultForDeposit, setSelectedVaultForDeposit] = useState<YieldOpportunity | null>(null);
+  const [selectedVaultForDeposit, setSelectedVaultForDeposit] = useState<YieldOpportunity | null>(
+    null
+  );
   const { logout } = useAuth();
 
   return (
