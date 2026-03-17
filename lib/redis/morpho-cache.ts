@@ -62,7 +62,6 @@ export async function getCachedVaults(
   try {
     const cached = await cache.get(key);
     if (cached) {
-
       return JSON.parse(cached);
     }
 
@@ -86,7 +85,6 @@ export async function setCachedVaults(
 
   try {
     await cache.set(key, JSON.stringify(vaults), CACHE_TTL.VAULTS);
-
   } catch (error: any) {
     console.error("[MorphoCache] Error caching vaults:", error.message);
   }
@@ -105,7 +103,6 @@ export async function getCachedUserPositions(
   try {
     const cached = await cache.get(key);
     if (cached) {
-
       return JSON.parse(cached);
     }
 
@@ -129,7 +126,6 @@ export async function setCachedUserPositions(
 
   try {
     await cache.set(key, JSON.stringify(positions), CACHE_TTL.USER_POSITIONS);
-
   } catch (error: any) {
     console.error("[MorphoCache] Error caching positions:", error.message);
   }
@@ -149,7 +145,6 @@ export async function getCachedBestVault(
   try {
     const cached = await cache.get(key);
     if (cached) {
-
       return JSON.parse(cached);
     }
     return null;
@@ -174,7 +169,6 @@ export async function setCachedBestVault(
   try {
     if (vault) {
       await cache.set(key, JSON.stringify(vault), CACHE_TTL.BEST_VAULT);
-
     }
   } catch (error: any) {
     console.error("[MorphoCache] Error caching best vault:", error.message);
@@ -190,7 +184,6 @@ export async function invalidateUserPositions(userAddress: string, chainId: numb
 
   try {
     await cache.del(key);
-
   } catch (error: any) {
     console.error("[MorphoCache] Error invalidating positions:", error.message);
   }

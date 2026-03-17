@@ -40,7 +40,14 @@ interface StoreSessionRequest {
 export async function POST(request: NextRequest) {
   try {
     const body: StoreSessionRequest = await request.json();
-    const { address, smartAccountAddress, sessionKeyAddress, serializedAccount, approvedVaults, expiry } = body;
+    const {
+      address,
+      smartAccountAddress,
+      sessionKeyAddress,
+      serializedAccount,
+      approvedVaults,
+      expiry,
+    } = body;
     const sessionType = body.type ?? "zerodev-7702-session";
 
     // Validate required fields
@@ -81,16 +88,17 @@ export async function POST(request: NextRequest) {
       timestamp: Date.now(),
     };
 
-    const authorization = sessionType === "zerodev-erc4337-session"
-      ? {
-          ...baseAuth,
-          type: "zerodev-erc4337-session" as const,
-          smartWalletAddress: (smartAccountAddress || address) as `0x${string}`,
-        }
-      : {
-          ...baseAuth,
-          type: "zerodev-7702-session" as const,
-        };
+    const authorization =
+      sessionType === "zerodev-erc4337-session"
+        ? {
+            ...baseAuth,
+            type: "zerodev-erc4337-session" as const,
+            smartWalletAddress: (smartAccountAddress || address) as `0x${string}`,
+          }
+        : {
+            ...baseAuth,
+            type: "zerodev-7702-session" as const,
+          };
 
     const encryptedAuth = encryptAuthorization(authorization);
     const authJson = JSON.stringify(encryptedAuth);

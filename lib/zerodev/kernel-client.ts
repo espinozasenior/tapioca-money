@@ -67,9 +67,7 @@ export async function createDeserializedKernelClient(
           error?.message?.includes?.("duplicate permissionHash");
         if (!isDuplicate) throw error;
 
-        console.log(
-          "[KernelClient] duplicate permissionHash — retrying with preInstalled=true"
-        );
+        console.log("[KernelClient] duplicate permissionHash — retrying with preInstalled=true");
         const patchedClient = await _buildKernelClient(serializedAccount, true);
         return await patchedClient.sendUserOperation(args);
       }
@@ -188,7 +186,6 @@ function patchSerializedAccount(serializedAccount: string): string {
     return serializedAccount;
   }
 }
-
 
 export interface CreateSessionKernelClientParams {
   /** The account address (EOA address with EIP-7702 delegation) */

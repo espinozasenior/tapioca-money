@@ -11,7 +11,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { SessionKey7702Authorization } from "@/lib/security/session-encryption";
 import { authenticateRequest, unauthorizedResponse } from "@/lib/auth/middleware";
-import { buildWalletAddresses, resolveAndDecryptRegistration, verifyVaultApproval } from "@/lib/agent/resolve-registration";
+import {
+  buildWalletAddresses,
+  resolveAndDecryptRegistration,
+  verifyVaultApproval,
+} from "@/lib/agent/resolve-registration";
 import { executeVaultRedeem } from "@/lib/zerodev/vault-executor";
 import { executeYoVaultRedeem } from "@/lib/zerodev/yo-vault-executor";
 import { incrementUserOpCount } from "@/lib/redis/rate-limiter";
@@ -92,9 +96,10 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // Legacy fields only exist on 7702 sessions
-      const legacy7702 = decryptedAuth.type === "zerodev-7702-session"
-        ? decryptedAuth as SessionKey7702Authorization
-        : undefined;
+      const legacy7702 =
+        decryptedAuth.type === "zerodev-7702-session"
+          ? (decryptedAuth as SessionKey7702Authorization)
+          : undefined;
       result = await executeVaultRedeem({
         smartAccountAddress: accountAddress,
         vaultAddress: vaultAddress as `0x${string}`,

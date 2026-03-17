@@ -82,7 +82,6 @@ export async function setCachedYoVaults(
   const key = vaultsCacheKey(chainId, assetKey);
   try {
     await cache.set(key, JSON.stringify(vaults, bigIntReplacer), CACHE_TTL.VAULTS);
-
   } catch (error: any) {
     console.error("[YoCache] Error caching vaults:", error.message);
   }
@@ -99,7 +98,6 @@ export async function getCachedYoUserPositions(
   try {
     const cached = await cache.get(key);
     if (cached) {
-
       return JSON.parse(cached, bigIntReviver);
     }
 
@@ -119,7 +117,6 @@ export async function setCachedYoUserPositions(
   const key = userPositionsCacheKey(userAddress, chainId);
   try {
     await cache.set(key, JSON.stringify(positions, bigIntReplacer), CACHE_TTL.USER_POSITIONS);
-
   } catch (error: any) {
     console.error("[YoCache] Error caching positions:", error.message);
   }
@@ -137,7 +134,6 @@ export async function getCachedYoBestVault(
   try {
     const cached = await cache.get(key);
     if (cached) {
-
       return JSON.parse(cached, bigIntReviver);
     }
     return null;
@@ -158,7 +154,6 @@ export async function setCachedYoBestVault(
   try {
     if (vault) {
       await cache.set(key, JSON.stringify(vault, bigIntReplacer), CACHE_TTL.BEST_VAULT);
-
     }
   } catch (error: any) {
     console.error("[YoCache] Error caching best vault:", error.message);
@@ -175,7 +170,6 @@ export async function invalidateYoUserPositions(
   const key = userPositionsCacheKey(userAddress, chainId);
   try {
     await cache.del(key);
-
   } catch (error: any) {
     console.error("[YoCache] Error invalidating positions:", error.message);
   }

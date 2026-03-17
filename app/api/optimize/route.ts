@@ -32,11 +32,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Pass pre-fetched vaults to avoid redundant API calls (P0-1 fix)
-    const decision = await yieldDecisionEngine.evaluateRebalancing(
-      address,
-      null,
-      { morpho: morphoVaults, yo: yoVaults }
-    );
+    const decision = await yieldDecisionEngine.evaluateRebalancing(address, null, {
+      morpho: morphoVaults,
+      yo: yoVaults,
+    });
 
     // Pass pre-fetched morpho vaults to avoid N+1 fetchVault calls (P1-3 fix)
     const [morphoPositions, yoPositions] = await Promise.all([

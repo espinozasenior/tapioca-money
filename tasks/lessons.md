@@ -53,7 +53,7 @@
 
 - Privy's `signAuthorization` returns objects with BigInt fields (`chainId`, `nonce`)
 - `JSON.stringify` throws "Do not know how to serialize a BigInt" — must convert first
-- Pattern: `JSON.stringify(obj, (_k, v) => typeof v === "bigint" ? \`0x\${v.toString(16)}\` : v)` on client, `Number(hexStr)` on server
+- Pattern: `JSON.stringify(obj, (_k, v) => typeof v === "bigint" ? \`0x\${v.toString(16)}\` : v)`on client,`Number(hexStr)` on server
 
 ## Auth middleware must check ALL linked wallets, not just the first
 

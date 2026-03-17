@@ -125,7 +125,12 @@ export async function GET(request: NextRequest) {
   // Build list of addresses to check
   const addressList: string[] = [];
   if (multipleAddresses) {
-    addressList.push(...multipleAddresses.split(",").map((a) => a.trim().toLowerCase()).filter(Boolean));
+    addressList.push(
+      ...multipleAddresses
+        .split(",")
+        .map((a) => a.trim().toLowerCase())
+        .filter(Boolean)
+    );
   }
   if (singleAddress) {
     const normalized = singleAddress.toLowerCase();

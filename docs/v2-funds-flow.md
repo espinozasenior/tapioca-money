@@ -259,24 +259,24 @@ Tapioca earns: 0.6% of TVL annually
 
 ### Fee phases
 
-| Phase | TVL | Fee Rate | User Sees |
-|-------|-----|----------|-----------|
-| Growth | $0-10M | 0% | Full APY |
-| Transition | $10-50M | 5% | 95% of APY |
-| Sustainable | $50M+ | 7-10% | 90-93% of APY |
+| Phase       | TVL     | Fee Rate | User Sees     |
+| ----------- | ------- | -------- | ------------- |
+| Growth      | $0-10M  | 0%       | Full APY      |
+| Transition  | $10-50M | 5%       | 95% of APY    |
+| Sustainable | $50M+   | 7-10%    | 90-93% of APY |
 
 ---
 
 ## Summary: Where Funds Live at Each Stage
 
-| Stage | Location | Token Held | Who Controls |
-|-------|----------|-----------|-------------|
-| Funded | User's smart account | USDC | User |
-| Deposited (Morpho) | User's smart account | Morpho vault shares | User (agent can rebalance) |
-| Deposited (YO) | User's smart account | yoUSD | User (agent can rebalance) |
-| Deposited (Pendle) | User's smart account | PT-yoUSD | User (agent can rebalance) |
-| Rebalancing | User's smart account | USDC (momentarily) | Agent (within session scope) |
-| Withdrawn | User's smart account | USDC | User |
-| Off-ramped | User's bank account | USD | User |
+| Stage              | Location             | Token Held          | Who Controls                 |
+| ------------------ | -------------------- | ------------------- | ---------------------------- |
+| Funded             | User's smart account | USDC                | User                         |
+| Deposited (Morpho) | User's smart account | Morpho vault shares | User (agent can rebalance)   |
+| Deposited (YO)     | User's smart account | yoUSD               | User (agent can rebalance)   |
+| Deposited (Pendle) | User's smart account | PT-yoUSD            | User (agent can rebalance)   |
+| Rebalancing        | User's smart account | USDC (momentarily)  | Agent (within session scope) |
+| Withdrawn          | User's smart account | USDC                | User                         |
+| Off-ramped         | User's bank account  | USD                 | User                         |
 
 Funds are always in the user's smart account. Never in a shared pool, never in Tapioca's custody.

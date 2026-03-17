@@ -30,7 +30,7 @@ All you need is a phone and an internet connection. Mamo helps you begin your we
 
 You are interested in growing your money but are not sure where to begin. With Mamo, you learn as you earn. Each step comes with clear context that builds understanding without overwhelming you.
 
-***
+---
 
 ## **In short:**
 
@@ -116,15 +116,15 @@ You decide when to add funds, pause deposits, or withdraw. No lockups apply.
 
 Withdraw USDC at any time. No waiting periods. No penalties. Pause or resume based on your schedule.
 
-***
+---
 
 ## At a glance
 
-* Deposit USDC.
-* Mamo allocates your funds to where it earns the most.
-* Interest and rewards increase your balance.
-* Rewards convert into USDC automatically.
-* Control stays with you.
+- Deposit USDC.
+- Mamo allocates your funds to where it earns the most.
+- Interest and rewards increase your balance.
+- Rewards convert into USDC automatically.
+- Control stays with you.
 
 Your USDC, earning steadily in the background.
 
@@ -171,22 +171,22 @@ Your money remains accessible at all times. If Mamo is ever offline, you can sti
 
 Security is built into every part of Mamo’s systems, not added as an afterthought.
 
-* **Independent audits**\
+- **Independent audits**\
   Trust comes from proof, not promises. Mamo has been independently audited by leading security firms, including [Certora](https://www.certora.com) and [Halborn Security](https://halborn.com). You can review the results in our Audits section.
-* **$250K bug bounty**\
+- **$250K bug bounty**\
   Our [Code4rena](https://code4rena.com) bug bounty program pays up to $250,000 to white-hat hackers who responsibly disclose vulnerabilities before bad actors can exploit them. Continuous incentives mean continuous scrutiny and stronger safety over time.
-* **Permissioned upgrades**\
+- **Permissioned upgrades**\
   No silent contract migrations. Any upgrade requires your explicit approval. If you choose not to approve, nothing changes. No hidden moves, no surprises.
-* **Fail-safe access**\
+- **Fail-safe access**\
   Your vault is a transparent smart contract on the Base network. Even if Mamo were to go offline, you would retain 100% control of your balance using any Ethereum-compatible wallet.
 
 ### 👀 Transparency
 
 Financial stress often comes from hidden rules and unclear terms. Mamo keeps things clear:
 
-* No hidden fees in fine print
-* No lockups preventing withdrawals
-* No unexpected changes disrupting your progress
+- No hidden fees in fine print
+- No lockups preventing withdrawals
+- No unexpected changes disrupting your progress
 
 ### 🧠 Smart protection for your earnings
 
@@ -200,22 +200,24 @@ Earning yield is valuable, but keeping it safe is even more important. When Mamo
 
 All investing carries risk. Mamo is upfront about what those risks are:
 
-* **Variable APY**: Interest rates change with borrower demand. A 12% rate today may be 8% tomorrow or even in the next hour. Mamo always seeks the best available rate, but the number will change.
-* **Smart contract risk**: Independent audits and bug bounties reduce the chance of vulnerabilities, but no code is perfect.
-* **Protocol risk**: Mamo routes funds to Moonwell and Morpho on Base. These platforms have strong track records and multiple audits, but they are not backed by government insurance.
+- **Variable APY**: Interest rates change with borrower demand. A 12% rate today may be 8% tomorrow or even in the next hour. Mamo always seeks the best available rate, but the number will change.
+- **Smart contract risk**: Independent audits and bug bounties reduce the chance of vulnerabilities, but no code is perfect.
+- **Protocol risk**: Mamo routes funds to Moonwell and Morpho on Base. These platforms have strong track records and multiple audits, but they are not backed by government insurance.
 
 Our role is to minimise risk, communicate it clearly, and ensure you can adjust your position at any time.
 
 ## Audits
+
 Only you can withdraw your funds from your dedicated Mamo account.
 
 Mamo has been independently audited by Certora and Halborn Security, and is backed by a bug bounty program with Code4rena — offering up to $250,000 for the discovery of vulnerabilities. Because real trust comes from transparency, not assumptions.
 
-## Earning 
+## Earning
+
 Rewards are sourced from trading fees on @AerodromeFi, not through token printing or incentive programs.
 
 he MAMO token is paired with many of the best assets on @AerodromeFi
- on Base, including @DefinitiveFi’s EDGE.
+on Base, including @DefinitiveFi’s EDGE.
 
 Every time someone trades between EDGE and MAMO on Aerodrome, Mamo earns a fee. With EDGE now listed on @upbitglobal and @BithumbOfficial
 , trading volume is up.
@@ -223,7 +225,7 @@ Every time someone trades between EDGE and MAMO on Aerodrome, Mamo earns a fee. 
 More volume means more fees. And 100% of what Mamo earns will be distributed to MAMO depositors
 
 - Solidity contracts
-https://github.com/moonwell-fi/mamo-contracts
+  https://github.com/moonwell-fi/mamo-contracts
 
 - website
-https://mamo.bot/
+  https://mamo.bot/

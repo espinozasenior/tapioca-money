@@ -74,7 +74,6 @@ Exponential.fi has a comprehensive report of YO protocol here:
 
 {% embed url="<https://exponential.fi/protocols/yo/8056939b-d456-48f7-8611-e14e31a6f8e7>" %}
 
-
 # FAQ
 
 ## General FAQ
@@ -262,6 +261,7 @@ $YO rewards are earned for qualifying activities going forward. The Rewards Prog
 1. Deposit into YO Vaults
 
    Choose between yoUSD, yoETH, yoEUR, yoBTC, or yoGOLD vaults and start earning base yield plus additional $YO rewards.
+
 2. Participate in DeFi activities
 
    Add liquidity to all of our supported DeFi activities to earn $YO rewards.
@@ -356,11 +356,11 @@ While many DeFi protocols focus on a single chain, YO is inherently designed to 
 
 YO employs a systematic, algorithm-driven method to allocate new deposits across an approved set of pools, each of which is vetted and whitelisted by the community for a given asset index. At launch, the initial set of pools will be determined in collaboration with the Exponential DeFi team. Post launch, the pool selection process will gradually shift to the community. The community selects pools that get listed for each index, and defines a set of exposure parameters that help limit the exposure of each index. These exposure parameters are:
 
-* **Buffer for withdrawals (per chain):** Ensures there is always sufficient liquidity to accommodate user withdrawals without requiring emergency divestments.
-* **Max % exposure per pool/protocol/chain:** Prevents excessive concentration in a single pool, protocol or blockchain, reducing systemic and smart contract risks.
-* **Max % exposure per risk rating:** Limits the allocation to higher-risk pools to maintain a balanced risk-adjusted yield across the index.
-* **Max % exposure to fixed maturity pools (e.g. Pendle, Spectra):** Avoids overcommitting funds to pools with locked durations, preserving flexibility for rebalancing and withdrawals.
-* **Minimum amount of deposit or withdrawals to trigger a rebalancing:** Prevents unnecessary rebalancing due to small transactions, optimizing gas efficiency and minimizing unnecessary asset movement.
+- **Buffer for withdrawals (per chain):** Ensures there is always sufficient liquidity to accommodate user withdrawals without requiring emergency divestments.
+- **Max % exposure per pool/protocol/chain:** Prevents excessive concentration in a single pool, protocol or blockchain, reducing systemic and smart contract risks.
+- **Max % exposure per risk rating:** Limits the allocation to higher-risk pools to maintain a balanced risk-adjusted yield across the index.
+- **Max % exposure to fixed maturity pools (e.g. Pendle, Spectra):** Avoids overcommitting funds to pools with locked durations, preserving flexibility for rebalancing and withdrawals.
+- **Minimum amount of deposit or withdrawals to trigger a rebalancing:** Prevents unnecessary rebalancing due to small transactions, optimizing gas efficiency and minimizing unnecessary asset movement.
 
 The Protocol considers all listed pools based on their risk adjusted yield and their yield and allocates new deposits to the most attractive pool(s) subject to the constraints of the defined parameters. For example, assuming there are 3 pools listed, the Protocol will direct deposits that exceed the buffer to pool ranked #1 until the max exposure of one of the parameters is met, then it will direct the remaining deposits to the pool ranked #2, and so on and so forth.
 
@@ -370,8 +370,8 @@ This algorithm-driven yield allocation method balances maximum risk-adjusted ret
 
 If you want, I can also help you **improve this whitepaper section** (there are some repetitions and wording issues that would be flagged by crypto investors or technical reviewers).
 
-
 # Resources
+
 - https://github.com/yoprotocol/yo-protocol-skills/blob/main/skills/yo-protocol-cli/SKILL.md
 - https://www.npmjs.com/package/@yo-protocol/cli
 - https://github.com/yoprotocol

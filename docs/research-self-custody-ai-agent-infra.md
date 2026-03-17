@@ -12,18 +12,18 @@ Can an AI agent manage capital on-chain on behalf of a user while the user retai
 
 ## Comparison Table
 
-| Project | Custody Model | EIP-7702 | ERC-4337 | Multi-Protocol | Production Ready | Could Replace Our UserOp Code |
-|---------|--------------|----------|----------|---------------|-----------------|-------------------------------|
-| **Lit Protocol (Vincent)** | Non-custodial (threshold MPC + TEE) | Not explicit | Not explicit | Yes (Morpho, Aave, Uniswap, deBridge) | Early Access (Sep 2025) | Partially -- different paradigm |
-| **Turnkey** | Non-custodial (TEE enclaves) | Not confirmed | Not confirmed | Protocol-agnostic (raw signing) | Yes (production) | No -- signing layer only |
-| **Privy + ZeroDev** (current) | Non-custodial (session keys + serialize/deserialize) | Yes (native) | Yes (dual path) | Manual integration | Yes (production, we run it) | N/A (this IS our code) |
-| **Safe + Zodiac Roles** | Non-custodial (multisig + Roles module) | No (Safe is ERC-4337 native) | Yes | Yes (any contract call) | Yes (battle-tested, $100B+ secured) | Yes -- strongest candidate |
-| **Biconomy (Nexus + Smart Sessions)** | Non-custodial (modular smart account) | Yes (native) | Yes (ERC-7579) | Yes (AAVE, Morpho, Yearn + hundreds via MEE) | Yes (production, 4.6M+ accounts) | Yes -- strongest candidate |
-| **Coinbase AgentKit / Agentic Wallets** | Semi-custodial (TEE, keys in Coinbase infra) | Yes (Smart Wallet supports 7702 upgrade) | Yes | Limited (Base-centric, growing) | Yes (50M+ x402 txns) | Partially -- vendor lock-in risk |
-| **ElizaOS** | Varies (plugin-dependent: raw keys, Lit, TEE) | Via plugins | Via plugins | Yes (cross-chain via CCIP) | Framework only, not infra | No -- agent framework, not wallet infra |
-| **Brian.so** | Custodial-adjacent (intent layer, user signs) | Not confirmed | Not confirmed | Yes (multi-protocol intent resolution) | Beta | No -- NLP layer, not execution |
-| **Aperture Finance** | Protocol-managed (solver network) | Not confirmed | Not confirmed | Limited (Uniswap V3/V4 focused) | Yes (live, $12M raised) | No -- different product category |
-| **Openfort** | Non-custodial (embedded smart wallets) | Yes | Yes | Protocol-agnostic | Yes (production) | Yes -- viable alternative |
+| Project                                 | Custody Model                                        | EIP-7702                                 | ERC-4337        | Multi-Protocol                               | Production Ready                    | Could Replace Our UserOp Code           |
+| --------------------------------------- | ---------------------------------------------------- | ---------------------------------------- | --------------- | -------------------------------------------- | ----------------------------------- | --------------------------------------- |
+| **Lit Protocol (Vincent)**              | Non-custodial (threshold MPC + TEE)                  | Not explicit                             | Not explicit    | Yes (Morpho, Aave, Uniswap, deBridge)        | Early Access (Sep 2025)             | Partially -- different paradigm         |
+| **Turnkey**                             | Non-custodial (TEE enclaves)                         | Not confirmed                            | Not confirmed   | Protocol-agnostic (raw signing)              | Yes (production)                    | No -- signing layer only                |
+| **Privy + ZeroDev** (current)           | Non-custodial (session keys + serialize/deserialize) | Yes (native)                             | Yes (dual path) | Manual integration                           | Yes (production, we run it)         | N/A (this IS our code)                  |
+| **Safe + Zodiac Roles**                 | Non-custodial (multisig + Roles module)              | No (Safe is ERC-4337 native)             | Yes             | Yes (any contract call)                      | Yes (battle-tested, $100B+ secured) | Yes -- strongest candidate              |
+| **Biconomy (Nexus + Smart Sessions)**   | Non-custodial (modular smart account)                | Yes (native)                             | Yes (ERC-7579)  | Yes (AAVE, Morpho, Yearn + hundreds via MEE) | Yes (production, 4.6M+ accounts)    | Yes -- strongest candidate              |
+| **Coinbase AgentKit / Agentic Wallets** | Semi-custodial (TEE, keys in Coinbase infra)         | Yes (Smart Wallet supports 7702 upgrade) | Yes             | Limited (Base-centric, growing)              | Yes (50M+ x402 txns)                | Partially -- vendor lock-in risk        |
+| **ElizaOS**                             | Varies (plugin-dependent: raw keys, Lit, TEE)        | Via plugins                              | Via plugins     | Yes (cross-chain via CCIP)                   | Framework only, not infra           | No -- agent framework, not wallet infra |
+| **Brian.so**                            | Custodial-adjacent (intent layer, user signs)        | Not confirmed                            | Not confirmed   | Yes (multi-protocol intent resolution)       | Beta                                | No -- NLP layer, not execution          |
+| **Aperture Finance**                    | Protocol-managed (solver network)                    | Not confirmed                            | Not confirmed   | Limited (Uniswap V3/V4 focused)              | Yes (live, $12M raised)             | No -- different product category        |
+| **Openfort**                            | Non-custodial (embedded smart wallets)               | Yes                                      | Yes             | Protocol-agnostic                            | Yes (production)                    | Yes -- viable alternative               |
 
 ---
 
@@ -34,6 +34,7 @@ Can an AI agent manage capital on-chain on behalf of a user while the user retai
 **What it is:** Decentralized key management network using threshold cryptography (MPC) + TEE. Vincent is their agent-specific platform launched in Early Access (Sep 2025).
 
 **Architecture:**
+
 - Programmable Key Pairs (PKPs) are split across the Lit network -- no single node holds a complete key
 - Agents operate with delegated PKPs; policies are enforced at signing time by Lit Actions (serverless functions running in TEEs)
 - Four primitives: Accounts, Abilities, Policies, Apps
@@ -41,6 +42,7 @@ Can an AI agent manage capital on-chain on behalf of a user while the user retai
 **Self-custody model:** Strong. Keys are threshold-split across a decentralized network. User delegates specific "abilities" (e.g., "swap on Uniswap up to $X") with onchain policies. User can revoke abilities at any time.
 
 **Permissions:**
+
 - Fine-grained: time windows, rate limits, value ceilings, slippage caps, position size limits
 - Policies stored onchain and enforced by the Lit network at signing time
 - Composable: abilities can be mixed and matched per agent/app
@@ -62,6 +64,7 @@ Can an AI agent manage capital on-chain on behalf of a user while the user retai
 **What it is:** Enterprise-grade non-custodial wallet infrastructure. All key operations happen in secure enclaves (TEEs).
 
 **Architecture:**
+
 - Keys generated and stored in TEEs -- Turnkey never has access to plaintext keys
 - Policy engine scopes what each key can do
 - Delegated access model for AI agents
@@ -84,6 +87,7 @@ Can an AI agent manage capital on-chain on behalf of a user while the user retai
 **What it is:** Our current stack. Privy provides embedded wallets + auth. ZeroDev provides ERC-4337/EIP-7702 smart accounts with session keys via serialize/deserialize pattern.
 
 **Architecture (as implemented in Tapioca):**
+
 - Client creates kernel account with EOA as sudo validator, session key as regular validator
 - `serializePermissionAccount` captures the enable signature + CallPolicy
 - Server `deserializePermissionAccount` to execute UserOps without the EOA private key
@@ -93,6 +97,7 @@ Can an AI agent manage capital on-chain on behalf of a user while the user retai
 **Self-custody model:** Strong. User's EOA key never leaves Privy's MPC infrastructure. Session key is scoped and time-limited (7 days). User can revoke by undelegating (7702) or revoking session (4337).
 
 **Known pain points from our experience:**
+
 - Manual permission management: every new protocol requires updating `createAndSerializeAccount` with new (target, selector) pairs
 - Re-registration required after any CallPolicy change
 - External wallet support required building a separate 4337 path
@@ -112,6 +117,7 @@ Can an AI agent manage capital on-chain on behalf of a user while the user retai
 **What it is:** Safe{Wallet} (formerly Gnosis Safe) is the most battle-tested smart account ($100B+ secured). Zodiac Roles Modifier is an onchain permissions module maintained by Gnosis Guild.
 
 **Architecture:**
+
 - Safe is an N-of-M multisig smart account (ERC-4337 compatible)
 - Zodiac Roles Modifier is installed as a Safe module
 - Roles define which addresses, functions, and parameters an agent can call
@@ -121,6 +127,7 @@ Can an AI agent manage capital on-chain on behalf of a user while the user retai
 **Self-custody model:** Very strong. Safe is user-owned. Agent is a module with scoped permissions. User (as Safe owner) can remove the module at any time via a standard Safe transaction.
 
 **Permissions:**
+
 - Granular: per-contract, per-function, per-parameter constraints
 - Example: "Agent can call Morpho.deposit() with USDC only, max 10,000 USDC per call"
 - Onchain enforcement -- impossible to bypass
@@ -143,6 +150,7 @@ Can an AI agent manage capital on-chain on behalf of a user while the user retai
 **What it is:** Modular smart account infrastructure. Nexus is their ERC-7579 compliant smart account. Smart Sessions enable scoped delegation. MEE (Modular Execution Environment) handles cross-chain composability.
 
 **Architecture:**
+
 - Nexus smart account: 25% lower gas than alternatives (their claim)
 - Smart Sessions: users define permissions (contract access, function limits, token caps), approve with a single gasless signature, then agents operate within boundaries
 - EIP-7702 support: Smart Sessions work with both smart accounts and EOAs (via EIP-7702)
@@ -152,6 +160,7 @@ Can an AI agent manage capital on-chain on behalf of a user while the user retai
 **Self-custody model:** Strong. User owns the smart account. Agent operates via Smart Session with scoped permissions. EIP-7702 revocation is native (EOA owner creates new authorization).
 
 **Permissions:**
+
 - Smart Sessions with reusable policies and validators (ERC-7579 modules)
 - Time-boxed, budget-scoped session keys
 - Example from docs: AI rebalancing across AAVE, Morpho, and Yearn with USDC-only permissions
@@ -172,6 +181,7 @@ Can an AI agent manage capital on-chain on behalf of a user while the user retai
 **What it is:** Coinbase Developer Platform's toolkit for giving AI agents wallets. Agentic Wallets are purpose-built wallet infrastructure for autonomous agents.
 
 **Architecture:**
+
 - Keys isolated in Coinbase TEEs
 - Session spending caps, per-transaction limits, KYT screening
 - x402 protocol for machine-to-machine payments
@@ -199,12 +209,14 @@ Can an AI agent manage capital on-chain on behalf of a user while the user retai
 **What it is:** Open-source TypeScript framework for building autonomous AI agents. Not wallet infrastructure -- it is an agent runtime that connects to various wallet backends via plugins.
 
 **Architecture:**
+
 - Plugin-based: EVM plugin, Solana plugin, TEE plugin, Lit Agent Wallet plugin, AgentKit plugin
 - Agent manages character/personality, memory, and tool selection
 - Wallet management delegated to whichever plugin is installed
 - Cross-chain via Chainlink CCIP integration (Nov 2025)
 
 **Self-custody model:** Depends entirely on which wallet plugin is used:
+
 - Raw private key in env vars: custodial (agent holds key)
 - Lit Agent Wallet plugin: non-custodial (threshold MPC)
 - TEE plugin (Phala Network): hardware-secured
@@ -227,6 +239,7 @@ Can an AI agent manage capital on-chain on behalf of a user while the user retai
 **What it is:** AI-powered intent resolution layer for Web3. Translates natural language prompts into executable smart contract calls.
 
 **Architecture:**
+
 - Brian-8B model (fine-tuned Llama-3.1-8B) for Web3 intent recognition
 - Intent Recognition Engine translates "Swap 10 USDC for ETH on Uniswap" into calldata
 - API-based: returns transaction objects that the user/agent signs
@@ -251,6 +264,7 @@ Can an AI agent manage capital on-chain on behalf of a user while the user retai
 **What it is:** Intent-based DeFi automation platform with a solver network. Focused on liquidity management (Uniswap V3/V4).
 
 **Architecture:**
+
 - Users state goals in natural language or structured intents
 - Solver network finds optimal execution paths
 - Automated liquidity management, rebalancing, fee auto-compounding
@@ -280,6 +294,7 @@ Can an AI agent manage capital on-chain on behalf of a user while the user retai
 Our current stack works. The pain points are real but manageable. No competing solution is mature enough to justify a migration right now.
 
 **Immediate improvements:**
+
 1. Extract permission definitions into a config file so adding new protocols does not require code changes in `client-secure.ts`
 2. Investigate ZeroDev's latest permission validator updates -- they may have improved the re-registration requirement
 3. Monitor Uniswap AI Skills and similar protocol-native agent interfaces
@@ -287,6 +302,7 @@ Our current stack works. The pain points are real but manageable. No competing s
 ### Medium-Term (3-6 months): Proof-of-Concept with Biconomy
 
 Biconomy's Nexus + Smart Sessions is the most direct replacement for our hand-rolled code:
+
 - Native EIP-7702 support (matches our primary path)
 - Smart Sessions eliminate manual (target, selector) management
 - Supertransaction API handles multi-protocol calldata
@@ -298,6 +314,7 @@ Biconomy's Nexus + Smart Sessions is the most direct replacement for our hand-ro
 ### Medium-Term Alternative: Safe + Zodiac Roles
 
 If targeting institutional or power users:
+
 - Safe is the gold standard for high-value custody
 - Zodiac Roles Modifier is purpose-built for agent delegation
 - No custom UserOp code needed
@@ -306,6 +323,7 @@ If targeting institutional or power users:
 ### Long-Term (6-12 months): Watch Lit Protocol Vincent
 
 Vincent's decentralized signing model is the philosophically correct answer to "who should hold the keys?" But it needs time to mature:
+
 - Wait for General Availability
 - Monitor security audits of the Lit network
 - Evaluate gas costs and latency at scale

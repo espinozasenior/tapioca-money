@@ -6,13 +6,13 @@ Analysis performed by 4 parallel agents across the entire codebase.
 
 ### Scope
 
-| Layer | Files | LOC | Must Rewrite | Must Modify | Reusable |
-|-------|-------|-----|-------------|-------------|----------|
-| Wallet/Auth Infra | 23 | 5,657 | 2,606 | 2,207 | 844 |
-| Protocol Integration | 18 | ~2,400 | 0 | ~1,100 | ~1,300 |
-| Frontend/Hooks/UI | 36+ | ~4,500 | ~1,100 | ~800 | ~2,600 |
-| API Routes | 17 | ~3,500 | 0 | ~1,800 | ~1,700 |
-| **Total** | **94+** | **~16,000** | **~3,700** | **~5,900** | **~6,400** |
+| Layer                | Files   | LOC         | Must Rewrite | Must Modify | Reusable   |
+| -------------------- | ------- | ----------- | ------------ | ----------- | ---------- |
+| Wallet/Auth Infra    | 23      | 5,657       | 2,606        | 2,207       | 844        |
+| Protocol Integration | 18      | ~2,400      | 0            | ~1,100      | ~1,300     |
+| Frontend/Hooks/UI    | 36+     | ~4,500      | ~1,100       | ~800        | ~2,600     |
+| API Routes           | 17      | ~3,500      | 0            | ~1,800      | ~1,700     |
+| **Total**            | **94+** | **~16,000** | **~3,700**   | **~5,900**  | **~6,400** |
 
 ### Key Architectural Shift
 
@@ -48,11 +48,19 @@ interface ProtocolAdapter {
 
 type TxCall = { to: Address; data: Hex; value: bigint };
 type Permission = { target: Address; selector: Hex; rules?: ParamRule[] };
-type YieldInfo = { vaultAddress: Address; asset: string; apy: number; tvl: bigint; protocol: string; riskScore?: number };
+type YieldInfo = {
+  vaultAddress: Address;
+  asset: string;
+  apy: number;
+  tvl: bigint;
+  protocol: string;
+  riskScore?: number;
+};
 type Position = { vaultAddress: Address; shares: bigint; valueUsd: number; protocol: string };
 ```
 
 **Tests first:**
+
 - [ ] `tests/unit/lib/adapters/morpho-adapter.test.ts` -- getPermissions returns correct selectors, prepareDeposit returns 2 calls (approve+deposit), prepareWithdraw returns 1 call
 - [ ] `tests/unit/lib/adapters/yo-adapter.test.ts` -- getPermissions includes gateway, prepareDeposit includes quoting, prepareWithdraw handles async redemptions
 - [ ] `tests/unit/lib/adapters/pendle-adapter.test.ts` -- getPermissions spans router+PT, prepareDeposit returns 4 calls, prepareWithdraw handles maturity branching
@@ -79,6 +87,7 @@ interface BiconomySessionStore {
 ```
 
 **Tests first:**
+
 - [ ] `tests/unit/lib/biconomy/session-manager.test.ts` -- create session, grant permissions, resume session, revoke session
 - [ ] `tests/unit/lib/biconomy/client.test.ts` -- create smart account client, send transaction with session, batch transactions
 
@@ -192,21 +201,23 @@ interface BiconomySessionStore {
 
 ### Routes that change (8 files):
 
-| Route | Change |
-|-------|--------|
-| `/api/agent/cron` | Replace `createDeserializedKernelClient` with `createSessionClient` |
-| `/api/vault/deposit` | Replace 3 executor imports with unified `executeDeposit` |
-| `/api/vault/redeem` | Replace 3 executor imports with unified `executeWithdraw` |
-| `/api/agent/register` | Accept Biconomy session format instead of ZeroDev |
-| `/api/agent/generate-session-key` | Store Biconomy session instead of serialized account |
-| `/api/agent/health` | Ping Biconomy bundler instead of ZeroDev |
-| `/api/transfer/register` | Biconomy transfer session |
-| `/api/transfer/send` | Biconomy transfer execution |
+| Route                             | Change                                                              |
+| --------------------------------- | ------------------------------------------------------------------- |
+| `/api/agent/cron`                 | Replace `createDeserializedKernelClient` with `createSessionClient` |
+| `/api/vault/deposit`              | Replace 3 executor imports with unified `executeDeposit`            |
+| `/api/vault/redeem`               | Replace 3 executor imports with unified `executeWithdraw`           |
+| `/api/agent/register`             | Accept Biconomy session format instead of ZeroDev                   |
+| `/api/agent/generate-session-key` | Store Biconomy session instead of serialized account                |
+| `/api/agent/health`               | Ping Biconomy bundler instead of ZeroDev                            |
+| `/api/transfer/register`          | Biconomy transfer session                                           |
+| `/api/transfer/send`              | Biconomy transfer execution                                         |
 
 ### Routes unchanged (9 files):
+
 `/api/optimize`, `/api/withdraw`, `/api/morpho/vaults`, `/api/yo/vaults`, `/api/yo/pending-redeems`, `/api/agent/activity`, `/api/agent/sync`, `/api/agent/gains`
 
 ### Route to remove:
+
 `/api/agent/undelegate` -- EIP-7702 specific; Biconomy uses on-chain session revocation instead
 
 ---
@@ -303,14 +314,14 @@ ALTER TABLE users RENAME COLUMN authorization_7702 TO session_authorization;
 
 ### Unit Tests (per phase)
 
-| Phase | Test Files | Focus |
-|-------|-----------|-------|
-| 0 | `adapters/*.test.ts` | Interface contracts |
-| 1 | `adapters/{morpho,yo,pendle}-adapter.test.ts` | Calldata construction, permissions |
-| 2 | `biconomy/{session-manager,execution-client,executor}.test.ts` | Session lifecycle, batch execution |
-| 3 | `api/{deposit,redeem,cron}.test.ts` | Route integration with new executor |
-| 4 | `hooks/{useAgent,useBalance}.test.ts` | Registration flow, balance resolution |
-| 5 | `agent/{decision-engine,rebalance-executor}.test.ts` | Adapter-based decisions |
+| Phase | Test Files                                                     | Focus                                 |
+| ----- | -------------------------------------------------------------- | ------------------------------------- |
+| 0     | `adapters/*.test.ts`                                           | Interface contracts                   |
+| 1     | `adapters/{morpho,yo,pendle}-adapter.test.ts`                  | Calldata construction, permissions    |
+| 2     | `biconomy/{session-manager,execution-client,executor}.test.ts` | Session lifecycle, batch execution    |
+| 3     | `api/{deposit,redeem,cron}.test.ts`                            | Route integration with new executor   |
+| 4     | `hooks/{useAgent,useBalance}.test.ts`                          | Registration flow, balance resolution |
+| 5     | `agent/{decision-engine,rebalance-executor}.test.ts`           | Adapter-based decisions               |
 
 ### Integration Tests
 
@@ -322,6 +333,7 @@ ALTER TABLE users RENAME COLUMN authorization_7702 TO session_authorization;
 ### Verification Gates
 
 Each phase must pass before proceeding:
+
 1. All existing tests pass (or are updated)
 2. New tests cover the changed code
 3. TypeScript build clean (`tsc --noEmit`)
@@ -331,26 +343,26 @@ Each phase must pass before proceeding:
 
 ## Risk Register
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Biconomy SDK API changes | HIGH | Pin exact version, wrap in thin abstraction |
-| User re-registration friction | MEDIUM | Clear UI banner, in-app walkthrough |
-| Pendle adapter complexity | HIGH | Implement last, extensive test coverage |
-| Privy + Biconomy compatibility | MEDIUM | Keep Privy for auth-only, verify no conflicts |
-| Base Paymaster v0.6 vs Biconomy v0.7 | LOW | Use Biconomy's own MEE sponsorship instead |
+| Risk                                 | Impact | Mitigation                                    |
+| ------------------------------------ | ------ | --------------------------------------------- |
+| Biconomy SDK API changes             | HIGH   | Pin exact version, wrap in thin abstraction   |
+| User re-registration friction        | MEDIUM | Clear UI banner, in-app walkthrough           |
+| Pendle adapter complexity            | HIGH   | Implement last, extensive test coverage       |
+| Privy + Biconomy compatibility       | MEDIUM | Keep Privy for auth-only, verify no conflicts |
+| Base Paymaster v0.6 vs Biconomy v0.7 | LOW    | Use Biconomy's own MEE sponsorship instead    |
 
 ---
 
 ## Estimated Effort
 
-| Phase | Scope | Estimate |
-|-------|-------|----------|
-| Phase 0: Foundation | Interface + tests | 1 day |
-| Phase 1: Protocol Adapters | 3 adapters + registry | 3 days |
-| Phase 2: Biconomy Integration | Session manager + executor | 3-4 days |
-| Phase 3: API Routes | 8 route updates | 2 days |
-| Phase 4: Frontend | Hooks + components | 2 days |
-| Phase 5: Decision Engine | Adapter integration | 1 day |
-| Phase 6: DB Migration | Schema + migration script | 0.5 days |
-| Phase 7: Cleanup | Delete ZeroDev code | 0.5 days |
-| **Total** | **~34 files changed** | **~13-14 days** |
+| Phase                         | Scope                      | Estimate        |
+| ----------------------------- | -------------------------- | --------------- |
+| Phase 0: Foundation           | Interface + tests          | 1 day           |
+| Phase 1: Protocol Adapters    | 3 adapters + registry      | 3 days          |
+| Phase 2: Biconomy Integration | Session manager + executor | 3-4 days        |
+| Phase 3: API Routes           | 8 route updates            | 2 days          |
+| Phase 4: Frontend             | Hooks + components         | 2 days          |
+| Phase 5: Decision Engine      | Adapter integration        | 1 day           |
+| Phase 6: DB Migration         | Schema + migration script  | 0.5 days        |
+| Phase 7: Cleanup              | Delete ZeroDev code        | 0.5 days        |
+| **Total**                     | **~34 files changed**      | **~13-14 days** |

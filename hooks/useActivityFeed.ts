@@ -36,7 +36,9 @@ export function useActivityFeed() {
   });
 
   // Fetch yield positions - uses agentAddress (smart wallet for 4337, EOA for 7702)
-  const { positions, isLoading: positionsLoading } = useYieldPositions(agentAddress ?? wallet?.address);
+  const { positions, isLoading: positionsLoading } = useYieldPositions(
+    agentAddress ?? wallet?.address
+  );
 
   // Combine and sort events
   const combinedEvents = (() => {

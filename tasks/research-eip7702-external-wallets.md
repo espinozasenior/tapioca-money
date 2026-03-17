@@ -8,7 +8,7 @@
 
 ## The Core Problem
 
-viem's `signAuthorization` only works with **local accounts** (private key in memory). JSON-RPC accounts (MetaMask, Brave, Rabby) get `AccountTypeNotSupportedError`. Per viem maintainers: *"It is not possible to sign an authorization over JSON-RPC right now, so it won't be added into Viem until there is an ERC for it."* (github.com/wevm/viem/discussions/3285)
+viem's `signAuthorization` only works with **local accounts** (private key in memory). JSON-RPC accounts (MetaMask, Brave, Rabby) get `AccountTypeNotSupportedError`. Per viem maintainers: _"It is not possible to sign an authorization over JSON-RPC right now, so it won't be added into Viem until there is an ERC for it."_ (github.com/wevm/viem/discussions/3285)
 
 This means **apps cannot call `signAuthorization` on an external wallet**. The wallet must sign the authorization internally.
 
@@ -85,11 +85,11 @@ const signAuthorization = async () => {
 
 ### Existing Functions (client-secure.ts)
 
-| Function | Lines | Status |
-|---|---|---|
-| `delegateViaExternalWallet()` | 484-590 | Implemented, tested |
+| Function                              | Lines   | Status              |
+| ------------------------------------- | ------- | ------------------- |
+| `delegateViaExternalWallet()`         | 484-590 | Implemented, tested |
 | `createAndSerializeAccountExternal()` | 601-796 | Implemented, tested |
-| `registerAgentSecureExternal()` | 810-899 | Implemented, tested |
+| `registerAgentSecureExternal()`       | 810-899 | Implemented, tested |
 
 ### Existing Tests
 
@@ -143,6 +143,7 @@ const register = useMutation({
 ### 2. UI for Two-Step Flow
 
 External wallets require **two separate wallet prompts**:
+
 1. **"Delegate to Smart Account"** — Signs Type 4 tx (sets delegation on-chain)
 2. **"Create Session Key"** — Signs enable typed data (creates permission validator)
 
@@ -156,14 +157,14 @@ Already implemented in `delegateViaExternalWallet()` via `wallet_getCapabilities
 
 ## Wallet Support Matrix (as of March 2026)
 
-| Wallet | EIP-7702 | EIP-5792 (sendCalls) | ERC-7715 (grantPermissions) | Notes |
-|---|---|---|---|---|
-| MetaMask v12+ | Via Delegation Toolkit | Supported | Via Delegation Toolkit | Most mature implementation |
-| Coinbase Wallet | Expected | Supported | Unknown | Don't delegate directly to CoinbaseSW impl |
-| Rainbow | Unknown | Supported | Unknown | |
-| Brave Wallet | Unknown | Unknown | Unknown | Need to test |
-| Rabby | Not yet | Not yet | Not yet | EOA-only, no AA support |
-| WalletConnect | Depends on connected wallet | Depends | Depends | |
+| Wallet          | EIP-7702                    | EIP-5792 (sendCalls) | ERC-7715 (grantPermissions) | Notes                                      |
+| --------------- | --------------------------- | -------------------- | --------------------------- | ------------------------------------------ |
+| MetaMask v12+   | Via Delegation Toolkit      | Supported            | Via Delegation Toolkit      | Most mature implementation                 |
+| Coinbase Wallet | Expected                    | Supported            | Unknown                     | Don't delegate directly to CoinbaseSW impl |
+| Rainbow         | Unknown                     | Supported            | Unknown                     |                                            |
+| Brave Wallet    | Unknown                     | Unknown              | Unknown                     | Need to test                               |
+| Rabby           | Not yet                     | Not yet              | Not yet                     | EOA-only, no AA support                    |
+| WalletConnect   | Depends on connected wallet | Depends              | Depends                     |                                            |
 
 ---
 
@@ -185,6 +186,7 @@ MetaMask's Delegation Toolkit introduces `wallet_grantPermissions` — a standar
 ## Recommended Implementation Plan
 
 ### Phase 1: Wire External Wallet Flow (Minimal Changes)
+
 1. Remove the `throw` in `useOptimizer.ts` for non-Privy wallets
 2. Branch on `activeWalletType` from `useWalletSelection()`
 3. Call existing `delegateViaExternalWallet()` → `registerAgentSecureExternal()`
@@ -192,11 +194,13 @@ MetaMask's Delegation Toolkit introduces `wallet_grantPermissions` — a standar
 5. Update test 31 to expect success instead of error
 
 ### Phase 2: Capability Detection & Graceful Degradation
+
 1. Use `wallet_getCapabilities` to check EIP-7702 support before starting
 2. Show clear error if wallet doesn't support 7702
 3. Suggest switching to Privy embedded wallet as fallback
 
 ### Phase 3: ERC-7715 Integration (Future)
+
 1. Detect if wallet supports `wallet_grantPermissions`
 2. Use single-step permission flow where available
 3. Fall back to two-step Type 4 tx flow for older wallets

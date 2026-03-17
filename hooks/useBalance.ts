@@ -27,7 +27,11 @@ export function useBalance() {
 
   // Use configured RPC URL to avoid rate-limited public endpoint (P1-2 fix)
   const publicClient = useMemo(
-    () => createPublicClient({ chain: base, transport: http(process.env.NEXT_PUBLIC_BASE_RPC_URL || undefined) }),
+    () =>
+      createPublicClient({
+        chain: base,
+        transport: http(process.env.NEXT_PUBLIC_BASE_RPC_URL || undefined),
+      }),
     []
   );
 

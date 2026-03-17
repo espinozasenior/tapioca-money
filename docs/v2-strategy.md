@@ -14,14 +14,14 @@ Tapioca Finance must evolve from a frontend-first yield optimizer into a **CLI-f
 
 ### Key Decisions
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Primary interface | CLI-first (`tapioca` CLI) | Agents are the distribution channel; CLI has 35x fewer tokens than MCP |
-| Wallet infra | Privy embedded + Biconomy MEE + Smart Sessions | Solves re-registration pain, adds cross-chain, composable permissions |
-| Revenue model | Invisible 10% performance fee (ERC-4626 harvest) | Proven by Beefy (5+ years), invisible to users |
-| Fiat on-ramp | MoonPay as funding rail (ACH ~1%) | Send USDC to Biconomy smart account address |
-| Agent distribution | SKILL.md + MCP server + ClawHub | Every AI agent (Claude, GPT, Gemini) can discover and use Tapioca |
-| New wallet per user | Privy creates embedded EOA + Biconomy 7702 delegation | Simple UX, non-custodial, fiat-compatible |
+| Decision            | Choice                                                | Rationale                                                              |
+| ------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------- |
+| Primary interface   | CLI-first (`tapioca` CLI)                             | Agents are the distribution channel; CLI has 35x fewer tokens than MCP |
+| Wallet infra        | Privy embedded + Biconomy MEE + Smart Sessions        | Solves re-registration pain, adds cross-chain, composable permissions  |
+| Revenue model       | Invisible 10% performance fee (ERC-4626 harvest)      | Proven by Beefy (5+ years), invisible to users                         |
+| Fiat on-ramp        | MoonPay as funding rail (ACH ~1%)                     | Send USDC to Biconomy smart account address                            |
+| Agent distribution  | SKILL.md + MCP server + ClawHub                       | Every AI agent (Claude, GPT, Gemini) can discover and use Tapioca      |
+| New wallet per user | Privy creates embedded EOA + Biconomy 7702 delegation | Simple UX, non-custodial, fiat-compatible                              |
 
 ---
 
@@ -29,15 +29,15 @@ Tapioca Finance must evolve from a frontend-first yield optimizer into a **CLI-f
 
 ### Benchmark Matrix
 
-| Product | Infra Model | Revenue | Self-Custody | Multi-Protocol | CLI/Agent | Differentiator |
-|---------|------------|---------|-------------|---------------|-----------|---------------|
-| **YO** | On-chain vaults (ERC-4626) | 0% (VC funded) | Yes | Yes (cross-chain) | CLI (unreleased?) | Best infra, $80M TVL, tokenized yield (yoTokens) |
-| **Giza/ARMA** | Smart account + optimizer | 10% perf fee | Yes | Yes | No | MILP optimizer models yield curves per-deposit-size |
-| **Zyfai** | Safe7579 + Rhinestone | 10% perf fee | Yes | Yes | SDK + MCP | ZK proofs per rebalance (ERC-8004), capital splitting |
-| **KOPS** | Coinbase TEE + ZK proofs | 15% perf fee | Yes | Limited | No | Verifiable actions via ZK-proofs |
-| **Mamo** | Custom contracts | 0% (Aerodrome revenue) | Yes | Limited (Moonwell+Morpho) | No | Simplest UX, open-source contracts |
-| **Sail** | Thirdweb 7702 | 0% (pre-revenue) | Yes | Yes | Chat agent | Best personalization (per-user agent), Sonar risk monitoring |
-| **Goldbot Sachs** | ERC-4626 wrapper | 10% harvest dilution | Yes | Single (Beefy) | Skill file | Simplest architecture (1 contract) |
+| Product           | Infra Model                | Revenue                | Self-Custody | Multi-Protocol            | CLI/Agent         | Differentiator                                               |
+| ----------------- | -------------------------- | ---------------------- | ------------ | ------------------------- | ----------------- | ------------------------------------------------------------ |
+| **YO**            | On-chain vaults (ERC-4626) | 0% (VC funded)         | Yes          | Yes (cross-chain)         | CLI (unreleased?) | Best infra, $80M TVL, tokenized yield (yoTokens)             |
+| **Giza/ARMA**     | Smart account + optimizer  | 10% perf fee           | Yes          | Yes                       | No                | MILP optimizer models yield curves per-deposit-size          |
+| **Zyfai**         | Safe7579 + Rhinestone      | 10% perf fee           | Yes          | Yes                       | SDK + MCP         | ZK proofs per rebalance (ERC-8004), capital splitting        |
+| **KOPS**          | Coinbase TEE + ZK proofs   | 15% perf fee           | Yes          | Limited                   | No                | Verifiable actions via ZK-proofs                             |
+| **Mamo**          | Custom contracts           | 0% (Aerodrome revenue) | Yes          | Limited (Moonwell+Morpho) | No                | Simplest UX, open-source contracts                           |
+| **Sail**          | Thirdweb 7702              | 0% (pre-revenue)       | Yes          | Yes                       | Chat agent        | Best personalization (per-user agent), Sonar risk monitoring |
+| **Goldbot Sachs** | ERC-4626 wrapper           | 10% harvest dilution   | Yes          | Single (Beefy)            | Skill file        | Simplest architecture (1 contract)                           |
 
 ### Competitive Moats Worth Building
 
@@ -108,6 +108,7 @@ tapioca mcp                     # Start MCP server (all commands as JSON-RPC)
 ```
 
 11 commands mapping directly to existing code:
+
 - `yields list` -> `YieldDecisionEngine` + protocol API clients
 - `positions list` -> Protocol position readers
 - `deposit`/`redeem` -> Executor files
@@ -192,14 +193,14 @@ Publish skills to ClawHub (13,729+ skills, the npm for agents).
 
 ### Why Switch from ZeroDev
 
-| Pain Point (Current) | Biconomy Solution |
-|----------------------|-------------------|
-| Manual (target, selector) pairs per protocol | Smart Sessions: `grantPermission()` with modular policies |
+| Pain Point (Current)                              | Biconomy Solution                                                                   |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Manual (target, selector) pairs per protocol      | Smart Sessions: `grantPermission()` with modular policies                           |
 | Re-registration required on any permission change | Incremental `grantPermission()` -- add protocols without touching existing sessions |
-| 3 registration paths (7702, external, 4337) | 1 unified path (ERC-7579 Smart Sessions) |
-| Custom undelegation flow (relayer + Type 4 tx) | On-chain session revocation via module call |
-| No cross-chain execution | MEE Supertransactions: single signature spans chains |
-| Manual UserOp construction | MEE orchestrator handles sequencing |
+| 3 registration paths (7702, external, 4337)       | 1 unified path (ERC-7579 Smart Sessions)                                            |
+| Custom undelegation flow (relayer + Type 4 tx)    | On-chain session revocation via module call                                         |
+| No cross-chain execution                          | MEE Supertransactions: single signature spans chains                                |
+| Manual UserOp construction                        | MEE orchestrator handles sequencing                                                 |
 
 ### SDK Migration
 
@@ -243,44 +244,47 @@ Adding new protocol: just call grantPermission() again
 ```typescript
 // Example: grant Tapioca agent permissions
 const response = await nexusSessionClient.grantPermission({
-  sessionRequestedInfo: [{
-    sessionPublicKey: agentSigner.address,
-    actionPoliciesInfo: [
-      // Morpho deposits
-      {
-        contractAddress: MORPHO_VAULT,
-        functionSelector: "0x6e553f65", // deposit(uint256,address)
-        rules: [],
-      },
-      // Morpho redeems
-      {
-        contractAddress: MORPHO_VAULT,
-        functionSelector: "0xba087652", // redeem(uint256,address,address)
-        rules: [],
-      },
-      // YO gateway
-      {
-        contractAddress: YO_GATEWAY,
-        functionSelector: "0x...", // deposit selector
-        rules: [],
-      },
-      // USDC approve (for any vault)
-      {
-        contractAddress: USDC_ADDRESS,
-        functionSelector: "0x095ea7b3", // approve(address,uint256)
-        rules: [],
-      },
-    ],
-    // Time and spending limits
-    sessionValidAfter: Math.floor(Date.now() / 1000),
-    sessionValidUntil: Math.floor(Date.now() / 1000) + 30 * 86400, // 30 days
-  }],
+  sessionRequestedInfo: [
+    {
+      sessionPublicKey: agentSigner.address,
+      actionPoliciesInfo: [
+        // Morpho deposits
+        {
+          contractAddress: MORPHO_VAULT,
+          functionSelector: "0x6e553f65", // deposit(uint256,address)
+          rules: [],
+        },
+        // Morpho redeems
+        {
+          contractAddress: MORPHO_VAULT,
+          functionSelector: "0xba087652", // redeem(uint256,address,address)
+          rules: [],
+        },
+        // YO gateway
+        {
+          contractAddress: YO_GATEWAY,
+          functionSelector: "0x...", // deposit selector
+          rules: [],
+        },
+        // USDC approve (for any vault)
+        {
+          contractAddress: USDC_ADDRESS,
+          functionSelector: "0x095ea7b3", // approve(address,uint256)
+          rules: [],
+        },
+      ],
+      // Time and spending limits
+      sessionValidAfter: Math.floor(Date.now() / 1000),
+      sessionValidUntil: Math.floor(Date.now() / 1000) + 30 * 86400, // 30 days
+    },
+  ],
 });
 ```
 
 ### Cross-Chain (Future)
 
 When Tapioca expands beyond Base, MEE Supertransactions enable:
+
 - Single user signature -> bridge + swap + deposit across chains
 - Orchestrator handles timing, confirmation, and dependencies
 - No change to CLI interface (executor handles it internally)
@@ -299,11 +303,11 @@ Biconomy's PREP (Provably Rootless EIP-7702 Proxy) creates smart accounts where 
 
 ### Recommended 3-Phase Approach
 
-| Phase | TVL | Fee | Gas | Revenue/Month |
-|-------|-----|-----|-----|--------------|
-| **Growth** (0-$10M) | $0-10M | 0% | Sponsored | $0 (runway funded) |
-| **Transition** ($10-50M) | $10-50M | 5% performance | Sponsored | $4k-21k |
-| **Sustainable** ($50M+) | $50M+ | 7-10% performance | Sponsored | $29k-42k+ |
+| Phase                    | TVL     | Fee               | Gas       | Revenue/Month      |
+| ------------------------ | ------- | ----------------- | --------- | ------------------ |
+| **Growth** (0-$10M)      | $0-10M  | 0%                | Sponsored | $0 (runway funded) |
+| **Transition** ($10-50M) | $10-50M | 5% performance    | Sponsored | $4k-21k            |
+| **Sustainable** ($50M+)  | $50M+   | 7-10% performance | Sponsored | $29k-42k+          |
 
 ### Why This Model
 
@@ -330,29 +334,30 @@ Users never see a fee transaction. The displayed APY already accounts for it.
 
 Base L2 gas is extremely cheap:
 
-| Users | Rebalances/day | Monthly Gas Cost |
-|-------|---------------|-----------------|
-| 100 | 1 | $6-30 |
-| 1,000 | 1 | $60-300 |
-| 10,000 | 1 | $600-3,000 |
+| Users  | Rebalances/day | Monthly Gas Cost |
+| ------ | -------------- | ---------------- |
+| 100    | 1              | $6-30            |
+| 1,000  | 1              | $60-300          |
+| 10,000 | 1              | $600-3,000       |
 
 **Maintain gasless UX indefinitely.** At $300/month for 1,000 users, this is the highest-ROI UX investment possible.
 
 ### Yield Context (Base USDC, March 2026)
 
-| Protocol | APY Range |
-|----------|-----------|
-| Morpho (curated vaults) | 4-10.7% |
-| Aave V3 | 4-7% |
-| Moonwell | 3-8% |
-| Fluid | 3-6% |
-| Compound V3 | 3-5% |
+| Protocol                | APY Range |
+| ----------------------- | --------- |
+| Morpho (curated vaults) | 4-10.7%   |
+| Aave V3                 | 4-7%      |
+| Moonwell                | 3-8%      |
+| Fluid                   | 3-6%      |
+| Compound V3             | 3-5%      |
 
 Optimizer captures 1-3% spread between worst and best. At 6% average yield, 10% fee = 0.6% of TVL annually.
 
 ### Breakeven Analysis
 
 At 10% performance fee, 5% average yield:
+
 - **$10M TVL**: $4.2k/month -- skeleton crew only
 - **$25M TVL**: $10.4k/month -- lean team
 - **$50M TVL**: $20.8k/month -- breakeven
@@ -403,6 +408,7 @@ Agent manages yield automatically
 ### Competitive Advantage
 
 No competitor offers ACH -> yield pipeline:
+
 - **Sail**: Card onramp only (Coinbase, Stripe, Transak)
 - **Mamo**: No built-in onramp
 - **Zyfai**: No built-in onramp
@@ -413,6 +419,7 @@ If MoonPay virtual accounts work with Base, Tapioca becomes: "Set up ACH recurri
 ### Alternative: Coinbase Onramp
 
 If MoonPay virtual accounts don't support Base:
+
 - Coinbase Onramp SDK (`@coinbase/onramp-sdk`) natively supports Base USDC
 - Simpler integration, fewer features
 - No virtual bank account / ACH recurring option
@@ -447,17 +454,20 @@ Reuse existing `lib/morpho/api-client.ts`, `lib/yo/api-client.ts`, `lib/pendle/a
 Following the existing v2-migration-plan.md structure:
 
 1. **Session Manager** (`lib/biconomy/session-manager.ts`)
+
    - `createSession()` -- install Smart Sessions, grant permissions from adapter registry
    - `resumeSession()` -- reconstruct from encrypted storage
    - `revokeSession()` -- on-chain revocation
    - `addPermissions()` -- incremental grant (new!)
 
 2. **Execution Client** (`lib/biconomy/execution-client.ts`)
+
    - `createSessionClient()` -- decrypt, resume
    - `executeBatch()` -- batched tx via session
    - Replaces `createDeserializedKernelClient`
 
 3. **Unified Executor** (`lib/biconomy/executor.ts`)
+
    - `executeDeposit(session, adapterId, amount)`
    - `executeWithdraw(session, adapterId, amount)`
    - `executeRebalance(session, from, to, amount)`
@@ -526,15 +536,15 @@ Execution order: Core -> Biconomy (fix pain points) -> CLI (agent surface) -> Mo
 
 ### Competitive Strategy Comparison
 
-| Protocol | Allocation Model | Rebalance Trigger | Risk Scoring | Auto-Compound | Multi-Step | Unique Mechanism |
-|----------|-----------------|-------------------|-------------|---------------|-----------|-----------------|
-| **Giza/ARMA** | Nonlinear optimizer, yield curve modeling per deposit size | Cost-threshold + 7-day APR forecast | Pre-flight health checks, EigenLayer AVS | Dynamic frequency based on position size + gas | Single-protocol chase (MILP architecture exists) | Deposit-size impact on yield curves |
-| **YO** | Index of 100+ pools, weighted allocation | Daily + trend confirmation ("confirmed trend before moving") | Exponential.fi risk ratings (thousands of vectors) | Operators claim+swap reward tokens | Cross-chain via "embassy" model | Risk-adjusted yield with probability-of-default scoring |
-| **Sail** | Scoring function with APY/TVL/volatility weighting | Balance-tier frequency (4x/12x/24x per day) | Sonar: depeg (5%), TVL drop (20%) alerts | Full pipeline: claim -> swap -> redeposit | Cross-chain with cost-aware routing | CNN meta-controller adapts sensitivity params (unverified) |
-| **Zyfai** | 100% single-protocol, no splitting | 5 safety checks (see below) | 15% max pool share, 50% TVL drop exit, 7-day stability | $2 threshold -> claim -> swap -> reinvest | Cross-chain via OmniAccounts | ERC-8004 ZK proof per rebalance |
-| **Beefy** | User picks vault (no allocation engine) | Gas-cost vs compound-benefit optimization | Strategy-level (audited contracts per vault) | harvest() -> charge fees -> swap -> LP -> restake | Single vault strategies | "Harvest on deposit" pattern, EIP-1167 minimal proxies |
-| **Morpho** | Curator-set allocation caps, bot reallocation | Utilization equalization (2.5% delta) or APY range bands | Agent-based simulations (Gauntlet), timelocked params | Protocol-level (curators handle) | Curator-defined market sets | Separation of curation from execution |
-| **Tapioca (current)** | Single-protocol chase, flat APY comparison | Fixed 0.5% threshold, no trend confirmation | Minimum $100k liquidity filter only | None (relies on underlying) | USDC -> yoUSD -> PT-yoUSD | Multi-protocol pipeline (Morpho+YO+Pendle) |
+| Protocol              | Allocation Model                                           | Rebalance Trigger                                            | Risk Scoring                                           | Auto-Compound                                     | Multi-Step                                       | Unique Mechanism                                           |
+| --------------------- | ---------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------ | ------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------------------- |
+| **Giza/ARMA**         | Nonlinear optimizer, yield curve modeling per deposit size | Cost-threshold + 7-day APR forecast                          | Pre-flight health checks, EigenLayer AVS               | Dynamic frequency based on position size + gas    | Single-protocol chase (MILP architecture exists) | Deposit-size impact on yield curves                        |
+| **YO**                | Index of 100+ pools, weighted allocation                   | Daily + trend confirmation ("confirmed trend before moving") | Exponential.fi risk ratings (thousands of vectors)     | Operators claim+swap reward tokens                | Cross-chain via "embassy" model                  | Risk-adjusted yield with probability-of-default scoring    |
+| **Sail**              | Scoring function with APY/TVL/volatility weighting         | Balance-tier frequency (4x/12x/24x per day)                  | Sonar: depeg (5%), TVL drop (20%) alerts               | Full pipeline: claim -> swap -> redeposit         | Cross-chain with cost-aware routing              | CNN meta-controller adapts sensitivity params (unverified) |
+| **Zyfai**             | 100% single-protocol, no splitting                         | 5 safety checks (see below)                                  | 15% max pool share, 50% TVL drop exit, 7-day stability | $2 threshold -> claim -> swap -> reinvest         | Cross-chain via OmniAccounts                     | ERC-8004 ZK proof per rebalance                            |
+| **Beefy**             | User picks vault (no allocation engine)                    | Gas-cost vs compound-benefit optimization                    | Strategy-level (audited contracts per vault)           | harvest() -> charge fees -> swap -> LP -> restake | Single vault strategies                          | "Harvest on deposit" pattern, EIP-1167 minimal proxies     |
+| **Morpho**            | Curator-set allocation caps, bot reallocation              | Utilization equalization (2.5% delta) or APY range bands     | Agent-based simulations (Gauntlet), timelocked params  | Protocol-level (curators handle)                  | Curator-defined market sets                      | Separation of curation from execution                      |
+| **Tapioca (current)** | Single-protocol chase, flat APY comparison                 | Fixed 0.5% threshold, no trend confirmation                  | Minimum $100k liquidity filter only                    | None (relies on underlying)                       | USDC -> yoUSD -> PT-yoUSD                        | Multi-protocol pipeline (Morpho+YO+Pendle)                 |
 
 ### Zyfai's 5 Safety Checks (Best-in-Class Rebalancing Gate)
 
@@ -547,6 +557,7 @@ Execution order: Core -> Biconomy (fix pain points) -> CLI (agent surface) -> Mo
 ### Giza's Yield Curve Modeling (Most Sophisticated)
 
 Giza doesn't compare flat APY numbers. For each protocol, they:
+
 1. Query ~20 deposit levels to build a yield curve
 2. Model how YOUR deposit size shifts the utilization rate
 3. Calculate blended APY at your specific deposit amount
@@ -559,11 +570,13 @@ This matters most for deposits >$100k where your capital materially moves the cu
 ### YO's Risk-Adjusted Yield (Best Risk Framework)
 
 Uses Exponential.fi ratings that calculate **probability of total pool wipeout** from thousands of vectors:
+
 - Protocol age, audit history, code quality
 - Governance maturity, counterparty exposure
 - Historical reliability, oracle dependencies
 
 Each pool's APY is weighted against its wipeout probability:
+
 ```
 risk_adjusted_yield = APY * (1 - probability_of_wipeout)
 ```
@@ -573,24 +586,28 @@ The algorithm maximizes risk-adjusted yield, not raw APY. This means a 5% pool w
 ### How Tapioca's Decision Engine Should Evolve
 
 **Stage 1: Safety Gates (Immediate, ~2 days)**
+
 - Add yield stability check: reject targets with 7-day APY swing >+50%/-30%
 - Add pool concentration limit: skip if position would be >15% of pool TVL
 - Add TVL drop emergency exit: auto-rebalance to safety if current pool TVL drops >50%
 - Use trailing 7-day average APY instead of point-in-time for comparisons
 
 **Stage 2: Smart Triggers (~3 days)**
+
 - Trend confirmation: require sustained APY advantage over 2-3 consecutive cron checks (8-12h)
 - Position-size-aware threshold: scale from 0.5% (small) down to 0.2% (large positions)
 - Add auto-compounding pipeline: claim MORPHO/FLUID/TOKE rewards -> swap to USDC -> redeposit
 - Integrate Exponential.fi risk ratings for pool scoring
 
 **Stage 3: Advanced Strategies (~5 days)**
+
 - Deposit-size yield curve modeling (query protocols at multiple deposit levels)
 - Leveraged PT carry trade: borrow Morpho variable -> buy Pendle PT fixed (when spread > 2%)
 - Reward token harvesting with dynamic frequency (based on accumulated value vs gas cost)
 - Defensive "go to cash" posture when risk signals fire (depeg, TVL crash, oracle failure)
 
 **Stage 4: Sophisticated Optimization (future)**
+
 - Multi-protocol capital splitting (MILP/quadratic programming)
 - Cross-chain yield arbitrage via MEE Supertransactions
 - Agent-based simulations for allocation decisions (Gauntlet approach)
@@ -598,13 +615,13 @@ The algorithm maximizes risk-adjusted yield, not raw APY. This means a 5% pool w
 
 ### Multi-Step Strategies to Add
 
-| Strategy | Flow | When Profitable | Risk |
-|----------|------|----------------|------|
-| **Current: PT-yoUSD** | USDC -> yoUSD -> PT-yoUSD | Always (fixed yield on top of variable) | Maturity lock, yoUSD depeg |
-| **Leveraged PT carry** | Borrow USDC (Morpho) -> buy PT-yoUSD | PT fixed APY > Morpho borrow rate + 2% | Rate spike on borrow side |
-| **Recursive Morpho** | Deposit yoUSD collateral -> borrow USDC -> redeposit | Supply APY + rewards > borrow APY | Liquidation risk |
-| **Reward harvesting** | Claim MORPHO/FLUID/TOKE -> swap to USDC -> redeposit | Accumulated rewards > $5 swap threshold | Reward token price slippage |
-| **Defensive exit** | Any vault -> USDC in wallet | TVL drop >50%, depeg >5%, oracle failure | Opportunity cost of sitting in cash |
+| Strategy               | Flow                                                 | When Profitable                          | Risk                                |
+| ---------------------- | ---------------------------------------------------- | ---------------------------------------- | ----------------------------------- |
+| **Current: PT-yoUSD**  | USDC -> yoUSD -> PT-yoUSD                            | Always (fixed yield on top of variable)  | Maturity lock, yoUSD depeg          |
+| **Leveraged PT carry** | Borrow USDC (Morpho) -> buy PT-yoUSD                 | PT fixed APY > Morpho borrow rate + 2%   | Rate spike on borrow side           |
+| **Recursive Morpho**   | Deposit yoUSD collateral -> borrow USDC -> redeposit | Supply APY + rewards > borrow APY        | Liquidation risk                    |
+| **Reward harvesting**  | Claim MORPHO/FLUID/TOKE -> swap to USDC -> redeposit | Accumulated rewards > $5 swap threshold  | Reward token price slippage         |
+| **Defensive exit**     | Any vault -> USDC in wallet                          | TVL drop >50%, depeg >5%, oracle failure | Opportunity cost of sitting in cash |
 
 ---
 
@@ -627,16 +644,16 @@ After analyzing all benchmarks, here is Tapioca's unique positioning:
 
 ### What We Take From Each Competitor
 
-| Competitor | What We Take |
-|-----------|-------------|
-| **YO** | Yield tokenization concept (we already integrate yoUSD) |
-| **Giza** | MILP optimizer approach for deposit-size-aware allocation |
-| **Zyfai** | Revenue model (10% perf fee, 50/50 split) |
-| **Sail** | Per-user agent personalization, Sonar-like risk monitoring |
-| **Mamo** | UX simplicity ("deposit and forget") |
-| **Goldbot Sachs** | ERC-4626 harvest fee mechanism |
-| **MoonPay** | CLI-first architecture, MCP mode, ACH on-ramp |
-| **Conway** | Skills marketplace concept, agent discovery |
+| Competitor        | What We Take                                               |
+| ----------------- | ---------------------------------------------------------- |
+| **YO**            | Yield tokenization concept (we already integrate yoUSD)    |
+| **Giza**          | MILP optimizer approach for deposit-size-aware allocation  |
+| **Zyfai**         | Revenue model (10% perf fee, 50/50 split)                  |
+| **Sail**          | Per-user agent personalization, Sonar-like risk monitoring |
+| **Mamo**          | UX simplicity ("deposit and forget")                       |
+| **Goldbot Sachs** | ERC-4626 harvest fee mechanism                             |
+| **MoonPay**       | CLI-first architecture, MCP mode, ACH on-ramp              |
+| **Conway**        | Skills marketplace concept, agent discovery                |
 
 ---
 
@@ -656,18 +673,21 @@ After analyzing all benchmarks, here is Tapioca's unique positioning:
 ## Sources
 
 ### Moonpay CLI + ACH
+
 - [MoonPay Agents Launch](https://www.moonpay.com/agents)
 - [MoonPay Virtual Accounts](https://support.moonpay.com/en/articles/381402-virtual-accounts-explained)
 - [Iron (MoonPay) Stablecoin Banking APIs](https://iron.xyz/)
 - [MoonPay Developer Docs](https://dev.moonpay.com/)
 
 ### Revenue Models
+
 - [Beefy Finance Fees](https://docs.beefy.finance/ecosystem/beefy-bulletins/beefy-finance-fees-breakdown)
 - [Giza Protocol Fees](https://docs.gizaprotocol.ai/token/fees)
 - [ZyfAI Token Mechanisms](https://docs.zyf.ai/zfi-and-stzfi-and-rzfi/token-mechanisms-zfi-and-stzfi)
 - [Pimlico Pricing](https://docs.pimlico.io/infra/platform/pricing)
 
 ### CLI-First Architecture
+
 - [Rewrite Your CLI for AI Agents](https://justin.poehnelt.com/posts/rewrite-your-cli-for-ai-agents/)
 - [Why CLI Tools Beat MCP for AI Agents](https://jannikreinhard.com/2026/02/22/why-cli-tools-are-beating-mcp-for-ai-agents/)
 - [Agent Skills Specification](https://agentskills.io/specification)
@@ -675,6 +695,7 @@ After analyzing all benchmarks, here is Tapioca's unique positioning:
 - [A2A Protocol Agent Discovery](https://a2a-protocol.org/latest/topics/agent-discovery/)
 
 ### Biconomy Infrastructure
+
 - [Biconomy MEE Documentation](https://docs.biconomy.io/new/learn-about-biconomy/what-is-mee)
 - [Smart Sessions Introduction](https://docs.biconomy.io/new/smart-sessions/introduction)
 - [MEE + EIP-7702 Guide](https://docs.biconomy.io/new/getting-started/enable-mee-eoa-7702)
@@ -683,6 +704,7 @@ After analyzing all benchmarks, here is Tapioca's unique positioning:
 - [Comprehensive EIP-7702 Guide](https://blog.biconomy.io/a-comprehensive-eip-7702-guide-for-apps/)
 
 ### Competitor Architecture
+
 - [Zyfai Technical Overview](https://docs.zyf.ai/docs/product/overview/introduction)
 - [Sail.money Documentation](https://docs.sail.money)
 - [Conway/Automaton GitHub](https://github.com/Conway-Research/automaton)

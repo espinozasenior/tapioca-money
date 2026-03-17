@@ -1,4 +1,5 @@
 # Your agent's money should be making money
+
 Idle USDC is dead money. One skill file turns your agent into a yield-earning machine.
 Three steps. Under a cent.
 Your agent has USDC and a wallet on Base. That's all it needs.
@@ -53,6 +54,7 @@ Bot withdraws anytime: redeem clawUSDC → get back more USDC than deposited
 ERC-4626 vault wrapping Beefy's USDC vault.
 
 **Standard ERC-4626 interface:**
+
 - `deposit(assets, receiver)` → deposits USDC, mints clawUSDC shares
 - `withdraw(assets, receiver, owner)` → burns clawUSDC, returns USDC
 - `redeem(shares, receiver, owner)` → burns shares, returns USDC
@@ -60,16 +62,19 @@ ERC-4626 vault wrapping Beefy's USDC vault.
 - `asset()` → USDC address
 
 **Custom additions:**
+
 - `depositWithPermit(assets, receiver, deadline, v, r, s)` → permit + deposit in one call. Bot signs permit off-chain, calls this. Single tx, no prior approval needed.
 - `harvest()` → permissionless. Calculates new yield since last harvest, mints 10% as clawUSDC shares to fee recipient (us). Anyone can call.
 
 **Fee mechanism:**
+
 - On `harvest()`, calculate yield: `currentTotalAssets - lastHarvestTotalAssets`
 - Mint 10% of yield as new clawUSDC shares to fee recipient
 - Dilutes holders by exactly 10% of yield — standard vault pattern (Yearn v2 does the same)
 - Fee percentage and recipient are owner-configurable (capped at 20%)
 
 **Under the hood:**
+
 - Inherits OpenZeppelin ERC4626
 - `totalAssets()` = Beefy mooToken balance × `getPricePerFullShare() / 1e18`
 - On deposit: USDC → approve Beefy → `beefyVault.deposit(amount)`
@@ -84,14 +89,17 @@ A skill file that teaches Conway automatons how to use Goldbot Sachs:
 # goldbot-sachs
 
 ## Deposit idle USDC
+
 1. Approve clawUSDC vault to spend your USDC (or use depositWithPermit)
 2. Call deposit(amount, yourAddress) on clawUSDC
 3. You now hold clawUSDC — it earns ~4% APY
 
 ## Check balance
+
 Read clawUSDC.balanceOf(yourAddress) and clawUSDC.convertToAssets(balance)
 
 ## Withdraw
+
 Call clawUSDC.redeem(shares, yourAddress, yourAddress)
 ```
 
@@ -126,32 +134,36 @@ goldbotsachs/
 ## User Flow
 
 ### Deposit
+
 1. Bot approves clawUSDC to spend USDC (or uses `depositWithPermit` for single-tx flow)
 2. Bot calls `clawUSDC.deposit(amount, botAddress)`
 3. USDC moves: bot → clawUSDC vault → Beefy
 4. Bot now holds clawUSDC shares
 
 ### Earn
+
 - clawUSDC appreciates as Beefy earns yield
 - Anyone can call `harvest()` to compound and take fees
 - Bot does nothing — yield is automatic
 
 ### Withdraw
+
 1. Bot calls `clawUSDC.redeem(shares, botAddress, botAddress)`
 2. USDC moves: Beefy → clawUSDC vault → bot
 3. Done
 
 ### With a Gnosis Safe (optional, for gasless)
+
 - Bot uses a Safe → 5 free txs/day on Base via Gelato
 - Deposit: 1 free tx. Withdraw: 1 free tx. Zero gas.
 
 ## Gas Summary
 
-| Action | Cost |
-|--------|------|
+| Action                      | Cost                                           |
+| --------------------------- | ---------------------------------------------- |
 | deposit / depositWithPermit | Caller pays (~$0.001 on Base) or free via Safe |
-| redeem / withdraw | Caller pays (~$0.001 on Base) or free via Safe |
-| harvest() | Anyone (~$0.001) |
+| redeem / withdraw           | Caller pays (~$0.001 on Base) or free via Safe |
+| harvest()                   | Anyone (~$0.001)                               |
 
 **We pay zero gas.**
 
@@ -166,6 +178,7 @@ goldbotsachs/
 ## MVP Scope
 
 ### Phase 1 — Ship it
+
 1. ClawUSDC.sol (ERC-4626 + Beefy + depositWithPermit + harvest + 10% fee)
 2. Deploy script
 3. Forge tests
@@ -174,6 +187,7 @@ goldbotsachs/
 6. Deploy to Base mainnet (amounts are tiny, Base gas is fractions of a cent)
 
 ### Phase 2 — Growth
+
 - Landing page at goldbotsachs.com
 - Multi-vault support (ETH, other stables)
 - Dashboard (TVL, yield, bots served)
@@ -187,20 +201,23 @@ goldbotsachs/
 ---
 
 ## Getting started
+
 Point your agent at this URL or drop it in your skills directory.
 Auto-discover via .well-known/agent-card.json
 
 1. Install the skill
-Give your agent the skill URL. It learns to deposit idle USDC, check yield, withdraw for payments, and refuel ETH — all on its own.
-https://goldbotsachs.com/skills/goldbot-sachs.md
-https://github.com/publu/goldbotsachs/blob/main/skills/goldbot-sachs/SKILL.md
+   Give your agent the skill URL. It learns to deposit idle USDC, check yield, withdraw for payments, and refuel ETH — all on its own.
+   https://goldbotsachs.com/skills/goldbot-sachs.md
+   https://github.com/publu/goldbotsachs/blob/main/skills/goldbot-sachs/SKILL.md
 
 2. Deposit USDC
-Your agent deposits into clawUSDC — an ERC-4626 vault routing to Beefy's Morpho strategy. Yield accrues automatically.
+   Your agent deposits into clawUSDC — an ERC-4626 vault routing to Beefy's Morpho strategy. Yield accrues automatically.
 
 3. Withdraw anytime
-When your agent needs funds, it withdraws instantly. No lockup. No penalties. USDC back in the wallet in one tx.
+   When your agent needs funds, it withdraws instantly. No lockup. No penalties. USDC back in the wallet in one tx.
 
 ## Protocol
+
 ### https://conway.tech/
+
 Infrastructure for self-improving, self-replicating, autonomous AI

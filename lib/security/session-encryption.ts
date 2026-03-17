@@ -73,7 +73,11 @@ export function encryptAuthorization<T extends Authorization>(auth: T): T {
   ) {
     (cloned as any).serializedAccount = encrypt((cloned as any).serializedAccount);
   }
-  if ("sessionPrivateKey" in cloned && cloned.sessionPrivateKey && !isEncrypted(cloned.sessionPrivateKey)) {
+  if (
+    "sessionPrivateKey" in cloned &&
+    cloned.sessionPrivateKey &&
+    !isEncrypted(cloned.sessionPrivateKey)
+  ) {
     (cloned as any).sessionPrivateKey = encrypt(cloned.sessionPrivateKey);
   }
 
@@ -109,5 +113,7 @@ export function decryptAuthorization<T extends Authorization>(auth: T): T {
  * @returns true if sessionPrivateKey is encrypted
  */
 export function isAuthorizationEncrypted(auth: Authorization): boolean {
-  return "sessionPrivateKey" in auth && !!auth.sessionPrivateKey && isEncrypted(auth.sessionPrivateKey);
+  return (
+    "sessionPrivateKey" in auth && !!auth.sessionPrivateKey && isEncrypted(auth.sessionPrivateKey)
+  );
 }

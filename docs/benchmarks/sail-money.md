@@ -36,9 +36,9 @@ Sail supports the stablecoins and networks shown in-app (and in the docs), and w
 
 You can deposit in a few ways:
 
-* **Send stablecoins** to your Sail Account address (classic onchain transfer).
-* **Deposit with wallet:** connect a wallet and deposit using **any token you hold**. Sail handles the swapping and bridging in the background so you end up deposited seamlessly.
-* **Deposit with card:** where available, through supported providers.
+- **Send stablecoins** to your Sail Account address (classic onchain transfer).
+- **Deposit with wallet:** connect a wallet and deposit using **any token you hold**. Sail handles the swapping and bridging in the background so you end up deposited seamlessly.
+- **Deposit with card:** where available, through supported providers.
 
 #### How Do Withdrawals Work?
 
@@ -48,9 +48,9 @@ Withdrawals are initiated from Sail and sent to an address you choose. If your f
 
 Sail is designed to keep you in control:
 
-* **Your own account + permissions:** Sail uses smart accounts and scoped permissions so the agent can do only what you’ve allowed.
-* **Monitoring with Sonar:** Sonar helps monitor risk signals (like stablecoin depegs and protocol health events) so the system can react when conditions change.
-* **Good security hygiene still matters:** use strong login security and be cautious with new devices and suspicious links (the same basics top finance apps emphasize).&#x20;
+- **Your own account + permissions:** Sail uses smart accounts and scoped permissions so the agent can do only what you’ve allowed.
+- **Monitoring with Sonar:** Sonar helps monitor risk signals (like stablecoin depegs and protocol health events) so the system can react when conditions change.
+- **Good security hygiene still matters:** use strong login security and be cautious with new devices and suspicious links (the same basics top finance apps emphasize).&#x20;
 
 #### What Are Sail Points And How Do Referrals Work?
 
@@ -61,8 +61,8 @@ Sail is designed to keep you in control:
 
 You can message Sail via:
 
-* **In-app chat**
-* **Telegram bot** (same questions as in-app, plus daily updates if enabled)
+- **In-app chat**
+- **Telegram bot** (same questions as in-app, plus daily updates if enabled)
 
 These channels are for customer support, explaining agent behavior, and answering DeFi / yield questions in plain language.&#x20;
 
@@ -81,15 +81,15 @@ S_i = (A_i^α * T_i^(βγ) * e^(-λσ * σ_i²)) /
 
 where:
 
-* `A_i` = protocol APY
-* `T_i` = liquidity (TVL)
-* `σ_i` = historical volatility
-* `λσ` = risk adjustment
-* `α, β, γ` = sensitivity parameters that adapt to portfolio size
+- `A_i` = protocol APY
+- `T_i` = liquidity (TVL)
+- `σ_i` = historical volatility
+- `λσ` = risk adjustment
+- `α, β, γ` = sensitivity parameters that adapt to portfolio size
 
 Larger portfolios automatically receive higher sensitivity to APY and liquidity risk, meaning big accounts favor deeper, lower-volatility venues while smaller ones chase lighter, higher-yield pools.
 
-***
+---
 
 #### **2. Cost Awareness**
 
@@ -105,7 +105,7 @@ c_(i→j) = μ_chain * [c_i ≠ c_j] +
 Each swap or bridge is treated as an “energy barrier.”\
 The optimizer only crosses if the expected yield improvement outweighs that cost.
 
-***
+---
 
 #### **3. Optimization Objective**
 
@@ -119,36 +119,36 @@ L(w) = wᵀS − λ_c * C(w, w₀)
 
 where:
 
-* `C(w, w₀)` = total cost to move from previous allocation
-* `H(w)` = entropy term that prevents over-concentration
-* `λ_c, η, ν` = cost and diversification controls
+- `C(w, w₀)` = total cost to move from previous allocation
+- `H(w)` = entropy term that prevents over-concentration
+- `λ_c, η, ν` = cost and diversification controls
 
 The optimizer uses **simulated annealing**, gradually cooling search temperature to escape local minima and converge near an optimal allocation. A CNN meta-controller provides priors for `(α, β, γ)` based on volatility and APY history.
 
-***
+---
 
 #### **4. Learn More**
 
-Read the full paper: [*Cross-Chain Optimization Engine for Autonomous Agents*](https://docsend.com/view/8qqn3qy5ijgg94zr/d/tsxt8ebabn9v6c7d)
+Read the full paper: [_Cross-Chain Optimization Engine for Autonomous Agents_](https://docsend.com/view/8qqn3qy5ijgg94zr/d/tsxt8ebabn9v6c7d)
 
 # Balance Tiers
 
 Tiers update automatically as your balance changes. Execution and diversification are always bounded by your tier, and further bounded by the permissions you approve.
 
-***
+---
 
 #### **Tier Overview**
 
-* **Executions:** how many times per day Sail scans and reallocates (when needed).
-* **Networks / Stablecoins:** what your agent can use by default at that tier (you can restrict this via personalization).
-* **Positions:** max positions per stablecoin/network the agent may hold at once.
-* **Security:** Sonar runs for all tiers.
+- **Executions:** how many times per day Sail scans and reallocates (when needed).
+- **Networks / Stablecoins:** what your agent can use by default at that tier (you can restrict this via personalization).
+- **Positions:** max positions per stablecoin/network the agent may hold at once.
+- **Security:** Sonar runs for all tiers.
 
 <table><thead><tr><th width="98.80078125">Tier</th><th width="114.70703125" align="right">Balance</th><th width="122.58203125" align="right">Executions</th><th width="115.2421875">Networks</th><th width="132.609375">Stablecoins</th><th width="110.984375">Positions</th><th>Features</th></tr></thead><tbody><tr><td><strong>Silver</strong></td><td align="right">$0–$10,000</td><td align="right">4× / day</td><td>Base, Arbitrum</td><td>USDC, USDT</td><td>1 per stablecoin/network</td><td>Sonar active</td></tr><tr><td><strong>Gold</strong></td><td align="right">$10,000–$100,000</td><td align="right">12× / day</td><td>Base, Arbitrum</td><td>USDC, USDT</td><td>up to 4 per stablecoin/network</td><td>Sonar + diversification + swaps &#x26; bridges</td></tr><tr><td><strong>Platinum</strong></td><td align="right">$100,000+</td><td align="right">24× / day</td><td>Base, Arbitrum</td><td>USDC, USDT</td><td>up to 5 per stablecoin/network</td><td>Sonar + diversification + swaps &#x26; bridges</td></tr></tbody></table>
 
 Higher tiers increase execution frequency, which helps capture short-lived APY changes faster and reduces idle time.
 
-***
+---
 
 #### How balance tiers interact with personalization
 
@@ -156,25 +156,25 @@ Tiers define the **maximum** scope your agent can operate within. Personalizatio
 
 Examples:
 
-* you’re **Gold**, but you only want **Base** → personalize networks to Base-only.
-* you’re **Platinum**, but you never want bridging → personalize actions to disable bridging.
-* you want “lending primitives only” (Aave/Fluid/Moonwell) → personalize permissions to allowlist only those protocols.
+- you’re **Gold**, but you only want **Base** → personalize networks to Base-only.
+- you’re **Platinum**, but you never want bridging → personalize actions to disable bridging.
+- you want “lending primitives only” (Aave/Fluid/Moonwell) → personalize permissions to allowlist only those protocols.
 
 if you expand scope later (new networks, protocols, or actions), Sail will ask you to sign **new permissions** before the agent can use them.
 
-***
+---
 
 ### Automatic Tier Updates
 
-* Tier changes happen automatically when your balance crosses thresholds.
-* Upgrading your tier can unlock higher execution frequency and additional capabilities.
-* Downgrading reduces the maximum execution/position scope accordingly.
+- Tier changes happen automatically when your balance crosses thresholds.
+- Upgrading your tier can unlock higher execution frequency and additional capabilities.
+- Downgrading reduces the maximum execution/position scope accordingly.
 
-***
+---
 
 #### **Performance Analysis**
 
-*Back-tested and live agent data since October 1, 2025*
+_Back-tested and live agent data since October 1, 2025_
 
 **Top 5 Protocols on Base (USDC)**
 
@@ -186,7 +186,7 @@ if you expand scope later (new networks, protocols, or actions), Sail will ask y
 | Morpho Clearstar Reacted    | 8.90 %   | 11.34 % | 7.71 %  |
 | Moonwell                    | 8.57 %   | 11.58 % | 6.99 %  |
 
-***
+---
 
 **Agent Performance by Tier**
 
@@ -202,16 +202,16 @@ Execution frequency directly boosts realized yield: more re-checks mean faster r
 
 Each source is monitored continuously for **risk-adjusted yield**; reallocations only occur when the **after-fee, after-risk** outcome improves.
 
-***
+---
 
 ### **How we evaluate sources (quick guide)**
 
-* **Signals:** APY, TVL/liquidity depth, volatility, withdrawal friction.
-* **Costs:** swap + bridge fees, gas, expected slippage, exit penalties.
-* **Rules:** your tier’s position caps, chain allowlist, exclusions.
-* **Receipts:** every move includes itemized fees and tx hashes in **History**.
+- **Signals:** APY, TVL/liquidity depth, volatility, withdrawal friction.
+- **Costs:** swap + bridge fees, gas, expected slippage, exit penalties.
+- **Rules:** your tier’s position caps, chain allowlist, exclusions.
+- **Receipts:** every move includes itemized fees and tx hashes in **History**.
 
-***
+---
 
 ### **Coverage by Network & Asset**
 
@@ -261,10 +261,10 @@ Rewards Auto-Compounding keeps your balance in motion without you needing to han
 \
 Each time your agent runs an execution cycle, it:
 
-* Checks whether any rewards are ready to claim.&#x20;
-* Claims them once they’re large enough to cover gas and improve net yield.&#x20;
-* Swaps the reward token to an integrated USD stablecoin, using multi-hop routes when needed.&#x20;
-* Treats the resulting USD stablecoin like any other part of your balance and reallocates it. &#x20;
+- Checks whether any rewards are ready to claim.&#x20;
+- Claims them once they’re large enough to cover gas and improve net yield.&#x20;
+- Swaps the reward token to an integrated USD stablecoin, using multi-hop routes when needed.&#x20;
+- Treats the resulting USD stablecoin like any other part of your balance and reallocates it. &#x20;
 
 You simply see your balance grow. You never need to manage or monitor the underlying reward assets. All reward claiming and swapped is also showed in your history tab.&#x20;
 
@@ -294,17 +294,17 @@ When you “start” your agent (or change settings later), you’ll usually sig
 
 Token approvals allow your Sail Account to interact with specific contracts (for example, a yield source or router) using a specific token.
 
-* Approvals are **scoped** to a token and spender.
-* They do **not** give someone control over your wallet. They simply allow smart contracts to move a token **under the constraints of your permissions**.
-* Approvals are common in DeFi. Sail surfaces them in the UI so you can review what you’re signing.
+- Approvals are **scoped** to a token and spender.
+- They do **not** give someone control over your wallet. They simply allow smart contracts to move a token **under the constraints of your permissions**.
+- Approvals are common in DeFi. Sail surfaces them in the UI so you can review what you’re signing.
 
 #### 2) Agent permissions (session keys)
 
 Session keys are what make Sail feel “agentic”: you don’t need to sign every rebalance, claim, swap, or bridge.
 
-* Your agent receives a **scoped, revocable permission** to execute on your behalf.
-* The permission is limited to what you chose in onboarding or personalization (networks, stablecoins, protocols, actions).
-* You can update or revoke these permissions at any time from the app.
+- Your agent receives a **scoped, revocable permission** to execute on your behalf.
+- The permission is limited to what you chose in onboarding or personalization (networks, stablecoins, protocols, actions).
+- You can update or revoke these permissions at any time from the app.
 
 #### What you should expect to see at signing time
 
@@ -322,10 +322,10 @@ Instead of giving an agent broad wallet access, Sail uses **session keys**: temp
 
 Without session keys, you’d need to manually approve every action:
 
-* reallocations across yield sources
-* claims of protocol rewards
-* swaps into supported stablecoins
-* bridging across networks (if enabled)
+- reallocations across yield sources
+- claims of protocol rewards
+- swaps into supported stablecoins
+- bridging across networks (if enabled)
 
 Session keys make those actions possible while preserving a “least-privilege” model.
 
@@ -333,11 +333,11 @@ Session keys make those actions possible while preserving a “least-privilege�
 
 A session key is granted with limits such as:
 
-* **Networks** (where it can execute)
-* **Stablecoins** (what assets it can use)
-* **Protocols / yield sources** (where it can allocate)
-* **Actions** (yield, swaps, bridges, claim rewards)
-* **Constraints** (transaction rules and safety checks enforced by your configuration)
+- **Networks** (where it can execute)
+- **Stablecoins** (what assets it can use)
+- **Protocols / yield sources** (where it can allocate)
+- **Actions** (yield, swaps, bridges, claim rewards)
+- **Constraints** (transaction rules and safety checks enforced by your configuration)
 
 Personalization is how you define this scope. If you want “lending-only” or “no bridging,” session keys enforce that.
 
@@ -355,10 +355,10 @@ If a key is revoked or no longer valid, the agent simply **cannot execute**. You
 
 #### Your safety guarantees
 
-* **No blanket custody:** session keys are not “take over the wallet” permissions.
-* **Revocable:** you can shut off the agent by revoking permissions.
-* **Scoped:** the agent can only do what you approved, on the venues you approved.
-* **Transparent:** you see what you sign in the UI before granting access.
+- **No blanket custody:** session keys are not “take over the wallet” permissions.
+- **Revocable:** you can shut off the agent by revoking permissions.
+- **Scoped:** the agent can only do what you approved, on the venues you approved.
+- **Transparent:** you see what you sign in the UI before granting access.
 
 If anything ever looks unclear, use in-app chat or Telegram to ask what a permission does before signing.
 
@@ -366,11 +366,11 @@ If anything ever looks unclear, use in-app chat or Telegram to ask what a permis
 
 Execution runs in isolated containers to contain faults and reduce cross-tenant risk.
 
-* **Per-run isolation:** Agent jobs execute in ephemeral containers with no shared memory or disk.
-* **Minimal egress:** Network access is restricted to allow-listed RPCs and APIs; no open internet.
-* **No secret sprawl:** There are **no private keys** off-chain; session keys are on-chain permissions. Any operational tokens are short-lived and scoped.
-* **Hardened runtime:** Read-only filesystems where possible, resource quotas, rate limiting, and strict observability.
-* **Deterministic deployment:** Reproducible builds and checksums to ensure the code that runs is the code that was reviewed.
+- **Per-run isolation:** Agent jobs execute in ephemeral containers with no shared memory or disk.
+- **Minimal egress:** Network access is restricted to allow-listed RPCs and APIs; no open internet.
+- **No secret sprawl:** There are **no private keys** off-chain; session keys are on-chain permissions. Any operational tokens are short-lived and scoped.
+- **Hardened runtime:** Read-only filesystems where possible, resource quotas, rate limiting, and strict observability.
+- **Deterministic deployment:** Reproducible builds and checksums to ensure the code that runs is the code that was reviewed.
 
 # Security Agent: Sonar
 
@@ -416,20 +416,20 @@ Sail does not currently deploy bespoke, Sail-owned protocol contracts. Our oncha
 
 #### What we do today
 
-* **Use audited primitives for execution**\
+- **Use audited primitives for execution**\
   User accounts are ERC-7702 smart accounts with scoped session keys, implemented using Thirdweb’s audited codebase.
-* **Review our integration and configuration**\
+- **Review our integration and configuration**\
   We run internal security reviews focused on:
-  * permissions and transaction constraints
-  * session key scoping and lifecycle
-  * protocol integration safety checks
-* **Make permissions explicit at signing time**\
+  - permissions and transaction constraints
+  - session key scoping and lifecycle
+  - protocol integration safety checks
+- **Make permissions explicit at signing time**\
   When you authorize a session key, Sail shows the exact session key you are approving in the UI, including its scope and permissions, so you can verify what you are granting.
 
 #### Audit reports (Thirdweb / ERC-7702 components)
 
-* [0xMacro Security Audit: thirdweb 22 (April 25, 2025)](https://0xmacro.com/library/audits/thirdweb-22?utm_source=chatgpt.com) [0xmacro.com](https://0xmacro.com/library/audits/thirdweb-22)
-* [thirdweb A-14 Audit PDF](https://ipfs.io/ipfs/Qmc36VUCuwG2u7kZrqmXmJsH5c8sF7SHySVbPnwVmo3XYX/thirdweb%20A-14%20_%20Macro%20Audits%20_%20The%200xMacro%20Library.pdf)
+- [0xMacro Security Audit: thirdweb 22 (April 25, 2025)](https://0xmacro.com/library/audits/thirdweb-22?utm_source=chatgpt.com) [0xmacro.com](https://0xmacro.com/library/audits/thirdweb-22)
+- [thirdweb A-14 Audit PDF](https://ipfs.io/ipfs/Qmc36VUCuwG2u7kZrqmXmJsH5c8sF7SHySVbPnwVmo3XYX/thirdweb%20A-14%20_%20Macro%20Audits%20_%20The%200xMacro%20Library.pdf)
 
 # Deposit
 
@@ -439,13 +439,13 @@ Sail does not currently deploy bespoke, Sail-owned protocol contracts. Our oncha
 
 Your first deposit funds your Sail account and unlocks agent execution. You can choose one of three methods:
 
-* **Send stablecoins**
-* **Deposit with wallet**
-* **Deposit with card**
+- **Send stablecoins**
+- **Deposit with wallet**
+- **Deposit with card**
 
 <figure><img src="https://2171443932-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2FaRvuDeAPVlfdTdwTaykg%2Fuploads%2FU6aN6pPdWOYMPZ3wBUfF%2FCaptura%20de%20pantalla%202025-12-22%20a%20las%206.47.31%E2%80%AFp.m..png?alt=media&#x26;token=02f1e4f3-c689-4aaf-9411-d1ea7895e528" alt=""><figcaption></figcaption></figure>
 
-***
+---
 
 #### 1. Send stablecoins
 
@@ -459,7 +459,7 @@ Use this if you want to transfer supported stablecoins from another wallet or ex
 
 <figure><img src="https://2171443932-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2FaRvuDeAPVlfdTdwTaykg%2Fuploads%2FjsgTIP1kLcDUNp0UZFFT%2FCaptura%20de%20pantalla%202025-12-22%20a%20las%206.50.56%E2%80%AFp.m..png?alt=media&#x26;token=8767d154-d474-459b-8f48-e5fe7781aba1" alt=""><figcaption></figcaption></figure>
 
-***
+---
 
 #### 2. Deposit with wallet
 
@@ -468,14 +468,14 @@ Use this if you signed in with a crypto wallet (or want to connect one) and pref
 1. Enter the amount
 2. Click **Deposit**
 3. Select the **wallet** you want to use:
-   * Your current connected wallet (often the same one you used to sign in), or
-   * **Connect a new Wallet**.
+   - Your current connected wallet (often the same one you used to sign in), or
+   - **Connect a new Wallet**.
 4. Choose the **Token** you want to pay with (you can pick any token you hold in the connected wallet)
 5. Click **Confirm Payment**
 
 <figure><img src="https://2171443932-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2FaRvuDeAPVlfdTdwTaykg%2Fuploads%2FY0rwEJb7rDkEXy6LaZGl%2FCaptura%20de%20pantalla%202025-12-26%20a%20las%204.00.38%E2%80%AFp.m..png?alt=media&#x26;token=4fdbd462-6a3a-4965-a617-cd1eea052b3a" alt=""><figcaption></figcaption></figure>
 
-***
+---
 
 #### 3. Deposit with card
 
