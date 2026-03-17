@@ -97,9 +97,10 @@ describe("Kernel Client (ZeroDev)", () => {
       }
     });
 
-    it("should keep factory when account has no on-chain code", async () => {
-      // Account not deployed yet
-      mockGetCode.mockResolvedValueOnce("0x");
+    it("should strip factory even when account has no on-chain code", async () => {
+      // Account not deployed yet — factory should still be stripped because
+      // our accounts always use an explicit address, and the factory's CREATE2
+      // would compute a different address (AA14).
       mockGetFactoryArgs.mockResolvedValueOnce({
         factory: "0xd703aaE79538628d27099B8c4f621bE4CCd142d5",
         factoryData: "0xc5265d5d",
@@ -107,9 +108,13 @@ describe("Kernel Client (ZeroDev)", () => {
 
       await createDeserializedKernelClient("mockSerialized");
 
-      // getCode returned empty, so factory should NOT be stripped
-      // (factory stays as original mock)
-      expect(mockGetCode).toHaveBeenCalled();
+      // Factory should be stripped regardless of on-chain code
+      const { deserializePermissionAccount } = await import("@zerodev/permissions");
+      const account = await (deserializePermissionAccount as any).mock.results[0]?.value;
+      if (account) {
+        const { factory } = await account.getFactoryArgs();
+        expect(factory).toBeUndefined();
+      }
     });
   });
 
