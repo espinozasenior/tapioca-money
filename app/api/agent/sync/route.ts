@@ -10,7 +10,13 @@ const sql = neon(process.env.DATABASE_URL!);
  */
 export async function POST(request: NextRequest) {
   try {
-    const { address, email } = await request.json();
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid or empty request body" }, { status: 400 });
+    }
+    const { address, email } = body;
 
     if (!address) {
       return NextResponse.json({ error: "Missing wallet address" }, { status: 400 });
