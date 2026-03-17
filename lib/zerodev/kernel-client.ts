@@ -105,16 +105,15 @@ async function _buildKernelClient(serializedAccount: string, preInstalled: boole
   console.log("[KernelClient] Account deserialized:", kernelAccount.address);
 
   // Fix AA14: deserializePermissionAccount restores factory/factoryData from serialization
-  // time, but for EIP-7702 accounts, the factory's CREATE2 address won't match the EOA.
-  // If the account already has on-chain code (EIP-7702 delegation or deployed proxy),
-  // strip factory info so the UserOp doesn't include initCode.
-  const onChainCode = await publicClient.getCode({ address: kernelAccount.address });
-  if (onChainCode && onChainCode !== "0x") {
-    const { factory: origFactory } = await kernelAccount.getFactoryArgs();
-    if (origFactory) {
-      console.log("[KernelClient] Account deployed on-chain — stripping factory to prevent AA14");
-      kernelAccount.getFactoryArgs = async () => ({ factory: undefined, factoryData: undefined });
-    }
+  // time, but the factory's CREATE2 address won't match our account address because:
+  // - EIP-7702: factory address ≠ EOA address (we set address explicitly)
+  // - ERC-4337: factory uses our validators, not Privy's, so CREATE2 differs from smartWalletAddress
+  // Always strip factory data — our accounts are either already deployed (ERC-4337 via Privy)
+  // or use EIP-7702 delegation (no factory needed). The factory from serialization is never correct.
+  const { factory: origFactory } = await kernelAccount.getFactoryArgs();
+  if (origFactory) {
+    console.log("[KernelClient] Stripping factory to prevent AA14 (address set explicitly)");
+    kernelAccount.getFactoryArgs = async () => ({ factory: undefined, factoryData: undefined });
   }
 
   const bundlerUrl =
