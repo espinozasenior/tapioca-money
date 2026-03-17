@@ -220,8 +220,13 @@ async function createAndSerializeAccount(
   const { KERNEL_V3_3 } = await import("@zerodev/sdk/constants");
   const { serializePermissionAccount } = await import("@zerodev/permissions");
 
-  const { sessionPrivateKey, sessionKeyAccount, permissionValidator, expiryTimestamp, publicClient } =
-    await buildSessionKeyAndPermissions(approvedVaults);
+  const {
+    sessionPrivateKey,
+    sessionKeyAccount,
+    permissionValidator,
+    expiryTimestamp,
+    publicClient,
+  } = await buildSessionKeyAndPermissions(approvedVaults);
 
   // Wrap Privy wallet as a LocalAccount (type: "local") for the SDK
   const eoaLocalAccount = toAccount({
@@ -307,11 +312,7 @@ export async function registerAgentSecure(
       approvedVaults.push(YO_GATEWAY_ADDRESS as `0x${string}`);
     }
 
-    console.log(
-      "[ZeroDev 7702] Fetched",
-      approvedVaults.length,
-      "vaults (including YO Gateway)"
-    );
+    console.log("[ZeroDev 7702] Fetched", approvedVaults.length, "vaults (including YO Gateway)");
 
     // 2. Create and serialize the kernel account client-side
     // This captures the enable signature from the EOA (sudo)
@@ -572,8 +573,13 @@ async function createAndSerializeAccountExternal(
   const { KERNEL_V3_3 } = await import("@zerodev/sdk/constants");
   const { serializePermissionAccount } = await import("@zerodev/permissions");
 
-  const { sessionPrivateKey, sessionKeyAccount, permissionValidator, expiryTimestamp, publicClient } =
-    await buildSessionKeyAndPermissions(approvedVaults);
+  const {
+    sessionPrivateKey,
+    sessionKeyAccount,
+    permissionValidator,
+    expiryTimestamp,
+    publicClient,
+  } = await buildSessionKeyAndPermissions(approvedVaults);
 
   // Wrap external wallet as LocalAccount for the SDK
   const eoaLocalAccount = toAccount({
@@ -604,7 +610,7 @@ async function createAndSerializeAccountExternal(
   const serialized = await serializePermissionAccount(
     kernelAccount,
     sessionPrivateKey,
-    undefined, // Auto-generate enable signature (sudo signs via external wallet)
+    undefined // Auto-generate enable signature (sudo signs via external wallet)
   );
 
   console.log("[ZeroDev 7702] Account serialized successfully (external wallet)");
@@ -640,8 +646,13 @@ async function createAndSerializeAccountErc4337(
   const { KERNEL_V3_3 } = await import("@zerodev/sdk/constants");
   const { serializePermissionAccount } = await import("@zerodev/permissions");
 
-  const { sessionPrivateKey, sessionKeyAccount, permissionValidator, expiryTimestamp, publicClient } =
-    await buildSessionKeyAndPermissions(approvedVaults);
+  const {
+    sessionPrivateKey,
+    sessionKeyAccount,
+    permissionValidator,
+    expiryTimestamp,
+    publicClient,
+  } = await buildSessionKeyAndPermissions(approvedVaults);
 
   // Wrap embedded wallet as LocalAccount for sudo signing.
   // toAccount() supports signMessage/signTypedData (delegated to walletClient).
@@ -689,7 +700,7 @@ async function createAndSerializeAccountErc4337(
   console.log("[ZeroDev 4337] Serializing account (embedded wallet signs enable data)...");
   const serialized = await serializePermissionAccount(
     kernelAccount,
-    sessionPrivateKey,
+    sessionPrivateKey
     // No 3rd/4th args — standard 4337 serialization
   );
 
@@ -725,9 +736,7 @@ export async function registerAgentSecureExternal(
     // Verify delegation is active on-chain before proceeding
     const delegationStatus = await checkSmartAccountActive(userAddress);
     if (!delegationStatus.active || !delegationStatus.isDelegation) {
-      throw new Error(
-        "Delegation not found on-chain. Call delegateViaExternalWallet first."
-      );
+      throw new Error("Delegation not found on-chain. Call delegateViaExternalWallet first.");
     }
 
     // 1. Fetch approved vaults from the optimizer API
@@ -834,8 +843,11 @@ export async function registerAgentErc4337(
     console.log("[ZeroDev 4337] Fetched", approvedVaults.length, "vaults");
 
     // 2. Create and serialize the kernel account (ERC-4337, no eip7702)
-    const { serializedAccount, sessionKeyAddress, expiry } =
-      await createAndSerializeAccountErc4337(smartWalletAddress, walletClient, approvedVaults);
+    const { serializedAccount, sessionKeyAddress, expiry } = await createAndSerializeAccountErc4337(
+      smartWalletAddress,
+      walletClient,
+      approvedVaults
+    );
 
     // 3. Send serialized account to server with ERC-4337 type
     console.log("[ZeroDev 4337] Sending serialized account to server...");

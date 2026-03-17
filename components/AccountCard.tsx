@@ -29,9 +29,7 @@ export function AccountCard({
       {/* Header */}
       <div className="flex items-center justify-between p-4">
         <div className="flex items-center gap-3">
-          <div
-            className={`flex h-10 w-10 items-center justify-center rounded-full ${iconBg}`}
-          >
+          <div className={`flex h-10 w-10 items-center justify-center rounded-full ${iconBg}`}>
             <Image src={icon} alt={ticker} width={24} height={24} />
           </div>
           <div>
@@ -64,9 +62,7 @@ export function AccountCard({
       {/* APY Footer */}
       <div className="border-t border-neutral-100 p-4">
         <div className="text-xs text-neutral-400">APY</div>
-        <div className="text-lg font-semibold text-emerald-500">
-          {(apy * 100).toFixed(1)}%
-        </div>
+        <div className="text-lg font-semibold text-emerald-500">{(apy * 100).toFixed(1)}%</div>
       </div>
     </div>
   );

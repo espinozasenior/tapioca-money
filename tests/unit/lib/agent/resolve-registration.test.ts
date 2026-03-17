@@ -326,10 +326,7 @@ describe("multi-address resolution", () => {
       },
     ]);
 
-    const result = await resolveAgentRegistration(asSql(mockSql), [
-      "0xexternal",
-      "0xembedded",
-    ]);
+    const result = await resolveAgentRegistration(asSql(mockSql), ["0xexternal", "0xembedded"]);
 
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -350,9 +347,7 @@ describe("multi-address resolution", () => {
       },
     ]);
 
-    const result = await resolveAndDecryptRegistration(asSql(mockSql), [
-      "0xinput_addr",
-    ]);
+    const result = await resolveAndDecryptRegistration(asSql(mockSql), ["0xinput_addr"]);
 
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -373,20 +368,12 @@ describe("verifyVaultApproval", () => {
   });
 
   it("returns approved when vault is in list (case-insensitive)", () => {
-    const result = verifyVaultApproval(
-      ["0xAABB", "0xCCDD"],
-      "0xaabb",
-      "morpho",
-    );
+    const result = verifyVaultApproval(["0xAABB", "0xCCDD"], "0xaabb", "morpho");
     expect(result.approved).toBe(true);
   });
 
   it("returns not approved when vault is NOT in list", () => {
-    const result = verifyVaultApproval(
-      ["0xAABB"],
-      "0x1234",
-      "morpho",
-    );
+    const result = verifyVaultApproval(["0xAABB"], "0x1234", "morpho");
     expect(result.approved).toBe(false);
     if (!result.approved) {
       expect(result.message).toContain("Vault not approved");
@@ -404,7 +391,7 @@ describe("verifyVaultApproval", () => {
       // Since we can't easily get the exact address here, we test with a non-matching list
       ["0x0000000000000000000000000000000000000000"],
       "0xvault",
-      "yo",
+      "yo"
     );
     // This will either be approved (if that happens to be the gateway) or not
     // Let's test the negative case more precisely
@@ -415,11 +402,7 @@ describe("verifyVaultApproval", () => {
   });
 
   it("returns not approved when YO gateway is NOT in list for yo protocol", () => {
-    const result = verifyVaultApproval(
-      ["0xNotTheGateway"],
-      "0xvault",
-      "yo",
-    );
+    const result = verifyVaultApproval(["0xNotTheGateway"], "0xvault", "yo");
     expect(result.approved).toBe(false);
     if (!result.approved) {
       expect(result.message).toContain("YO Gateway not approved");
@@ -428,11 +411,7 @@ describe("verifyVaultApproval", () => {
 
   it("ignores vaultAddress for yo protocol (checks gateway instead)", () => {
     // Even with a matching vault address, yo protocol checks gateway
-    const result = verifyVaultApproval(
-      ["0xvault"],
-      "0xvault",
-      "yo",
-    );
+    const result = verifyVaultApproval(["0xvault"], "0xvault", "yo");
     // The vault itself doesn't matter -- gateway must be in the list
     // Unless 0xvault happens to equal YO_GATEWAY_ADDRESS, this should fail
     // We test behavior: yo protocol checks gateway, not vault

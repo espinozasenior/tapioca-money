@@ -260,7 +260,8 @@ describe("Client Secure (ZeroDev)", () => {
   describe("delegateViaExternalWallet", () => {
     it("should check capabilities, switch chain, and send Type 4 tx", async () => {
       const mockWalletClient = {
-        request: vi.fn()
+        request: vi
+          .fn()
           // First call: wallet_getCapabilities
           .mockResolvedValueOnce({ "0x2105": { atomic: { status: "supported" } } })
           // Second call: eth_sendTransaction
@@ -279,11 +280,7 @@ describe("Client Secure (ZeroDev)", () => {
       const delegationBytecode = "0xef0100" + implAddress.slice(2);
       mockPublicClient.getBytecode.mockResolvedValue(delegationBytecode);
 
-      const txHash = await delegateViaExternalWallet(
-        mockWalletClient,
-        mockAddress,
-        implAddress
-      );
+      const txHash = await delegateViaExternalWallet(mockWalletClient, mockAddress, implAddress);
 
       // Verify capability check
       expect(mockWalletClient.request).toHaveBeenNthCalledWith(1, {
@@ -313,7 +310,8 @@ describe("Client Secure (ZeroDev)", () => {
 
     it("should throw immediately if wallet lacks 7702 support", async () => {
       const mockWalletClient = {
-        request: vi.fn()
+        request: vi
+          .fn()
           // wallet_getCapabilities returns no 7702 support
           .mockResolvedValueOnce({ "0x2105": {} }),
         switchChain: vi.fn(),
@@ -331,7 +329,8 @@ describe("Client Secure (ZeroDev)", () => {
 
     it("should throw if wallet_getCapabilities is not supported", async () => {
       const mockWalletClient = {
-        request: vi.fn()
+        request: vi
+          .fn()
           // wallet_getCapabilities throws (not supported)
           .mockRejectedValueOnce(new Error("method not found")),
         switchChain: vi.fn(),
@@ -345,10 +344,12 @@ describe("Client Secure (ZeroDev)", () => {
 
     it("should add chain if switchChain returns 4902", async () => {
       const mockWalletClient = {
-        request: vi.fn()
+        request: vi
+          .fn()
           .mockResolvedValueOnce({ "0x2105": { atomic: { status: "ready" } } })
           .mockResolvedValueOnce("0xdelegationtx"),
-        switchChain: vi.fn()
+        switchChain: vi
+          .fn()
           .mockRejectedValueOnce({ code: 4902, message: "chain not added" })
           .mockResolvedValueOnce(undefined),
         addChain: vi.fn().mockResolvedValue(undefined),
@@ -362,11 +363,7 @@ describe("Client Secure (ZeroDev)", () => {
       const delegationBytecode = "0xef0100" + implAddress.slice(2);
       mockPublicClient.getBytecode.mockResolvedValue(delegationBytecode);
 
-      const txHash = await delegateViaExternalWallet(
-        mockWalletClient,
-        mockAddress,
-        implAddress
-      );
+      const txHash = await delegateViaExternalWallet(mockWalletClient, mockAddress, implAddress);
 
       expect(mockWalletClient.addChain).toHaveBeenCalled();
       expect(mockWalletClient.switchChain).toHaveBeenCalledTimes(2);
@@ -375,7 +372,8 @@ describe("Client Secure (ZeroDev)", () => {
 
     it("should throw if tx type is not eip7702", async () => {
       const mockWalletClient = {
-        request: vi.fn()
+        request: vi
+          .fn()
           .mockResolvedValueOnce({ "0x2105": { atomic: { status: "supported" } } })
           .mockResolvedValueOnce("0xplaintx"),
         switchChain: vi.fn().mockResolvedValue(undefined),
@@ -395,7 +393,8 @@ describe("Client Secure (ZeroDev)", () => {
 
     it("should throw if delegation not detected after Type 4 tx", async () => {
       const mockWalletClient = {
-        request: vi.fn()
+        request: vi
+          .fn()
           .mockResolvedValueOnce({ "0x2105": { atomic: { status: "supported" } } })
           .mockResolvedValueOnce("0xfailedtx"),
         switchChain: vi.fn().mockResolvedValue(undefined),
@@ -444,11 +443,7 @@ describe("Client Secure (ZeroDev)", () => {
           json: async () => ({ success: true }),
         });
 
-      const result = await registerAgentSecureExternal(
-        mockAddress,
-        "token",
-        mockWalletClient
-      );
+      const result = await registerAgentSecureExternal(mockAddress, "token", mockWalletClient);
 
       expect(result.smartAccountAddress).toBe(mockAddress);
       expect(result.sessionKeyAddress).toBe("0xsessionKey");

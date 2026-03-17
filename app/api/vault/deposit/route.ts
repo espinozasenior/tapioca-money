@@ -11,7 +11,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { SessionKey7702Authorization } from "@/lib/security/session-encryption";
 import { authenticateRequest, unauthorizedResponse } from "@/lib/auth/middleware";
-import { buildWalletAddresses, resolveAndDecryptRegistration, verifyVaultApproval } from "@/lib/agent/resolve-registration";
+import {
+  buildWalletAddresses,
+  resolveAndDecryptRegistration,
+  verifyVaultApproval,
+} from "@/lib/agent/resolve-registration";
 import { executeGaslessDeposit } from "@/lib/zerodev/deposit-executor";
 import { executeYoGaslessDeposit } from "@/lib/zerodev/yo-deposit-executor";
 import { YO_VAULTS } from "@/lib/yo/constants";
@@ -120,9 +124,10 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // Legacy fields only exist on 7702 sessions
-      const legacy7702 = decryptedAuth.type === "zerodev-7702-session"
-        ? decryptedAuth as SessionKey7702Authorization
-        : undefined;
+      const legacy7702 =
+        decryptedAuth.type === "zerodev-7702-session"
+          ? (decryptedAuth as SessionKey7702Authorization)
+          : undefined;
       result = await executeGaslessDeposit({
         smartAccountAddress: accountAddress,
         vaultAddress: vaultAddress as `0x${string}`,

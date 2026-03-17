@@ -47,13 +47,9 @@ export type ResolveAndDecryptSuccess = ResolveSuccess & {
 
 export type ResolveAndDecryptError = ResolveError;
 
-export type ResolveAndDecryptResult =
-  | ResolveAndDecryptSuccess
-  | ResolveAndDecryptError;
+export type ResolveAndDecryptResult = ResolveAndDecryptSuccess | ResolveAndDecryptError;
 
-export type VaultApprovalResult =
-  | { approved: true }
-  | { approved: false; message: string };
+export type VaultApprovalResult = { approved: true } | { approved: false; message: string };
 
 // ---------------------------------------------------------------------------
 // buildWalletAddresses
@@ -73,7 +69,7 @@ export function buildWalletAddresses(authResult: {
   const { walletAddress, allWalletAddresses } = authResult;
 
   if (allWalletAddresses && allWalletAddresses.length > 0) {
-    return allWalletAddresses.map(a => a.toLowerCase());
+    return allWalletAddresses.map((a) => a.toLowerCase());
   }
 
   if (walletAddress) {
@@ -97,12 +93,12 @@ export function buildWalletAddresses(authResult: {
 export function verifyVaultApproval(
   approvedVaults: string[],
   vaultAddress: string,
-  protocol: string,
+  protocol: string
 ): VaultApprovalResult {
   if (protocol === "yo") {
     if (approvedVaults.length > 0) {
       const gatewayApproved = approvedVaults.some(
-        (v: string) => v.toLowerCase() === YO_GATEWAY_ADDRESS.toLowerCase(),
+        (v: string) => v.toLowerCase() === YO_GATEWAY_ADDRESS.toLowerCase()
       );
       if (!gatewayApproved) {
         return {
@@ -117,7 +113,7 @@ export function verifyVaultApproval(
   if (approvedVaults.length > 0) {
     const normalizedVaultAddress = vaultAddress.toLowerCase();
     const isApproved = approvedVaults.some(
-      (v: string) => v.toLowerCase() === normalizedVaultAddress,
+      (v: string) => v.toLowerCase() === normalizedVaultAddress
     );
     if (!isApproved) {
       return {
@@ -138,10 +134,7 @@ export function verifyVaultApproval(
  * Clear all agent state for a wallet so the user can re-register.
  * This is the canonical state transition for undelegation / revocation.
  */
-export async function resetAgentRegistration(
-  sql: SqlClient,
-  walletAddress: string,
-): Promise<void> {
+export async function resetAgentRegistration(sql: SqlClient, walletAddress: string): Promise<void> {
   await sql`
     UPDATE users
     SET authorization_7702 = NULL,
@@ -164,7 +157,7 @@ export async function resetAgentRegistration(
  */
 export async function resolveAgentRegistration(
   sql: SqlClient,
-  walletAddresses: string[],
+  walletAddresses: string[]
 ): Promise<ResolveResult> {
   const users = await sql`
     SELECT wallet_address, authorization_7702
@@ -178,8 +171,7 @@ export async function resolveAgentRegistration(
     return {
       ok: false,
       error: "not_registered",
-      message:
-        "Agent not registered. Please register your agent to enable vault operations.",
+      message: "Agent not registered. Please register your agent to enable vault operations.",
       statusCode: 400,
     };
   }
@@ -225,7 +217,7 @@ export async function resolveAgentRegistration(
  */
 export async function resolveAndDecryptRegistration(
   sql: SqlClient,
-  walletAddresses: string[],
+  walletAddresses: string[]
 ): Promise<ResolveAndDecryptResult> {
   const resolved = await resolveAgentRegistration(sql, walletAddresses);
 

@@ -2,7 +2,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
 
 // Hoisted mocks
-const { mockSql, mockDecryptAuthorization, mockEvaluateRebalancing, mockGetAvailableMorphoVaults, mockGetAvailableYoVaults } = vi.hoisted(() => ({
+const {
+  mockSql,
+  mockDecryptAuthorization,
+  mockEvaluateRebalancing,
+  mockGetAvailableMorphoVaults,
+  mockGetAvailableYoVaults,
+} = vi.hoisted(() => ({
   mockSql: vi.fn(),
   mockDecryptAuthorization: vi.fn(),
   mockEvaluateRebalancing: vi.fn(),
@@ -106,7 +112,13 @@ describe("Cron Performance Optimizations", () => {
       mockEvaluateRebalancing.mockResolvedValue({
         shouldRebalance: true,
         reason: "Better APY found",
-        currentVault: { address: "0xold", name: "Old", apy: 0.05, shares: "100", assets: "1000000" },
+        currentVault: {
+          address: "0xold",
+          name: "Old",
+          apy: 0.05,
+          shares: "100",
+          assets: "1000000",
+        },
         targetVault: { address: "0xnew", name: "New", apy: 0.1 },
         apyImprovement: 0.05,
         estimatedAnnualGain: 50,
@@ -156,7 +168,13 @@ describe("Cron Performance Optimizations", () => {
         .mockResolvedValueOnce({
           shouldRebalance: true,
           reason: "Better APY found",
-          currentVault: { address: "0xold", name: "Old", apy: 0.05, shares: "100", assets: "1000000" },
+          currentVault: {
+            address: "0xold",
+            name: "Old",
+            apy: 0.05,
+            shares: "100",
+            assets: "1000000",
+          },
           targetVault: { address: "0xnew", name: "New", apy: 0.1 },
           apyImprovement: 0.05,
           estimatedAnnualGain: 50,
@@ -256,11 +274,7 @@ describe("Cron Performance Optimizations", () => {
       expect(res.status).toBe(200);
 
       // Should still pass the empty prefetched vaults
-      expect(mockEvaluateRebalancing).toHaveBeenCalledWith(
-        "0xuser1",
-        null,
-        { morpho: [], yo: [] }
-      );
+      expect(mockEvaluateRebalancing).toHaveBeenCalledWith("0xuser1", null, { morpho: [], yo: [] });
     });
   });
 });

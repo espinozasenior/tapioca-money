@@ -111,10 +111,11 @@ export class YieldDecisionEngine {
       );
 
       // 3. Use prefetched vaults if available, otherwise fetch (P0-1 fix)
-      const morphoVaults = prefetchedVaults?.morpho
-        ?? await this.morphoClient.fetchVaults(CHAIN_ID, ASSET_SYMBOL, 50);
-      const yoVaults = prefetchedVaults?.yo
-        ?? await this.yoClient.fetchVaults(CHAIN_ID, ASSET_SYMBOL);
+      const morphoVaults =
+        prefetchedVaults?.morpho ??
+        (await this.morphoClient.fetchVaults(CHAIN_ID, ASSET_SYMBOL, 50));
+      const yoVaults =
+        prefetchedVaults?.yo ?? (await this.yoClient.fetchVaults(CHAIN_ID, ASSET_SYMBOL));
 
       // 4. Get current vault APY -- look up from vault list first to avoid extra API call
       let currentApy = 0;
@@ -327,7 +328,7 @@ export class YieldDecisionEngine {
     prefetchedYoVaults?: YoVault[]
   ): Promise<(YoUserPosition & { apy: number })[]> {
     const positions = await this.yoClient.fetchUserPositions(userAddress, CHAIN_ID);
-    const vaults = prefetchedYoVaults ?? await this.yoClient.fetchVaults(CHAIN_ID);
+    const vaults = prefetchedYoVaults ?? (await this.yoClient.fetchVaults(CHAIN_ID));
     return positions.map((pos) => {
       const vault = vaults.find((v) => v.address.toLowerCase() === pos.vaultAddress.toLowerCase());
       return { ...pos, apy: vault?.apy ?? 0 };

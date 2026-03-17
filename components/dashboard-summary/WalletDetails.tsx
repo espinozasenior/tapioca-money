@@ -93,7 +93,9 @@ export function WalletDetails({ onClose, open }: { onClose: () => void; open: bo
             <div className="rounded-lg bg-blue-50 p-3 text-xs text-blue-700">
               <p className="font-medium">Smart Wallet (ERC-4337)</p>
               <p className="mt-1 font-mono">{agentAddress}</p>
-              <p className="mt-1 text-blue-600">Your agent operates on this address. Deposit USDC here.</p>
+              <p className="mt-1 text-blue-600">
+                Your agent operates on this address. Deposit USDC here.
+              </p>
             </div>
           )}
           <button

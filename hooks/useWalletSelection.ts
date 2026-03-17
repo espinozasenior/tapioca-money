@@ -1,6 +1,14 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import {
   useWallets as useEthWallets,
   usePrivy,
@@ -164,10 +172,7 @@ export function WalletSelectionProvider({ children }: { children: React.ReactNod
   const supportsEip7702 = activeWalletType === "embedded";
 
   // Privy smart wallet address (ERC-4337 Kernel, auto-created when SmartWalletsProvider is active)
-  const smartWalletAddress = useMemo(
-    () => (user as any)?.smartWallet?.address ?? null,
-    [user]
-  );
+  const smartWalletAddress = useMemo(() => (user as any)?.smartWallet?.address ?? null, [user]);
 
   // Address where the agent operates:
   // - EIP-7702 users: EOA = smart account (same address)

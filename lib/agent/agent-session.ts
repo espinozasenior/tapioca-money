@@ -11,14 +11,9 @@ import type {
   SessionKeyErc4337Authorization,
 } from "@/lib/security/session-encryption";
 
-type SessionAuthorization =
-  | SessionKey7702Authorization
-  | SessionKeyErc4337Authorization;
+type SessionAuthorization = SessionKey7702Authorization | SessionKeyErc4337Authorization;
 
-const VALID_SESSION_TYPES: readonly string[] = [
-  "zerodev-7702-session",
-  "zerodev-erc4337-session",
-];
+const VALID_SESSION_TYPES: readonly string[] = ["zerodev-7702-session", "zerodev-erc4337-session"];
 
 export class AgentSession {
   constructor(private readonly auth: SessionAuthorization) {}

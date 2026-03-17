@@ -106,9 +106,7 @@ function WalletReconnect() {
   return (
     <div className="flex h-full w-full items-center justify-center">
       <div className="flex flex-col items-center gap-4 text-center">
-        <p className="text-sm text-gray-600">
-          Wallet disconnected. Please reconnect to continue.
-        </p>
+        <p className="text-sm text-gray-600">Wallet disconnected. Please reconnect to continue.</p>
         <div className="flex gap-3">
           <button
             onClick={() => connectWallet()}
