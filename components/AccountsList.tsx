@@ -24,7 +24,8 @@ export function AccountsList({ onDepositToVault }: AccountsListProps) {
     : null;
 
   // Compute display values — only show vault position, not wallet balance
-  const positionUsdc = matchedPosition ? parseFloat(matchedPosition.assets) : 0;
+  // Use `amount` (human-readable, decimal-adjusted) not `assets` (raw on-chain value)
+  const positionUsdc = matchedPosition ? parseFloat(matchedPosition.amount) : 0;
   const balanceUsd = positionUsdc > 0 ? `$${positionUsdc.toFixed(2)}` : "$0.00";
   const balanceToken = positionUsdc > 0 ? positionUsdc.toFixed(2) : "0";
   const apy = bestUsdcYield?.apy ?? 0;
