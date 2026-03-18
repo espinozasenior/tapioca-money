@@ -92,7 +92,7 @@ export async function executeYoRewardsClaim(
         ? "Agent daily operation limit reached. Please re-register your agent to reset the limit, or try again tomorrow."
         : isValidationFailure
           ? "Session key validation failed. Please re-register your agent to update permissions."
-          : msg,
+          : "Claim failed. Please try again later.",
     };
   }
 }

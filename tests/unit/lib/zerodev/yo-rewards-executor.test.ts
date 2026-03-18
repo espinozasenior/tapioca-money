@@ -165,13 +165,19 @@ describe("executeYoRewardsClaim", () => {
     expect(result.error).toContain("Session key validation failed");
   });
 
-  it("handles generic errors", async () => {
-    mockSendUserOperation.mockRejectedValue(new Error("Some unexpected error"));
+  it("returns sanitized message for generic errors (no raw leak)", async () => {
+    mockSendUserOperation.mockRejectedValue(
+      new Error("Internal bundler error at https://bundler.zerodev.app/rpc?projectId=SECRET123")
+    );
 
     const result = await executeYoRewardsClaim(defaultParams);
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe("Some unexpected error");
+    // Must NOT contain the raw error with internal URLs/secrets
+    expect(result.error).not.toContain("bundler.zerodev.app");
+    expect(result.error).not.toContain("SECRET123");
+    // Should return a safe, user-facing message
+    expect(result.error).toBe("Claim failed. Please try again later.");
   });
 
   it("handles validateUserOp errors", async () => {

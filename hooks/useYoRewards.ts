@@ -30,10 +30,8 @@ export function useClaimRewards() {
       const res = await fetch("/api/yo/rewards/claim", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ address }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));

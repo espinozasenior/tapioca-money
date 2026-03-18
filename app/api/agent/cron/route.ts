@@ -637,34 +637,8 @@ async function processUserRewardClaim(user: any, summary: CronSummary): Promise<
     }
   }
 
-  // 3. Fetch claimable rewards
-  let rewards;
-  try {
-    rewards = await fetchClaimableRewards(userAddress, true);
-  } catch (error: any) {
-    console.warn(`[Cron] Merkl rewards fetch failed for ${userAddress}:`, error.message);
-    summary.skipped++;
-    return;
-  }
-
-  if (!rewards || !rewards.hasClaimable) {
-    summary.skipped++;
-    return;
-  }
-
-  // 4. Check USD threshold — skip if rewards < $2
-  // Since $YO is non-transferable, estimate value from reward APY context.
-  // Use totalClaimable (raw 18-decimal) as a proxy: 1 $YO ≈ market estimate.
-  // For now, compare raw token amount against threshold assuming ~$1/YO as conservative estimate.
-  // When $YO gets a price feed, replace with actual USD conversion.
-  const claimableTokens = parseFloat(rewards.totalClaimableFormatted);
-  const estimatedUsd = claimableTokens; // 1:1 conservative estimate until price feed exists
-  if (estimatedUsd < MERKL_CLAIM_THRESHOLD_USD) {
-    summary.skipped++;
-    return;
-  }
-
-  // 5. Fetch full authorization to check permissions + execute
+  // 3. Fetch + decrypt authorization BEFORE rewards fetch
+  //    (needed to resolve smartAccountAddress for ERC-4337 users)
   const authRows = await sql`
     SELECT authorization_7702 FROM users WHERE id = ${userId}
   `;
@@ -686,7 +660,7 @@ async function processUserRewardClaim(user: any, summary: CronSummary): Promise<
     return;
   }
 
-  // 6. Verify Merkl Distributor is in approvedVaults
+  // 4. Verify Merkl Distributor is in approvedVaults
   const approvedVaults = authorization.approvedVaults || [];
   const approval = verifyVaultApproval(approvedVaults, MERKL_DISTRIBUTOR_ADDRESS_BASE, "merkl");
   if (!approval.approved) {
@@ -699,14 +673,46 @@ async function processUserRewardClaim(user: any, summary: CronSummary): Promise<
     return;
   }
 
-  // 7. Check UserOp budget
+  // 5. Check UserOp budget
   const opsUsed = await getUserOpCount(userAddress);
   if (opsUsed >= USEROP_DAILY_LIMIT - CRON_USEROP_RESERVE) {
     summary.skipped++;
     return;
   }
 
-  // 8. Check simulation mode
+  // 6. Resolve smartAccountAddress BEFORE fetching rewards
+  //    ERC-4337: rewards accrue to smartWalletAddress (Privy Kernel smart wallet)
+  //    EIP-7702: rewards accrue to eoaAddress (EOA = smart account)
+  const smartAccountAddress = (
+    authorization.type === "zerodev-erc4337-session"
+      ? authorization.smartWalletAddress
+      : authorization.eoaAddress
+  ) as `0x${string}`;
+
+  // 7. Fetch claimable rewards using the correct address
+  let rewards;
+  try {
+    rewards = await fetchClaimableRewards(smartAccountAddress, true);
+  } catch (error: any) {
+    console.warn(`[Cron] Merkl rewards fetch failed for ${userAddress}:`, error.message);
+    summary.skipped++;
+    return;
+  }
+
+  if (!rewards || !rewards.hasClaimable) {
+    summary.skipped++;
+    return;
+  }
+
+  // 8. Check USD threshold — skip if rewards < $2
+  const claimableTokens = parseFloat(rewards.totalClaimableFormatted);
+  const estimatedUsd = claimableTokens; // 1:1 conservative estimate until price feed exists
+  if (estimatedUsd < MERKL_CLAIM_THRESHOLD_USD) {
+    summary.skipped++;
+    return;
+  }
+
+  // 9. Check simulation mode
   if (process.env.AGENT_SIMULATION_MODE === "true") {
     console.log(
       `[SIMULATION] Would claim ${rewards.totalClaimableFormatted} $YO for ${userAddress}`
@@ -722,11 +728,7 @@ async function processUserRewardClaim(user: any, summary: CronSummary): Promise<
     return;
   }
 
-  // 9. Execute claim
-  const smartAccountAddress =
-    authorization.type === "zerodev-erc4337-session"
-      ? authorization.smartWalletAddress
-      : authorization.eoaAddress;
+  // 10. Execute claim
 
   const result = await executeYoRewardsClaim({
     smartAccountAddress,
