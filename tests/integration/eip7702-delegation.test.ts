@@ -519,23 +519,38 @@ describe("External Wallet Registration — Two-Phase Flow", () => {
     expect(regFn).toContain("Delegation not found on-chain");
   });
 
-  test("31. useOptimizer branches registration: EIP-7702 vs ERC-4337 fallback", async () => {
+  test("31. useOptimizer always uses embedded wallet for EIP-7702 regardless of active wallet", async () => {
     const fs = await import("fs");
     const source = fs.readFileSync("hooks/useOptimizer.ts", "utf-8");
 
-    // Path A: check walletClientType for EIP-7702 branching
-    expect(source).toContain('activeWallet.walletClientType === "privy"');
-
-    // Privy flow uses signAuthorization + registerAgentSecure
+    // The registration code must find embedded wallets from allWallets (not rely on activeWallet)
+    // This ensures EIP-7702 path is taken even when an external wallet (Brave, MetaMask) is active
+    expect(source).toContain('walletClientType === "privy"');
     expect(source).toContain("signAuthorization");
     expect(source).toContain("registerAgentSecure");
 
-    // Path B: ERC-4337 fallback via Privy smart wallet
+    // Path B: ERC-4337 fallback only when no embedded wallet exists
     expect(source).toContain("registerAgentErc4337");
-    expect(source).toContain("smartWalletAddress");
-
-    // Feature flag for rollback
     expect(source).toContain("NEXT_PUBLIC_ENABLE_ERC4337_FALLBACK");
+
+    // Key behavioral assertion: embedded wallet is found from allWallets BEFORE
+    // checking activeWallet — the if(embeddedWallet) block must come before the
+    // ERC-4337 else-if block, ensuring EIP-7702 is always preferred.
+    const embeddedCheckIdx = source.indexOf("if (embeddedWallet)");
+    const erc4337FallbackIdx = source.indexOf("registerAgentErc4337");
+    expect(embeddedCheckIdx).toBeGreaterThan(-1);
+    expect(erc4337FallbackIdx).toBeGreaterThan(-1);
+    expect(embeddedCheckIdx).toBeLessThan(erc4337FallbackIdx);
+
+    // Must NOT gate Path A on activeWallet being the embedded wallet
+    // (the old bug: `supportsEip7702 && activeWallet.walletClientType === "privy"`)
+    const pathACondition = source.substring(embeddedCheckIdx - 200, embeddedCheckIdx);
+    expect(pathACondition).not.toContain("supportsEip7702 && activeWallet");
+
+    // Must use embeddedWallet.address (not activeWallet address) for registration
+    const pathABlock = source.substring(embeddedCheckIdx, erc4337FallbackIdx);
+    expect(pathABlock).toContain("embeddedWallet.address");
+    expect(pathABlock).toContain("embeddedWallet.raw.switchChain");
   });
 
   test("32. All registration paths share the same permission builder", async () => {
