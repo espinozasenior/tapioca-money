@@ -6,29 +6,32 @@ Smart yield optimization on Base. Deposit USDC, earn yield across DeFi protocols
 
 - **Privy Authentication** — Login with email or Google, embedded wallets auto-created
 - **USDC on Base** — Deposit, send, and manage USDC on Base mainnet
-- **Earn Yield** — Deposit into Morpho vaults with real-time APY and risk scoring
+- **Earn Yield** — Deposit into Morpho and YO Protocol vaults with real-time APY and risk scoring
 - **Autonomous Yield Agent** — ZeroDev session keys enable hands-free rebalancing across vaults
-- **Gasless Transactions** — All operations sponsored via ZeroDev Bundler + Paymaster (ERC-4337)
+- **Gasless Transactions** — All operations sponsored via ZeroDev Bundler + Paymaster
+- **Dual Wallet Support** — EIP-7702 for embedded wallets, ERC-4337 for external wallets (MetaMask, Coinbase, etc.)
 - **Activity Feed** — Full transaction history and agent action timeline
 
 ## Autonomous Yield Agent
 
-The agent continuously monitors yield opportunities and rebalances your funds automatically.
+The agent monitors yield opportunities and rebalances your funds automatically.
 
 ### How It Works
 
 1. **One-Time Setup**: Register a ZeroDev Kernel V3 smart account and grant a scoped session key
-2. **Continuous Monitoring**: Agent evaluates Morpho vault APYs every 5 minutes
-3. **Smart Rebalancing**: When APY improvement exceeds threshold (default 0.5%), the agent moves funds
+2. **Daily Monitoring**: Agent evaluates vault APYs across Morpho and YO Protocol
+3. **Smart Rebalancing**: When APY improvement exceeds threshold, the agent moves funds
 4. **Gasless Execution**: All transactions sponsored — zero gas fees for users
 5. **Full Control**: Disable auto-optimize or revoke session keys anytime
 
 ### Security
 
-- Session keys are scoped to approved Morpho vaults only (30-day expiry)
+- Session keys are scoped to approved Morpho + YO vaults only (7-day expiry)
+- All API endpoints require Privy JWT authentication
 - Authorization revocable at any time
 - All transactions simulated before execution
-- Rate limits and safety checks prevent excessive operations
+- Rate limits (Redis-backed) and safety checks prevent excessive operations
+- AES-256-GCM encryption for session key storage
 
 See [AGENT_OPERATIONS_GUIDE.md](./AGENT_OPERATIONS_GUIDE.md) for architecture details.
 
@@ -44,27 +47,30 @@ pnpm install
 2. Configure environment:
 
 ```bash
-cp .env.template .env
+cp .env.example .env.local
 ```
 
 3. Set required variables:
 
-| Variable                   | Source                                              | Notes                                                |
-| -------------------------- | --------------------------------------------------- | ---------------------------------------------------- |
-| `NEXT_PUBLIC_PRIVY_APP_ID` | [Privy Dashboard](https://dashboard.privy.io)       | Public, safe to expose                               |
-| `PRIVY_APP_SECRET`         | Privy Dashboard                                     | Secret, server-only                                  |
-| `ZERODEV_PROJECT_ID`       | [ZeroDev Dashboard](https://dashboard.zerodev.app)  | For Kernel V3 smart accounts                         |
-| `DATABASE_URL`             | [Neon Console](https://console.neon.tech)           | Use pooled connection string with `?sslmode=require` |
-| `DATABASE_ENCRYPTION_KEY`  | Generate: `openssl rand -hex 32`                    | 32-byte key for AES-256 encryption of session keys   |
-| `CRON_SECRET`              | Generate: `openssl rand -hex 16`                    | Authenticates cron requests                          |
-| `NEXT_PUBLIC_CHAIN_ID`     | Fixed: `base`                                       | Production chain                                     |
-| `NEXT_PUBLIC_USDC_MINT`    | Fixed: `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` | Base mainnet USDC                                    |
+| Variable                   | Source                                             | Notes                                                |
+| -------------------------- | -------------------------------------------------- | ---------------------------------------------------- |
+| `NEXT_PUBLIC_PRIVY_APP_ID` | [Privy Dashboard](https://dashboard.privy.io)      | Public, safe to expose                               |
+| `PRIVY_APP_SECRET`         | Privy Dashboard                                    | Secret, server-only                                  |
+| `ZERODEV_PROJECT_ID`       | [ZeroDev Dashboard](https://dashboard.zerodev.app) | For Kernel V3 smart accounts                         |
+| `DATABASE_URL`             | [Neon Console](https://console.neon.tech)          | Use pooled connection string with `?sslmode=require` |
+| `DATABASE_ENCRYPTION_KEY`  | Generate: `openssl rand -hex 32`                   | 64-char hex key for AES-256-GCM encryption           |
+| `NEXT_PUBLIC_BASE_RPC_URL` | Alchemy / Infura                                   | Base mainnet RPC URL                                 |
+| `REDIS_URL`                | Upstash / Redis Cloud                              | Required for rate limiting in production             |
+| `CRON_SECRET`              | Generate: `openssl rand -hex 16`                   | Authenticates cron requests                          |
+| `RELAYER_PRIVATE_KEY`      | Generate dedicated EOA                             | For EIP-7702 undelegation relayer                    |
 
 Optional:
 
 - `ZERODEV_BUNDLER_URL` — Custom bundler endpoint (defaults to ZeroDev's)
 - `AGENT_SIMULATION_MODE` — `true` for testing without real transactions
-- `AGENT_MIN_APY_THRESHOLD` — Minimum APY improvement to trigger rebalance (default: `0.005`)
+- `NEXT_PUBLIC_ENABLE_ERC4337_FALLBACK` — Enable ERC-4337 path for external wallets (default: `true`)
+
+See [.env.example](./.env.example) for the full list of environment variables.
 
 4. Set up the database:
 
@@ -94,11 +100,11 @@ vercel deploy --prod
 
 ### Cron Configuration
 
-The autonomous agent runs every 5 minutes via Vercel cron (configured in `vercel.json`):
+The autonomous agent runs daily via Vercel cron (configured in `vercel.json`):
 
 ```json
 {
-  "crons": [{ "path": "/api/agent/cron", "schedule": "*/5 * * * *" }]
+  "crons": [{ "path": "/api/agent/cron", "schedule": "0 12 * * *" }]
 }
 ```
 
@@ -110,10 +116,10 @@ Tuning parameters:
 ### Health Monitoring
 
 ```bash
-curl https://your-domain.vercel.app/api/agent/health
+curl -H "x-cron-secret: $CRON_SECRET" https://your-domain.vercel.app/api/agent/health
 ```
 
-Returns service status for database, ZeroDev bundler, and Morpho API, plus agent metrics (active users, rebalance success rate, error rate).
+Returns service status for database, ZeroDev bundler, and vault APIs, plus agent metrics (active users, rebalance success rate, error rate).
 
 See [DEPLOYMENT.md](./DEPLOYMENT.md) for the full production deployment guide including database migrations, rollback procedures, troubleshooting, and monitoring.
 
@@ -121,11 +127,14 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for the full production deployment guide in
 
 - Next.js 15 (React 19, App Router, Turbopack)
 - Privy (auth + embedded wallets)
-- ZeroDev SDK v5 (Kernel V3 smart accounts, session keys, bundler + paymaster)
-- Morpho Blue (vault deposits and yield)
+- ZeroDev SDK v5 (Kernel V3.3 smart accounts, session keys, EIP-7702 + ERC-4337)
+- Morpho (vault deposits and yield)
+- YO Protocol (vault deposits and yield)
 - Viem v2, Base mainnet
 - Tailwind CSS v4, Radix UI
 - Drizzle ORM + Neon Postgres
+- Redis (rate limiting, session blacklisting, distributed locks)
+- Vitest (testing)
 
 ## License
 
