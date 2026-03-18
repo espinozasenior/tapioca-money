@@ -234,6 +234,7 @@ export async function POST(request: NextRequest) {
       `[Cron] Merkl claim phase: ${claimSummary.claimed} claimed, ${claimSummary.skipped} skipped`
     );
 
+
     const duration = Date.now() - startTime;
     console.log(`[Cron] Cycle complete in ${duration}ms:`, {
       processed: summary.processed,
@@ -705,7 +706,6 @@ async function processUserRewardClaim(user: any, summary: CronSummary): Promise<
   }
 
   // 10. Execute claim
-
   const result = await executeYoRewardsClaim({
     smartAccountAddress,
     serializedAccount: authorization.serializedAccount,
