@@ -9,6 +9,12 @@ import { isSessionRevoked } from "@/lib/security/session-revocation";
 import { AgentSession } from "@/lib/agent/agent-session";
 import { acquireUserLock, releaseUserLock } from "@/lib/redis/distributed-lock";
 import { getUserOpCount, incrementUserOpCount } from "@/lib/redis/rate-limiter";
+import { fetchClaimableRewards } from "@/lib/yo/rewards-client";
+import { executeYoRewardsClaim } from "@/lib/zerodev/yo-rewards-executor";
+import { invalidateYoRewards } from "@/lib/redis/yo-cache";
+import { verifyVaultApproval } from "@/lib/agent/resolve-registration";
+import { MERKL_DISTRIBUTOR_ADDRESS_BASE } from "@/lib/yo/constants";
+import { CHAIN_CONFIG } from "@/lib/config";
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -120,11 +126,12 @@ function isSessionValid(expiry: number): boolean {
 interface CronSummary {
   processed: number;
   rebalanced: number;
+  claimed: number;
   skipped: number;
   errors: number;
   details: Array<{
     address: string;
-    action: "rebalanced" | "skipped" | "error";
+    action: "rebalanced" | "claimed" | "skipped" | "error";
     reason: string;
     apyImprovement?: number;
     taskId?: string;
@@ -161,6 +168,7 @@ export async function POST(request: NextRequest) {
   const summary: CronSummary = {
     processed: 0,
     rebalanced: 0,
+    claimed: 0,
     skipped: 0,
     errors: 0,
     details: [],
@@ -231,10 +239,25 @@ export async function POST(request: NextRequest) {
       prefetchedVaults
     );
 
+    // Phase 2: Auto-claim Merkl rewards for active users
+    console.log("[Cron] Starting Merkl reward auto-claim phase...");
+    const claimSummary: CronSummary = {
+      processed: 0, rebalanced: 0, claimed: 0, skipped: 0, errors: 0, details: [],
+    };
+    await processUsersInParallel(
+      activeUsers,
+      processUserRewardClaim,
+      claimSummary
+    );
+    summary.claimed = claimSummary.claimed;
+    summary.details.push(...claimSummary.details.filter(d => d.action === "claimed" || d.action === "error"));
+    console.log(`[Cron] Merkl claim phase: ${claimSummary.claimed} claimed, ${claimSummary.skipped} skipped`);
+
     const duration = Date.now() - startTime;
     console.log(`[Cron] Cycle complete in ${duration}ms:`, {
       processed: summary.processed,
       rebalanced: summary.rebalanced,
+      claimed: summary.claimed,
       skipped: summary.skipped,
       errors: summary.errors,
     });
@@ -569,4 +592,194 @@ async function logSimulatedAction(
     "success",
     undefined
   );
+}
+
+// Auto-claim threshold: rewards must exceed $2 USD value to justify claim
+const MERKL_CLAIM_THRESHOLD_USD = parseFloat(process.env.MERKL_CLAIM_THRESHOLD_USD || "2");
+// Cooldown: skip users who claimed within the last 24 hours
+const MERKL_CLAIM_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Process Merkl reward claiming for a single user.
+ * Threshold-gated ($2 USD) and rate-limited (once per 24h).
+ */
+async function processUserRewardClaim(
+  user: any,
+  summary: CronSummary
+): Promise<void> {
+  const userAddress = user.wallet_address as `0x${string}`;
+  const userId = user.id;
+  const sessionType = user.session_type;
+
+  // 1. Validate session type
+  const sessionProbe = AgentSession.fromRaw({ type: sessionType });
+  if (!sessionProbe || !sessionProbe.isValidType()) {
+    summary.skipped++;
+    return;
+  }
+
+  // 2. Check 24h cooldown — skip if claimed recently
+  const recentClaims = await sql`
+    SELECT created_at FROM agent_actions
+    WHERE user_id = ${userId}
+      AND action_type = 'merkl_claim'
+      AND status = 'success'
+    ORDER BY created_at DESC
+    LIMIT 1
+  `;
+  if (recentClaims.length > 0) {
+    const lastClaimTime = new Date(recentClaims[0].created_at as string).getTime();
+    if (Date.now() - lastClaimTime < MERKL_CLAIM_COOLDOWN_MS) {
+      summary.skipped++;
+      return;
+    }
+  }
+
+  // 3. Fetch claimable rewards
+  let rewards;
+  try {
+    rewards = await fetchClaimableRewards(userAddress, true);
+  } catch (error: any) {
+    console.warn(`[Cron] Merkl rewards fetch failed for ${userAddress}:`, error.message);
+    summary.skipped++;
+    return;
+  }
+
+  if (!rewards || !rewards.hasClaimable) {
+    summary.skipped++;
+    return;
+  }
+
+  // 4. Check USD threshold — skip if rewards < $2
+  // Since $YO is non-transferable, estimate value from reward APY context.
+  // Use totalClaimable (raw 18-decimal) as a proxy: 1 $YO ≈ market estimate.
+  // For now, compare raw token amount against threshold assuming ~$1/YO as conservative estimate.
+  // When $YO gets a price feed, replace with actual USD conversion.
+  const claimableTokens = parseFloat(rewards.totalClaimableFormatted);
+  const estimatedUsd = claimableTokens; // 1:1 conservative estimate until price feed exists
+  if (estimatedUsd < MERKL_CLAIM_THRESHOLD_USD) {
+    summary.skipped++;
+    return;
+  }
+
+  // 5. Fetch full authorization to check permissions + execute
+  const authRows = await sql`
+    SELECT authorization_7702 FROM users WHERE id = ${userId}
+  `;
+  const encryptedAuthorization = authRows[0]?.authorization_7702;
+  if (!encryptedAuthorization) {
+    summary.skipped++;
+    return;
+  }
+
+  const authorization = decryptAuthorization(encryptedAuthorization);
+
+  if (!isSessionValid(authorization.expiry)) {
+    summary.skipped++;
+    return;
+  }
+
+  if (await isSessionRevoked(authorization.sessionKeyAddress)) {
+    summary.skipped++;
+    return;
+  }
+
+  // 6. Verify Merkl Distributor is in approvedVaults
+  const approvedVaults = authorization.approvedVaults || [];
+  const approval = verifyVaultApproval(approvedVaults, MERKL_DISTRIBUTOR_ADDRESS_BASE, "merkl");
+  if (!approval.approved) {
+    summary.skipped++;
+    return;
+  }
+
+  if (!authorization.serializedAccount) {
+    summary.skipped++;
+    return;
+  }
+
+  // 7. Check UserOp budget
+  const opsUsed = await getUserOpCount(userAddress);
+  if (opsUsed >= USEROP_DAILY_LIMIT - CRON_USEROP_RESERVE) {
+    summary.skipped++;
+    return;
+  }
+
+  // 8. Check simulation mode
+  if (process.env.AGENT_SIMULATION_MODE === "true") {
+    console.log(`[SIMULATION] Would claim ${rewards.totalClaimableFormatted} $YO for ${userAddress}`);
+    await logClaimAction(userId, userAddress, rewards.totalClaimableFormatted, "simulation", "success");
+    summary.skipped++;
+    return;
+  }
+
+  // 9. Execute claim
+  const smartAccountAddress =
+    authorization.type === "zerodev-erc4337-session"
+      ? authorization.smartWalletAddress
+      : authorization.eoaAddress;
+
+  const result = await executeYoRewardsClaim({
+    smartAccountAddress,
+    serializedAccount: authorization.serializedAccount,
+    userAddress: smartAccountAddress,
+    chainRewards: rewards.rawChainRewards,
+  });
+
+  if (result.success) {
+    summary.claimed++;
+    summary.details.push({
+      address: userAddress,
+      action: "claimed",
+      reason: `Claimed ${rewards.totalClaimableFormatted} $YO (~$${estimatedUsd.toFixed(2)})`,
+    });
+    await logClaimAction(userId, userAddress, rewards.totalClaimableFormatted, result.txHash, "success");
+    await invalidateYoRewards(smartAccountAddress, CHAIN_CONFIG.chainId);
+    await incrementUserOpCount(userAddress);
+    console.log(`[Cron] Claimed ${rewards.totalClaimableFormatted} $YO for ${userAddress}`);
+  } else {
+    summary.errors++;
+    summary.details.push({
+      address: userAddress,
+      action: "error",
+      reason: result.error || "Merkl claim failed",
+    });
+    await logClaimAction(userId, userAddress, rewards.totalClaimableFormatted, undefined, "failed", result.error);
+    console.error(`[Cron] Merkl claim failed for ${userAddress}:`, result.error);
+  }
+}
+
+/**
+ * Log Merkl claim action to agent_actions table
+ */
+async function logClaimAction(
+  userId: string,
+  userAddress: string,
+  claimableAmount: string,
+  txHash: string | undefined,
+  status: "success" | "failed",
+  errorMessage?: string
+): Promise<void> {
+  await sql`
+    INSERT INTO agent_actions (
+      user_id,
+      action_type,
+      status,
+      from_protocol,
+      to_protocol,
+      amount_usdc,
+      tx_hash,
+      error_message,
+      metadata
+    ) VALUES (
+      ${userId},
+      'merkl_claim',
+      ${status},
+      'merkl',
+      'yo',
+      ${claimableAmount},
+      ${txHash || null},
+      ${errorMessage || null},
+      ${JSON.stringify({ claimableAmount, userAddress })}::jsonb
+    )
+  `;
 }
