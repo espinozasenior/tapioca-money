@@ -104,16 +104,26 @@ async function _buildKernelClient(serializedAccount: string, preInstalled: boole
 
   console.log("[KernelClient] Account deserialized:", kernelAccount.address);
 
-  // Fix AA14: deserializePermissionAccount restores factory/factoryData from serialization
-  // time, but the factory's CREATE2 address won't match our account address because:
-  // - EIP-7702: factory address ≠ EOA address (we set address explicitly)
-  // - ERC-4337: factory uses our validators, not Privy's, so CREATE2 differs from smartWalletAddress
-  // Always strip factory data — our accounts are either already deployed (ERC-4337 via Privy)
-  // or use EIP-7702 delegation (no factory needed). The factory from serialization is never correct.
+  // Fix AA14/AA20: deserializePermissionAccount restores factory/factoryData from serialization,
+  // but the factory's CREATE2 address won't match our account address (we set it explicitly).
+  // Strategy: check on-chain code to decide what to do.
+  const onChainCode = await publicClient.getCode({ address: kernelAccount.address });
+  const isDeployed = onChainCode && onChainCode !== "0x";
   const { factory: origFactory } = await kernelAccount.getFactoryArgs();
-  if (origFactory) {
-    console.log("[KernelClient] Stripping factory to prevent AA14 (address set explicitly)");
+
+  if (isDeployed && origFactory) {
+    // Account deployed on-chain — strip factory to prevent AA14
+    console.log("[KernelClient] Account deployed on-chain — stripping factory to prevent AA14");
     kernelAccount.getFactoryArgs = async () => ({ factory: undefined, factoryData: undefined });
+  } else if (!isDeployed && origFactory) {
+    // Account NOT deployed and has factory data. The factory from our serialization creates
+    // a wallet at a different address than the Privy smart wallet (different validators/salt).
+    // We can't use it (AA14) and we can't strip it (AA20).
+    // The Privy smart wallet must be deployed first via a Privy transaction.
+    throw new Error(
+      "Smart wallet not yet deployed on-chain. " +
+        "Please make any transaction through your wallet first to activate it, then retry."
+    );
   }
 
   const bundlerUrl =

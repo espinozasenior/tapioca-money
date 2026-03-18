@@ -247,11 +247,29 @@ export function useAgent() {
         let result;
         const enableErc4337 = process.env.NEXT_PUBLIC_ENABLE_ERC4337_FALLBACK !== "false";
 
-        if (supportsEip7702 && activeWallet.walletClientType === "privy") {
+        // Find embedded wallet — always prefer EIP-7702 path when one exists.
+        // Even if an external wallet (Brave, MetaMask) is active, the embedded wallet
+        // is the actual smart account (EOA with Kernel V3.3 delegation).
+        const embeddedWallets = allWallets.filter(
+          (w) => w.walletClientType === "privy" && w.chainType === "ethereum"
+        );
+        const privyLinkedAddress = user?.wallet?.address?.toLowerCase();
+        const embeddedWallet =
+          (privyLinkedAddress &&
+            embeddedWallets.find((w) => w.address.toLowerCase() === privyLinkedAddress)) ||
+          embeddedWallets[0] ||
+          null;
+
+        if (embeddedWallet) {
           // ── Path A: EIP-7702 (Privy embedded wallet) ──
+          // Always use this path when an embedded wallet exists, regardless of which
+          // wallet is "active" in the UI. The embedded wallet IS the smart account.
           const { registerAgentSecure } = await import("@/lib/zerodev/client-secure");
 
-          console.log("[Agent Registration] Signing EIP-7702 authorization...");
+          console.log(
+            "[Agent Registration] Using EIP-7702 path with embedded wallet:",
+            embeddedWallet.address
+          );
           const { KERNEL_V3_3, KernelVersionToAddressesMap } = await import(
             "@zerodev/sdk/constants"
           );
@@ -267,14 +285,12 @@ export function useAgent() {
           }
           console.log("[Agent Registration] Delegation target verified:", implAddress);
 
-          // Ensure Privy embedded wallet is on Base before getting its provider.
-          // Without this, signTypedData fails with "chainId 0x2105 is not current network"
-          // when the wallet provider defaults to a different chain.
-          await activeWallet.raw.switchChain(8453);
+          // Use the embedded wallet for signing, not the active wallet
+          await embeddedWallet.raw.switchChain(8453);
 
-          const provider = await activeWallet.raw.getEthereumProvider();
+          const provider = await embeddedWallet.raw.getEthereumProvider();
           const walletClient = createWalletClient({
-            account: address as `0x${string}`,
+            account: embeddedWallet.address as `0x${string}`,
             chain: base,
             transport: custom(provider),
           });
@@ -286,7 +302,7 @@ export function useAgent() {
           });
 
           result = await registerAgentSecure(
-            address as `0x${string}`,
+            embeddedWallet.address as `0x${string}`,
             accessToken,
             signedAuth,
             walletClient

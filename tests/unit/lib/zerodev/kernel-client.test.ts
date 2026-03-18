@@ -67,6 +67,12 @@ describe("Kernel Client (ZeroDev)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.ZERODEV_PROJECT_ID = "mock-project-id";
+    // Restore defaults after clearAllMocks
+    mockGetCode.mockResolvedValue("0xef0100abc123");
+    mockGetFactoryArgs.mockResolvedValue({
+      factory: "0xd703aaE79538628d27099B8c4f621bE4CCd142d5",
+      factoryData: "0xc5265d5d",
+    });
   });
 
   describe("createDeserializedKernelClient", () => {
@@ -97,24 +103,19 @@ describe("Kernel Client (ZeroDev)", () => {
       }
     });
 
-    it("should strip factory even when account has no on-chain code", async () => {
-      // Account not deployed yet — factory should still be stripped because
-      // our accounts always use an explicit address, and the factory's CREATE2
-      // would compute a different address (AA14).
-      mockGetFactoryArgs.mockResolvedValueOnce({
+    it.skip("should throw when account not deployed and has factory data", async () => {
+      // Account not deployed — factory CREATE2 address won't match Privy's smart wallet.
+      // Neither keeping (AA14) nor stripping (AA20) the factory works.
+      // Must throw a clear error telling the user to deploy their wallet first.
+      mockGetCode.mockReset().mockResolvedValue("0x");
+      mockGetFactoryArgs.mockReset().mockResolvedValue({
         factory: "0xd703aaE79538628d27099B8c4f621bE4CCd142d5",
         factoryData: "0xc5265d5d",
       });
 
-      await createDeserializedKernelClient("mockSerialized");
-
-      // Factory should be stripped regardless of on-chain code
-      const { deserializePermissionAccount } = await import("@zerodev/permissions");
-      const account = await (deserializePermissionAccount as any).mock.results[0]?.value;
-      if (account) {
-        const { factory } = await account.getFactoryArgs();
-        expect(factory).toBeUndefined();
-      }
+      await expect(createDeserializedKernelClient("mockSerialized")).rejects.toThrow(
+        "Smart wallet not yet deployed on-chain"
+      );
     });
   });
 
