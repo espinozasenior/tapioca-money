@@ -234,7 +234,6 @@ export async function POST(request: NextRequest) {
       `[Cron] Merkl claim phase: ${claimSummary.claimed} claimed, ${claimSummary.skipped} skipped`
     );
 
-
     const duration = Date.now() - startTime;
     console.log(`[Cron] Cycle complete in ${duration}ms:`, {
       processed: summary.processed,
