@@ -27,9 +27,9 @@ vi.mock("@/lib/zerodev/transfer-session", () => ({
   validateTransferSession: vi.fn(),
 }));
 
-vi.mock("@/lib/rate-limiter", () => ({
-  checkTransferRateLimit: vi.fn(),
-  recordTransferAttempt: vi.fn(),
+vi.mock("@/lib/redis/rate-limiter", () => ({
+  checkTransferRateLimitRedis: vi.fn(),
+  recordTransferAttemptRedis: vi.fn(),
 }));
 
 vi.mock("@/lib/zerodev/transfer-executor", () => ({
@@ -42,7 +42,7 @@ import { POST } from "@/app/api/transfer/send/route";
 import { requireAuthForAddress } from "@/lib/auth/middleware";
 import { decryptAuthorization } from "@/lib/security/session-encryption";
 import { validateTransferSession } from "@/lib/zerodev/transfer-session";
-import { checkTransferRateLimit } from "@/lib/rate-limiter";
+import { checkTransferRateLimitRedis } from "@/lib/redis/rate-limiter";
 import { validateTransferParams, executeGaslessTransfer } from "@/lib/zerodev/transfer-executor";
 
 describe("Transfer Send API", () => {
@@ -69,7 +69,7 @@ describe("Transfer Send API", () => {
 
     (validateTransferSession as any).mockReturnValue({ valid: true });
 
-    (checkTransferRateLimit as any).mockReturnValue({ allowed: true, attemptsRemaining: 5 });
+    (checkTransferRateLimitRedis as any).mockResolvedValue({ allowed: true, remaining: 5 });
 
     (validateTransferParams as any).mockReturnValue({ valid: true });
 
@@ -103,6 +103,18 @@ describe("Transfer Send API", () => {
     const res = await POST(req);
 
     expect(res.status).toBe(401);
+  });
+
+  it("should return 403 if address does not belong to authenticated user", async () => {
+    (requireAuthForAddress as any).mockResolvedValue({
+      authenticated: false,
+      error: "Address does not belong to authenticated user",
+    });
+
+    const req = createRequest({ address: mockUserAddress, recipient: mockRecipient, amount: "10" });
+    const res = await POST(req);
+
+    expect(res.status).toBe(403);
   });
 
   it("should return 404 if user not found", async () => {
@@ -139,7 +151,11 @@ describe("Transfer Send API", () => {
   });
 
   it("should return 429 if rate limit exceeded", async () => {
-    (checkTransferRateLimit as any).mockReturnValue({ allowed: false, reason: "Too many" });
+    (checkTransferRateLimitRedis as any).mockResolvedValue({
+      allowed: false,
+      remaining: 0,
+      reason: "Too many",
+    });
 
     const req = createRequest({ address: mockUserAddress, recipient: mockRecipient, amount: "10" });
     const res = await POST(req);

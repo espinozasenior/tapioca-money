@@ -144,6 +144,17 @@ describe("Redis Rate Limiter", () => {
       );
     });
 
+    it("checkTransferRateLimitRedis should deny when Redis is down (failClosed)", async () => {
+      // Simulate Redis failure — zrangebyscore throws
+      mockCache.zrangebyscore.mockRejectedValue(new Error("Redis connection refused"));
+
+      const result = await checkTransferRateLimitRedis("user1", 100);
+
+      // Transfer rate limiter uses failClosed: true, so Redis failure = denied
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toContain("unavailable");
+    });
+
     it("recordTransferAttemptRedis should NOT record failed transfer for rate limiting", async () => {
       await recordTransferAttemptRedis("user1", 100, false);
 
