@@ -119,6 +119,12 @@ export async function POST(request: NextRequest) {
  * be stored under either address, so we check both.
  */
 export async function GET(request: NextRequest) {
+  // SECURITY: Require authentication to check registration status
+  const authResult = await authenticateRequest(request);
+  if (!authResult.authenticated) {
+    return unauthorizedResponse(authResult.error);
+  }
+
   const singleAddress = request.nextUrl.searchParams.get("address");
   const multipleAddresses = request.nextUrl.searchParams.get("addresses");
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { ErrorTracker } from "@/lib/monitoring/error-tracker";
+import { authenticateRequest, unauthorizedResponse } from "@/lib/auth/middleware";
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -9,9 +10,21 @@ type ServiceStatus = "up" | "down";
 
 /**
  * GET /api/agent/health
- * System health check endpoint for monitoring agent operations
+ * System health check endpoint for monitoring agent operations.
+ * Requires either a valid CRON_SECRET header or an authenticated user.
  */
 export async function GET(request: NextRequest) {
+  // SECURITY: Require CRON_SECRET header or authenticated user
+  const cronSecret = request.headers.get("x-cron-secret");
+  const validCronSecret =
+    cronSecret && process.env.CRON_SECRET && cronSecret === process.env.CRON_SECRET;
+
+  if (!validCronSecret) {
+    const authResult = await authenticateRequest(request);
+    if (!authResult.authenticated) {
+      return unauthorizedResponse(authResult.error);
+    }
+  }
   const checks: {
     database: ServiceStatus;
     zerodev: ServiceStatus;

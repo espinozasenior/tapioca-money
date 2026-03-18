@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { encodeFunctionData, parseAbi } from "viem";
 import { CHAIN_CONFIG, USDC_ADDRESS } from "@/lib/config";
+import {
+  requireAuthForAddress,
+  unauthorizedResponse,
+  forbiddenResponse,
+} from "@/lib/auth/middleware";
 
 // ERC4626 ABI for vault interaction
 const ERC4626_ABI = parseAbi([
@@ -39,6 +44,15 @@ export async function POST(req: NextRequest) {
 
     if (!userAddress) {
       return NextResponse.json({ error: "User address is required" }, { status: 400 });
+    }
+
+    // SECURITY: Verify authenticated user owns the requested address
+    const authResult = await requireAuthForAddress(req, userAddress);
+    if (!authResult.authenticated) {
+      if (authResult.error === "Address does not belong to authenticated user") {
+        return forbiddenResponse(authResult.error);
+      }
+      return unauthorizedResponse(authResult.error);
     }
 
     if (!vaultAddress) {

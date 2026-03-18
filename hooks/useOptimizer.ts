@@ -92,13 +92,19 @@ interface PendingRedeemsResponse {
 // Main hook - replaces useYields()
 export function useYields() {
   const { wallet } = useWallet();
+  const { getAccessToken } = usePrivy();
   const address = wallet?.address as `0x${string}` | undefined;
 
   const query = useQuery<OptimizerResponse>({
     queryKey: ["optimizer", address],
     queryFn: async () => {
+      const token = await getAccessToken();
       const params = address ? `?address=${address}` : "";
-      const res = await fetch(`/api/optimize${params}`);
+      const res = await fetch(`/api/optimize${params}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
       if (!res.ok) throw new Error("Failed to fetch yields");
       return res.json();
     },
@@ -124,11 +130,17 @@ export function useYields() {
 
 // Positions hook - replaces useYieldPositions()
 export function useYieldPositions(address?: string) {
+  const { getAccessToken } = usePrivy();
   const query = useQuery<OptimizerResponse>({
     queryKey: ["optimizer", address],
     queryFn: async () => {
       if (!address) throw new Error("No address");
-      const res = await fetch(`/api/optimize?address=${address}`);
+      const token = await getAccessToken();
+      const res = await fetch(`/api/optimize?address=${address}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
       if (!res.ok) throw new Error("Failed to fetch positions");
       return res.json();
     },
@@ -147,6 +159,7 @@ export function useYieldPositions(address?: string) {
 // Optimizer decision hook
 export function useOptimizer(usdcBalance: bigint = BigInt(0)) {
   const { wallet } = useWallet();
+  const { getAccessToken } = usePrivy();
   const address = wallet?.address as `0x${string}` | undefined;
 
   return useQuery<OptimizerResponse>({
@@ -154,7 +167,15 @@ export function useOptimizer(usdcBalance: bigint = BigInt(0)) {
     queryKey: ["optimizer", address],
     queryFn: async () => {
       if (!address) throw new Error("No wallet connected");
-      const res = await fetch(`/api/optimize?address=${address}&balance=${usdcBalance.toString()}`);
+      const token = await getAccessToken();
+      const res = await fetch(
+        `/api/optimize?address=${address}&balance=${usdcBalance.toString()}`,
+        {
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        }
+      );
       if (!res.ok) throw new Error("Failed to fetch optimization");
       return res.json();
     },
@@ -167,14 +188,19 @@ export function useOptimizer(usdcBalance: bigint = BigInt(0)) {
 // Rebalance mutation
 export function useRebalance() {
   const { wallet } = useWallet();
+  const { getAccessToken } = usePrivy();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ balance }: { balance: bigint }) => {
       if (!wallet?.address) throw new Error("No wallet connected");
+      const token = await getAccessToken();
       const res = await fetch("/api/optimize", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           address: wallet.address,
           balance: balance.toString(),
@@ -213,11 +239,16 @@ export function useAgent() {
     queryFn: async () => {
       if (allEvmAddresses.length === 0)
         return { isRegistered: false, autoOptimizeEnabled: false, hasAuthorization: false };
+      const token = await getAccessToken();
       const params =
         allEvmAddresses.length === 1
           ? `address=${allEvmAddresses[0]}`
           : `addresses=${allEvmAddresses.join(",")}`;
-      const res = await fetch(`/api/agent/register?${params}`);
+      const res = await fetch(`/api/agent/register?${params}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
       if (!res.ok) throw new Error("Failed to fetch agent status");
       return res.json();
     },
