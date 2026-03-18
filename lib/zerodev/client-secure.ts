@@ -120,6 +120,10 @@ async function buildSessionKeyAndPermissions(approvedVaults: `0x${string}`[]) {
     valueLimit: 0n,
   });
 
+  // Import YO Gateway address early — needed to constrain vault approve spender
+  const { YO_GATEWAY_ADDRESS, YO_GATEWAY_DEPOSIT_SELECTOR, YO_GATEWAY_REDEEM_SELECTOR } =
+    await import("@/lib/yo/constants");
+
   // Vault operations — cap deposit amounts, allow redeem/withdraw (funds return to user)
   for (const vault of approvedVaults) {
     permissions.push({
@@ -130,11 +134,12 @@ async function buildSessionKeyAndPermissions(approvedVaults: `0x${string}`[]) {
       valueLimit: 0n,
     });
     // Approve vault share token (needed for YO Gateway redeem flow: approve shares → gateway.redeem)
+    // SECURITY: Constrain spender to YO_GATEWAY_ADDRESS to prevent arbitrary approvals
     permissions.push({
       target: vault,
       abi: parseAbi(["function approve(address spender, uint256 amount) returns (bool)"]),
       functionName: "approve",
-      args: [null, null],
+      args: [{ condition: ParamCondition.EQUAL, value: YO_GATEWAY_ADDRESS as `0x${string}` }, null],
       valueLimit: 0n,
     });
     // Redeem/withdraw move funds back to user — no amount cap needed
@@ -143,8 +148,6 @@ async function buildSessionKeyAndPermissions(approvedVaults: `0x${string}`[]) {
   }
 
   // YO Gateway permissions — deposit and redeem via Gateway
-  const { YO_GATEWAY_ADDRESS, YO_GATEWAY_DEPOSIT_SELECTOR, YO_GATEWAY_REDEEM_SELECTOR } =
-    await import("@/lib/yo/constants");
   permissions.push({
     target: YO_GATEWAY_ADDRESS as `0x${string}`,
     selector: YO_GATEWAY_DEPOSIT_SELECTOR,

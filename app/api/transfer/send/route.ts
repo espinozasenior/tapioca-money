@@ -15,7 +15,7 @@ import {
   validateTransferSession,
   type TransferSessionAuthorization,
 } from "@/lib/zerodev/transfer-session";
-import { checkTransferRateLimit, recordTransferAttempt } from "@/lib/rate-limiter";
+import { checkTransferRateLimitRedis, recordTransferAttemptRedis } from "@/lib/redis/rate-limiter";
 import { decryptAuthorization } from "@/lib/security/session-encryption";
 import {
   requireAuthForAddress,
@@ -93,14 +93,14 @@ export async function POST(request: NextRequest) {
 
     // 3. Check rate limits
     const amountNum = parseFloat(amount);
-    const rateLimitCheck = checkTransferRateLimit(address, amountNum);
+    const rateLimitCheck = await checkTransferRateLimitRedis(address, amountNum);
 
     if (!rateLimitCheck.allowed) {
       return NextResponse.json(
         {
           error: "Rate limit exceeded",
           reason: rateLimitCheck.reason,
-          attemptsRemaining: rateLimitCheck.attemptsRemaining,
+          attemptsRemaining: rateLimitCheck.remaining,
           resetTime: rateLimitCheck.resetTime,
         },
         { status: 429 }
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
     const result = await executeGaslessTransfer(transferParams);
 
     // 6. Record attempt (for rate limiting)
-    recordTransferAttempt(address, amountNum, result.success);
+    await recordTransferAttemptRedis(address, amountNum, result.success);
 
     // 7. Log to database
     if (result.success) {
@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
         success: true,
         hash: result.hash,
         userOpHash: result.userOpHash,
-        attemptsRemaining: rateLimitCheck.attemptsRemaining,
+        attemptsRemaining: rateLimitCheck.remaining,
       });
     } else {
       // Log failed attempt

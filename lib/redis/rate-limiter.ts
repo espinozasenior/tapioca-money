@@ -279,11 +279,12 @@ export async function checkTransferRateLimitRedis(
     };
   }
 
-  // Check request rate limit
+  // Check request rate limit (failClosed: financial operations must deny on Redis failure)
   return checkRateLimit(userAddress, {
     maxRequests: cfg.maxTransfersPerDay,
     windowMs: cfg.windowMs,
     keyPrefix: "transfer",
+    failClosed: true,
   });
 }
 

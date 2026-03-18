@@ -48,7 +48,7 @@ vi.mock("@zerodev/permissions/policies", () => ({
   toGasPolicy: vi.fn(),
   toRateLimitPolicy: vi.fn(),
   toTimestampPolicy: vi.fn(),
-  ParamCondition: { LESS_THAN_OR_EQUAL: 1 },
+  ParamCondition: { LESS_THAN_OR_EQUAL: 1, EQUAL: 2 },
 }));
 
 vi.mock("@zerodev/permissions/signers", () => ({
@@ -479,6 +479,106 @@ describe("Client Secure (ZeroDev)", () => {
       await expect(
         registerAgentSecureExternal(mockAddress, "token", mockWalletClient)
       ).rejects.toThrow("Failed to fetch vault opportunities");
+    });
+  });
+
+  // ── M-3: Vault share approve constrains spender to YO_GATEWAY_ADDRESS ──
+  describe("M-3: buildSessionKeyAndPermissions approve spender constraint", () => {
+    it("vault approve permission constrains spender to YO_GATEWAY_ADDRESS with EQUAL", async () => {
+      const { toCallPolicy } = await import("@zerodev/permissions/policies");
+      const { ParamCondition } = await import("@zerodev/permissions/policies");
+
+      // Reset the mock to capture the next call
+      (toCallPolicy as any).mockClear();
+
+      // Trigger buildSessionKeyAndPermissions via registerAgentSecure
+      // which internally calls it with the approved vaults
+      const mockWalletClient = {
+        signMessage: vi.fn(),
+        signTypedData: vi.fn(),
+      };
+
+      (global.fetch as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            opportunities: [
+              { metadata: { vaultAddress: "0xABCD000000000000000000000000000000000001" } },
+            ],
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ success: true }),
+        });
+
+      await registerAgentSecure(mockAddress, "token", { chainId: 1n, nonce: 0n }, mockWalletClient);
+
+      // toCallPolicy should have been called with permissions array
+      expect(toCallPolicy).toHaveBeenCalledTimes(1);
+      const callPolicyArgs = (toCallPolicy as any).mock.calls[0][0];
+      const permissions = callPolicyArgs.permissions;
+
+      // Find vault approve permissions (target is the vault address, functionName is "approve")
+      const vaultApprovePerms = permissions.filter(
+        (p: any) =>
+          p.functionName === "approve" &&
+          p.target?.toLowerCase() !== "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913" // Not USDC approve
+      );
+
+      expect(vaultApprovePerms.length).toBeGreaterThanOrEqual(1);
+
+      // Each vault approve must constrain the spender (args[0]) to YO_GATEWAY_ADDRESS
+      for (const perm of vaultApprovePerms) {
+        expect(perm.args[0]).toEqual(
+          expect.objectContaining({
+            condition: ParamCondition.EQUAL,
+          })
+        );
+        // The value should be a hex address (YO_GATEWAY_ADDRESS)
+        expect(perm.args[0].value).toBeDefined();
+        expect(typeof perm.args[0].value).toBe("string");
+        expect(perm.args[0].value).toMatch(/^0x[a-fA-F0-9]{40}$/);
+      }
+    });
+
+    it("USDC approve does NOT constrain spender (allows any spender)", async () => {
+      const { toCallPolicy } = await import("@zerodev/permissions/policies");
+      (toCallPolicy as any).mockClear();
+
+      const mockWalletClient = {
+        signMessage: vi.fn(),
+        signTypedData: vi.fn(),
+      };
+
+      (global.fetch as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            opportunities: [
+              { metadata: { vaultAddress: "0xABCD000000000000000000000000000000000002" } },
+            ],
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ success: true }),
+        });
+
+      await registerAgentSecure(mockAddress, "token", { chainId: 1n, nonce: 0n }, mockWalletClient);
+
+      const callPolicyArgs = (toCallPolicy as any).mock.calls[0][0];
+      const permissions = callPolicyArgs.permissions;
+
+      // USDC approve: target is USDC_ADDRESS, spender arg (args[0]) is null (unconstrained)
+      const usdcApprove = permissions.find(
+        (p: any) =>
+          p.functionName === "approve" &&
+          p.target?.toLowerCase() === "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+      );
+
+      expect(usdcApprove).toBeDefined();
+      expect(usdcApprove.args[0]).toBeNull(); // No spender constraint on USDC approve
     });
   });
 });
