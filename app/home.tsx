@@ -3,7 +3,7 @@
 import { Login } from "@/components/Login";
 import { MainScreen } from "@/components/MainScreen";
 import { useAuth, useWallet } from "@/hooks/useWallet";
-import { useConnectWallet } from "@privy-io/react-auth";
+import { useConnectWallet, usePrivy } from "@privy-io/react-auth";
 import { useProcessWithdrawal } from "@/hooks/useProcessWithdrawal";
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
@@ -11,6 +11,7 @@ import { useMutation } from "@tanstack/react-query";
 export function HomeContent() {
   const { wallet, isReady: walletReady, isSolanaWallet } = useWallet();
   const { status, isReady: authReady, user, ready, authenticated } = useAuth();
+  const { getAccessToken } = usePrivy();
 
   useProcessWithdrawal(user?.id, wallet ?? undefined);
 
@@ -51,9 +52,13 @@ export function HomeContent() {
 
   const { mutate: syncUser } = useMutation({
     mutationFn: async (data: { address: string; email?: string }) => {
+      const token = await getAccessToken();
       await fetch("/api/agent/sync", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(data),
       });
     },

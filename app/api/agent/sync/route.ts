@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
+import {
+  requireAuthForAddress,
+  unauthorizedResponse,
+  forbiddenResponse,
+} from "@/lib/auth/middleware";
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -20,6 +25,15 @@ export async function POST(request: NextRequest) {
 
     if (!address) {
       return NextResponse.json({ error: "Missing wallet address" }, { status: 400 });
+    }
+
+    // SECURITY: Verify authenticated user owns the requested address
+    const authResult = await requireAuthForAddress(request, address);
+    if (!authResult.authenticated) {
+      if (authResult.error === "Address does not belong to authenticated user") {
+        return forbiddenResponse(authResult.error);
+      }
+      return unauthorizedResponse(authResult.error);
     }
 
     const normalizedAddress = address.toLowerCase();

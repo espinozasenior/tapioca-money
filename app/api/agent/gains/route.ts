@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { calculateTotalGains, formatApyPct, formatUsd } from "@/lib/utils";
+import {
+  requireAuthForAddress,
+  unauthorizedResponse,
+  forbiddenResponse,
+} from "@/lib/auth/middleware";
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -17,6 +22,15 @@ export async function GET(request: NextRequest) {
 
     if (!address) {
       return NextResponse.json({ error: "Missing address parameter" }, { status: 400 });
+    }
+
+    // SECURITY: Verify authenticated user owns the requested address
+    const authResult = await requireAuthForAddress(request, address);
+    if (!authResult.authenticated) {
+      if (authResult.error === "Address does not belong to authenticated user") {
+        return forbiddenResponse(authResult.error);
+      }
+      return unauthorizedResponse(authResult.error);
     }
 
     // 1. Get user ID

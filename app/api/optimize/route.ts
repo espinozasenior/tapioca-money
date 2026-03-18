@@ -3,6 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { yieldDecisionEngine } from "@/lib/agent/decision-engine";
 import { transformPosition, transformVaultToOpportunity } from "@/lib/morpho/transforms";
 import { transformYoVaultToOpportunity, transformYoPosition } from "@/lib/yo/transforms";
+import {
+  requireAuthForAddress,
+  unauthorizedResponse,
+  forbiddenResponse,
+} from "@/lib/auth/middleware";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -21,7 +26,7 @@ export async function GET(request: NextRequest) {
       (a, b) => b.apy - a.apy
     );
 
-    // If no address, just return opportunities
+    // If no address, just return opportunities (public vault list)
     if (!address) {
       return NextResponse.json({
         decision: null,
@@ -29,6 +34,15 @@ export async function GET(request: NextRequest) {
         positions: [],
         timestamp: Date.now(),
       });
+    }
+
+    // SECURITY: When address is provided, verify the caller owns it
+    const authResult = await requireAuthForAddress(request, address);
+    if (!authResult.authenticated) {
+      if (authResult.error === "Address does not belong to authenticated user") {
+        return forbiddenResponse(authResult.error);
+      }
+      return unauthorizedResponse(authResult.error);
     }
 
     // Pass pre-fetched vaults to avoid redundant API calls (P0-1 fix)
@@ -137,6 +151,15 @@ export async function POST(request: NextRequest) {
 
     if (!address) {
       return NextResponse.json({ error: "Missing address" }, { status: 400 });
+    }
+
+    // SECURITY: Verify authenticated user owns the requested address
+    const authResult = await requireAuthForAddress(request, address);
+    if (!authResult.authenticated) {
+      if (authResult.error === "Address does not belong to authenticated user") {
+        return forbiddenResponse(authResult.error);
+      }
+      return unauthorizedResponse(authResult.error);
     }
 
     const decision = await yieldDecisionEngine.evaluateRebalancing(address as `0x${string}`);

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { usePrivy } from "@privy-io/react-auth";
 
 interface AgentActivity {
   id: string;
@@ -33,6 +34,7 @@ interface AgentActivityResponse {
  * Refreshes every 30 seconds to show real-time updates
  */
 export function useAgentActivity(address?: string, limit: number = 50, offset: number = 0) {
+  const { getAccessToken } = usePrivy();
   return useQuery<AgentActivityResponse>({
     queryKey: ["agent-activity", address, limit, offset],
     queryFn: async () => {
@@ -40,13 +42,18 @@ export function useAgentActivity(address?: string, limit: number = 50, offset: n
         throw new Error("Address is required");
       }
 
+      const token = await getAccessToken();
       const params = new URLSearchParams({
         address,
         limit: limit.toString(),
         offset: offset.toString(),
       });
 
-      const res = await fetch(`/api/agent/activity?${params}`);
+      const res = await fetch(`/api/agent/activity?${params}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
 
       if (!res.ok) {
         const error = await res.json();
@@ -68,6 +75,7 @@ export function useAgentGains(
   address?: string,
   period: "day" | "week" | "month" | "year" | "all" = "all"
 ) {
+  const { getAccessToken } = usePrivy();
   return useQuery({
     queryKey: ["agent-gains", address, period],
     queryFn: async () => {
@@ -75,12 +83,17 @@ export function useAgentGains(
         throw new Error("Address is required");
       }
 
+      const token = await getAccessToken();
       const params = new URLSearchParams({
         address,
         period,
       });
 
-      const res = await fetch(`/api/agent/gains?${params}`);
+      const res = await fetch(`/api/agent/gains?${params}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
 
       if (!res.ok) {
         const error = await res.json();
