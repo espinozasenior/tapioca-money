@@ -131,9 +131,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("[Agent Activity] Error:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to fetch activity" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch activity" }, { status: 500 });
   }
 }

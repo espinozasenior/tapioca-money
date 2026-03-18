@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
     console.error("[Session Key] Storage error:", error);
     return NextResponse.json(
       {
-        error: error.message || "Failed to store session data",
+        error: "Failed to store session data",
       },
       { status: 500 }
     );
@@ -225,9 +225,6 @@ export async function DELETE(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("[Session Key] Revocation error:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to revoke session key" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to revoke session key" }, { status: 500 });
   }
 }

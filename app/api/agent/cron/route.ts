@@ -4,8 +4,8 @@ import { yieldDecisionEngine } from "@/lib/agent/decision-engine";
 import { executeRebalance } from "@/lib/agent/rebalance-executor";
 import { formatUnits } from "viem";
 import { decryptAuthorization } from "@/lib/security/session-encryption";
-import { timingSafeEqual } from "crypto";
 import { isSessionRevoked } from "@/lib/security/session-revocation";
+import { verifySecret } from "@/lib/security/verify-secret";
 import { AgentSession } from "@/lib/agent/agent-session";
 import { acquireUserLock, releaseUserLock } from "@/lib/redis/distributed-lock";
 import { getUserOpCount, incrementUserOpCount } from "@/lib/redis/rate-limiter";
@@ -92,30 +92,6 @@ async function processUsersInParallel(
       );
     }
   }
-}
-
-/**
- * Timing-safe secret comparison to prevent timing attacks
- * Returns false if either secret is missing or if they don't match
- */
-function verifySecret(provided: string | null, expected: string | undefined): boolean {
-  if (!provided || !expected) {
-    return false;
-  }
-
-  // Ensure both strings are the same length for timingSafeEqual
-  // Use a constant-time comparison even for length check
-  const providedBuf = Buffer.from(provided, "utf8");
-  const expectedBuf = Buffer.from(expected, "utf8");
-
-  // If lengths differ, still do a comparison to avoid timing leak
-  if (providedBuf.length !== expectedBuf.length) {
-    // Compare with itself to maintain constant time
-    timingSafeEqual(expectedBuf, expectedBuf);
-    return false;
-  }
-
-  return timingSafeEqual(providedBuf, expectedBuf);
 }
 
 // Helper function to check if session key is still valid
@@ -277,7 +253,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Cron execution failed",
+        error: "Cron execution failed",
         summary,
       },
       { status: 500 }

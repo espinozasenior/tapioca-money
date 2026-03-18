@@ -15,13 +15,18 @@ import {
   validateTransferSession,
   type TransferSessionAuthorization,
 } from "@/lib/zerodev/transfer-session";
-import { checkTransferRateLimitRedis, recordTransferAttemptRedis } from "@/lib/redis/rate-limiter";
+import {
+  checkTransferRateLimitRedis,
+  recordTransferAttemptRedis,
+  checkAndRecordRateLimit,
+} from "@/lib/redis/rate-limiter";
 import { decryptAuthorization } from "@/lib/security/session-encryption";
 import {
   requireAuthForAddress,
   unauthorizedResponse,
   forbiddenResponse,
 } from "@/lib/auth/middleware";
+import { validateTransferRecipient } from "@/lib/zerodev/transfer-recipient-validator";
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -91,7 +96,55 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Check rate limits
+    // 2b. SECURITY: Validate recipient address (H-3 defense-in-depth)
+    // The on-chain CallPolicy cannot constrain transfer recipients, so we
+    // enforce server-side validation: no zero address, no self-transfers,
+    // no known contract addresses (which would lose funds or enable drains).
+    const recipientValidation = validateTransferRecipient(recipient, address);
+    if (!recipientValidation.valid) {
+      // Log blocked attempt for monitoring
+      await sql`
+        INSERT INTO agent_actions (
+          user_id, action_type, status, amount_usdc, error_message, metadata
+        ) VALUES (
+          ${users[0].id}, 'transfer', 'blocked',
+          ${amount}, ${recipientValidation.reason || "Recipient validation failed"},
+          ${JSON.stringify({ recipient, reason: recipientValidation.reason })}
+        )
+      `;
+      console.warn(
+        "[API] Transfer blocked — invalid recipient:",
+        recipient,
+        recipientValidation.reason
+      );
+      return NextResponse.json(
+        { error: recipientValidation.reason || "Invalid recipient" },
+        { status: 400 }
+      );
+    }
+
+    // 2c. SECURITY: Stricter per-hour rate limit (H-3 defense-in-depth)
+    // The daily rate limit (20/day) is too coarse to prevent rapid draining.
+    // This adds a 3-transfers-per-hour limit as a tighter window.
+    const hourlyRateLimit = await checkAndRecordRateLimit(address, {
+      maxRequests: 3,
+      windowMs: 60 * 60 * 1000, // 1 hour
+      keyPrefix: "transfer_hourly",
+      failClosed: true,
+    });
+    if (!hourlyRateLimit.allowed) {
+      console.warn("[API] Transfer blocked — hourly rate limit exceeded for:", address);
+      return NextResponse.json(
+        {
+          error: "Hourly transfer limit exceeded (max 3 per hour)",
+          reason: hourlyRateLimit.reason,
+          retryAfter: hourlyRateLimit.retryAfter,
+        },
+        { status: 429 }
+      );
+    }
+
+    // 3. Check rate limits (daily)
     const amountNum = parseFloat(amount);
     const rateLimitCheck = await checkTransferRateLimitRedis(address, amountNum);
 
@@ -108,12 +161,14 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Validate transfer parameters
+    // Prefer serializedAccount (new pattern), fall back to sessionPrivateKey (legacy)
     const paramsValidation = validateTransferParams({
       userAddress: address as `0x${string}`,
       smartAccountAddress: transferAuth.smartAccountAddress,
       recipient: recipient as `0x${string}`,
       amount,
-      sessionPrivateKey: transferAuth.sessionPrivateKey,
+      serializedAccount: transferAuth.serializedAccount,
+      sessionPrivateKey: transferAuth.sessionPrivateKey as `0x${string}` | undefined,
     });
 
     if (!paramsValidation.valid) {
@@ -121,12 +176,16 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. Execute gasless transfer
+    // Prefer serializedAccount (new pattern) — uses createDeserializedKernelClient
+    // which properly restores the on-chain permission validator.
+    // Falls back to sessionPrivateKey for legacy sessions (will warn user to re-register).
     const transferParams: GaslessTransferParams = {
       userAddress: address as `0x${string}`,
       smartAccountAddress: transferAuth.smartAccountAddress,
       recipient: recipient as `0x${string}`,
       amount,
-      sessionPrivateKey: transferAuth.sessionPrivateKey,
+      serializedAccount: transferAuth.serializedAccount,
+      sessionPrivateKey: transferAuth.sessionPrivateKey as `0x${string}` | undefined,
     };
 
     const result = await executeGaslessTransfer(transferParams);
@@ -208,7 +267,7 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         error: "Internal server error",
-        details: error.message,
+        ...(process.env.NODE_ENV === "development" && { details: error.message }),
       },
       { status: 500 }
     );

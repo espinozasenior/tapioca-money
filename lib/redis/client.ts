@@ -137,6 +137,14 @@ export interface CacheInterface {
   zremrangebyscore(key: string, min: number, max: number): Promise<void>;
   zcard(key: string): Promise<number>;
   expire(key: string, seconds: number): Promise<void>;
+  /**
+   * Execute a Lua script atomically (Redis EVAL).
+   * Returns null for in-memory fallback (caller must handle).
+   * @param script - Lua script string
+   * @param keys - KEYS array
+   * @param args - ARGV array
+   */
+  eval(script: string, keys: string[], args: string[]): Promise<unknown>;
 }
 
 /**
@@ -179,6 +187,9 @@ export async function getCacheInterface(): Promise<CacheInterface> {
       },
       async expire(key: string, seconds: number) {
         await redis.expire(key, seconds);
+      },
+      async eval(script: string, keys: string[], args: string[]) {
+        return (redis as any).eval(script, keys.length, ...keys, ...args);
       },
     };
   }
@@ -251,6 +262,12 @@ export async function getCacheInterface(): Promise<CacheInterface> {
         item.expiry = Date.now() + seconds * 1000;
         memoryStore.set(key, item);
       }
+    },
+    async eval(_script: string, _keys: string[], _args: string[]) {
+      // Lua scripts are not supported in the in-memory fallback.
+      // Callers must handle a null return by falling back to non-atomic operations.
+      // In single-process Node.js the TOCTOU race is not a practical concern.
+      return null;
     },
   };
 }

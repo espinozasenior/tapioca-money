@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     console.error("Agent registration error:", error);
     return NextResponse.json(
       {
-        error: error.message || "Failed to register agent",
+        error: "Failed to register agent",
         details: process.env.NODE_ENV === "development" ? error.stack : undefined,
       },
       { status: 500 }
@@ -253,9 +253,6 @@ export async function PATCH(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Auto-optimize update error:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to update auto-optimize setting" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to update auto-optimize setting" }, { status: 500 });
   }
 }

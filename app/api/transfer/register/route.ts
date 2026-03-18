@@ -37,6 +37,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Address required" }, { status: 400 });
     }
 
+    // SECURITY: Verify authenticated user owns the requested address
+    const authResult = await requireAuthForAddress(request, address);
+    if (!authResult.authenticated) {
+      if (authResult.error === "Address does not belong to authenticated user") {
+        return forbiddenResponse(authResult.error);
+      }
+      return unauthorizedResponse(authResult.error);
+    }
+
     // Query user from database
     const users = await sql`
       SELECT transfer_authorization
@@ -79,7 +88,10 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error("[API] Transfer status check failed:", error);
     return NextResponse.json(
-      { error: "Internal server error", details: error.message },
+      {
+        error: "Internal server error",
+        ...(process.env.NODE_ENV === "development" && { details: error.message }),
+      },
       { status: 500 }
     );
   }
@@ -170,7 +182,10 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("[API] Transfer session creation failed:", error);
     return NextResponse.json(
-      { error: "Failed to create transfer session", details: error.message },
+      {
+        error: "Failed to create transfer session",
+        ...(process.env.NODE_ENV === "development" && { details: error.message }),
+      },
       { status: 500 }
     );
   }
@@ -222,7 +237,10 @@ export async function DELETE(request: NextRequest) {
   } catch (error: any) {
     console.error("[API] Transfer session revocation failed:", error);
     return NextResponse.json(
-      { error: "Failed to revoke transfer session", details: error.message },
+      {
+        error: "Failed to revoke transfer session",
+        ...(process.env.NODE_ENV === "development" && { details: error.message }),
+      },
       { status: 500 }
     );
   }

@@ -50,9 +50,7 @@ describe("GET /api/yo/rewards", () => {
   });
 
   it("should return 400 for invalid address format", async () => {
-    const req = new NextRequest(
-      "http://localhost/api/yo/rewards?address=not-an-address"
-    );
+    const req = new NextRequest("http://localhost/api/yo/rewards?address=not-an-address");
 
     const res = await GET(req);
     expect(res.status).toBe(400);

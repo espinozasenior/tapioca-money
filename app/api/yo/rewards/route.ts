@@ -45,9 +45,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("[YO Rewards API] Error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch rewards" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch rewards" }, { status: 500 });
   }
 }

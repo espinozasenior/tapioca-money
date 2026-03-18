@@ -40,13 +40,13 @@ describe("Gasless Transfer Execution", () => {
     await cleanupTestData([testAddress]);
   });
 
-  test("Execute gasless USDC transfer in simulation mode", async () => {
+  test("Execute gasless USDC transfer in simulation mode (serializedAccount)", async () => {
     const params: GaslessTransferParams = {
       userAddress: testAddress as `0x${string}`,
       smartAccountAddress: transferSession.smartAccountAddress,
       recipient: recipientAddress as `0x${string}`,
       amount: "10.50",
-      sessionPrivateKey: transferSession.sessionPrivateKey,
+      serializedAccount: transferSession.serializedAccount,
     };
 
     const result = await executeGaslessTransfer(params);
@@ -58,13 +58,13 @@ describe("Gasless Transfer Execution", () => {
     expect(result.userOpHash).toBeDefined();
   });
 
-  test("Validate transfer parameters - valid case", async () => {
+  test("Validate transfer parameters - valid case with serializedAccount", async () => {
     const params: GaslessTransferParams = {
       userAddress: testAddress as `0x${string}`,
       smartAccountAddress: transferSession.smartAccountAddress,
       recipient: recipientAddress as `0x${string}`,
       amount: "25.00",
-      sessionPrivateKey: transferSession.sessionPrivateKey,
+      serializedAccount: transferSession.serializedAccount,
     };
 
     const validation = validateTransferParams(params);
@@ -78,7 +78,7 @@ describe("Gasless Transfer Execution", () => {
       smartAccountAddress: transferSession.smartAccountAddress,
       recipient: "invalid_address",
       amount: "10.00",
-      sessionPrivateKey: transferSession.sessionPrivateKey,
+      serializedAccount: transferSession.serializedAccount,
     };
 
     const validation = validateTransferParams(params as any);
@@ -92,7 +92,7 @@ describe("Gasless Transfer Execution", () => {
       smartAccountAddress: transferSession.smartAccountAddress,
       recipient: recipientAddress as `0x${string}`,
       amount: "-5.00",
-      sessionPrivateKey: transferSession.sessionPrivateKey,
+      serializedAccount: transferSession.serializedAccount,
     };
 
     const validation = validateTransferParams(params);
@@ -106,7 +106,7 @@ describe("Gasless Transfer Execution", () => {
       smartAccountAddress: transferSession.smartAccountAddress,
       recipient: recipientAddress as `0x${string}`,
       amount: "600.00", // Exceeds $500 limit
-      sessionPrivateKey: transferSession.sessionPrivateKey,
+      serializedAccount: transferSession.serializedAccount,
     };
 
     const validation = validateTransferParams(params);
@@ -120,7 +120,7 @@ describe("Gasless Transfer Execution", () => {
       smartAccountAddress: transferSession.smartAccountAddress,
       recipient: "",
       amount: "10.00",
-      sessionPrivateKey: transferSession.sessionPrivateKey,
+      serializedAccount: transferSession.serializedAccount,
     };
 
     const validation = validateTransferParams(params as any);
@@ -179,7 +179,7 @@ describe("Gasless Transfer Execution", () => {
       smartAccountAddress: transferSession.smartAccountAddress,
       recipient: recipientAddress as `0x${string}`,
       amount: "10.50",
-      sessionPrivateKey: transferSession.sessionPrivateKey,
+      serializedAccount: transferSession.serializedAccount,
     };
 
     const result = await executeGaslessTransfer(params);
@@ -189,7 +189,7 @@ describe("Gasless Transfer Execution", () => {
     // For now, just ensure it doesn't throw
   });
 
-  test("Error handling for invalid session key", async () => {
+  test("Error handling for invalid session key (legacy path)", async () => {
     const params: GaslessTransferParams = {
       userAddress: testAddress as `0x${string}`,
       smartAccountAddress: transferSession.smartAccountAddress,
@@ -213,7 +213,7 @@ describe("Gasless Transfer Execution", () => {
       smartAccountAddress: transferSession.smartAccountAddress,
       recipient: recipientAddress as `0x${string}`,
       amount: "50.00",
-      sessionPrivateKey: transferSession.sessionPrivateKey,
+      serializedAccount: transferSession.serializedAccount,
     };
 
     const result = await executeGaslessTransfer(params);

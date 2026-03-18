@@ -140,9 +140,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("[Agent Gains] Error:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to calculate gains" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to calculate gains" }, { status: 500 });
   }
 }

@@ -24,7 +24,7 @@ describe("Transfer Executor", () => {
   const mockParams = {
     userAddress: "0x1234567890123456789012345678901234567890" as `0x${string}`,
     smartAccountAddress: "0x1234567890123456789012345678901234567890" as `0x${string}`,
-    recipient: "0x1234567890123456789012345678901234567890" as `0x${string}`,
+    recipient: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as `0x${string}`,
     amount: "10",
     serializedAccount: "mockSerialized",
   };

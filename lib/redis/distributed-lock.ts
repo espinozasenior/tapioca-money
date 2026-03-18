@@ -46,14 +46,44 @@ export async function acquireUserLock(
 }
 
 /**
+ * Lua script for atomic compare-and-delete.
+ * Prevents TOCTOU race where another process acquires a new lock
+ * between our GET and DEL, and we accidentally delete their lock.
+ */
+const RELEASE_LOCK_SCRIPT = `
+if redis.call('get', KEYS[1]) == ARGV[1] then
+  return redis.call('del', KEYS[1])
+else
+  return 0
+end
+`;
+
+/**
  * Release a previously acquired lock.
  * Only releases if the lockId matches (prevents releasing another process's lock).
+ *
+ * Uses an atomic Lua script on Redis to avoid the TOCTOU race condition
+ * where GET returns our lockId, but another process acquires a new lock
+ * before our DEL executes — which would delete the wrong lock.
+ *
+ * For the in-memory fallback (no Lua support), falls back to non-atomic
+ * check-then-delete, which is safe in single-process Node.js.
  */
 export async function releaseUserLock(userAddress: string, lockId: string): Promise<void> {
   const cache = await getCacheInterface();
   const key = `${LOCK_PREFIX}:${userAddress.toLowerCase()}`;
 
-  // Only release if we own the lock
+  // Try atomic Lua-based release first (returns null if not supported, e.g. in-memory)
+  const result = await cache.eval(RELEASE_LOCK_SCRIPT, [key], [lockId]);
+
+  if (result !== null) {
+    // Redis handled it atomically — done
+    return;
+  }
+
+  // In-memory fallback: non-atomic check-then-delete.
+  // Safe in single-process Node.js (no true concurrency between async ticks
+  // for synchronous Map operations).
   const current = await cache.get(key);
   if (current === lockId) {
     await cache.del(key);

@@ -36,14 +36,16 @@ describe("Transfer Session Key Management", () => {
     expect(session).toHaveProperty("type", "zerodev-transfer-session");
     expect(session).toHaveProperty("smartAccountAddress");
     expect(session).toHaveProperty("sessionKeyAddress");
-    expect(session).toHaveProperty("sessionPrivateKey");
+    expect(session).toHaveProperty("serializedAccount");
     expect(session).toHaveProperty("expiry");
     expect(session).toHaveProperty("createdAt");
 
     // Verify addresses are valid hex strings
     expect(session.smartAccountAddress).toMatch(/^0x[a-fA-F0-9]{40}$/);
     expect(session.sessionKeyAddress).toMatch(/^0x[a-fA-F0-9]{40}$/);
-    expect(session.sessionPrivateKey).toMatch(/^0x[a-fA-F0-9]{64}$/);
+    // serializedAccount should be a non-empty base64 string
+    expect(session.serializedAccount).toBeTruthy();
+    expect(typeof session.serializedAccount).toBe("string");
   });
 
   test("Validate transfer session expiry", async () => {
@@ -80,12 +82,12 @@ describe("Transfer Session Key Management", () => {
     expect(validation.reason).toBe("Invalid session type");
   });
 
-  test("Validate handles missing session data", () => {
+  test("Validate handles missing session data (no serializedAccount or sessionPrivateKey)", () => {
     const incompleteSession = {
       type: "zerodev-transfer-session",
       smartAccountAddress: "0x1234567890123456789012345678901234567890",
-      // Missing sessionPrivateKey
       sessionKeyAddress: "0x0987654321098765432109876543210987654321",
+      // Missing both serializedAccount AND sessionPrivateKey
       expiry: Math.floor(Date.now() / 1000) + 86400,
       createdAt: Date.now(),
     } as any;
@@ -93,6 +95,34 @@ describe("Transfer Session Key Management", () => {
     const validation = validateTransferSession(incompleteSession);
     expect(validation.valid).toBe(false);
     expect(validation.reason).toBe("Invalid session data");
+  });
+
+  test("Validate accepts session with serializedAccount (new pattern)", () => {
+    const session = {
+      type: "zerodev-transfer-session",
+      smartAccountAddress: "0x1234567890123456789012345678901234567890",
+      sessionKeyAddress: "0x0987654321098765432109876543210987654321",
+      serializedAccount: "base64encodeddata",
+      expiry: Math.floor(Date.now() / 1000) + 86400,
+      createdAt: Date.now(),
+    } as any;
+
+    const validation = validateTransferSession(session);
+    expect(validation.valid).toBe(true);
+  });
+
+  test("Validate accepts legacy session with sessionPrivateKey (backward compat)", () => {
+    const session = {
+      type: "zerodev-transfer-session",
+      smartAccountAddress: "0x1234567890123456789012345678901234567890",
+      sessionKeyAddress: "0x0987654321098765432109876543210987654321",
+      sessionPrivateKey: "0x" + "ab".repeat(32),
+      expiry: Math.floor(Date.now() / 1000) + 86400,
+      createdAt: Date.now(),
+    } as any;
+
+    const validation = validateTransferSession(session);
+    expect(validation.valid).toBe(true);
   });
 
   test("Cleanup transfer session removes authorization", async () => {

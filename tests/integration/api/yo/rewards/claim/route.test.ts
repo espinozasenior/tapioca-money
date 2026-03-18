@@ -17,13 +17,10 @@ vi.mock("@/lib/auth/middleware", () => ({
     authenticated: true,
     walletAddress: "0xaabbccdd00112233445566778899aabbccddeeff",
     userId: "user1",
-    linkedWallets: [
-      { address: "0xaabbccdd00112233445566778899aabbccddeeff", type: "wallet" },
-    ],
+    linkedWallets: [{ address: "0xaabbccdd00112233445566778899aabbccddeeff", type: "wallet" }],
   }),
   unauthorizedResponse: vi.fn(
-    (msg: string) =>
-      new Response(JSON.stringify({ error: msg }), { status: 401 })
+    (msg: string) => new Response(JSON.stringify({ error: msg }), { status: 401 })
   ),
 }));
 
@@ -148,9 +145,7 @@ describe("POST /api/yo/rewards/claim", () => {
   });
 
   it("should release lock even when claim fails", async () => {
-    const { executeYoRewardsClaim } = await import(
-      "@/lib/zerodev/yo-rewards-executor"
-    );
+    const { executeYoRewardsClaim } = await import("@/lib/zerodev/yo-rewards-executor");
     (executeYoRewardsClaim as any).mockResolvedValueOnce({
       success: false,
       error: "Claim failed",

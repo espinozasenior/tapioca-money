@@ -49,10 +49,7 @@ export async function POST(request: NextRequest) {
     // 2. Acquire distributed lock to prevent concurrent claims
     const lock = await acquireUserLock(userWalletAddress);
     if (!lock.acquired) {
-      return NextResponse.json(
-        { error: "Claim already in progress" },
-        { status: 409 }
-      );
+      return NextResponse.json({ error: "Claim already in progress" }, { status: 409 });
     }
 
     try {

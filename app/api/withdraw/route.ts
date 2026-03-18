@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(
       {
-        error: error.message || "Failed to build withdrawal transaction",
+        error: "Failed to build withdrawal transaction",
         details: process.env.NODE_ENV === "development" ? error.stack : undefined,
       },
       { status: 500 }

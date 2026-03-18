@@ -112,6 +112,15 @@ async function buildSessionKeyAndPermissions(approvedVaults: `0x${string}`[]) {
   });
 
   // USDC transfer — cap amount parameter
+  // SECURITY NOTE (H-3): The `to` argument is `null` (unconstrained) because
+  // transfers can go to arbitrary user-specified recipients. We cannot know all
+  // valid recipients at registration time. Defense-in-depth is enforced server-side:
+  //   1. Recipient validation (zero addr, self-transfer, known contract blocklist)
+  //      → lib/zerodev/transfer-recipient-validator.ts
+  //   2. Hourly rate limit (3 transfers/hour) + daily rate limit (20/day)
+  //      → app/api/transfer/send/route.ts
+  //   3. All transfer attempts logged to agent_actions table for monitoring
+  // See also: the amount is still capped on-chain at MAX_USDC_PER_CALL ($10k).
   permissions.push({
     target: USDC_ADDRESS,
     abi: parseAbi(["function transfer(address to, uint256 amount) returns (bool)"]),

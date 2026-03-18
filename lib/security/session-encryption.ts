@@ -44,7 +44,8 @@ export interface TransferSessionAuthorization {
   type: "zerodev-transfer-session";
   smartAccountAddress: `0x${string}`;
   sessionKeyAddress: `0x${string}`;
-  sessionPrivateKey: string; // Will be encrypted
+  serializedAccount?: string; // Serialized kernel account (will be encrypted)
+  sessionPrivateKey?: string; // Legacy — kept for backward compat with old sessions
   expiry: number;
   createdAt: number;
 }
@@ -108,11 +109,20 @@ export function decryptAuthorization<T extends Authorization>(auth: T): T {
 }
 
 /**
- * Check if an authorization object has an encrypted sessionPrivateKey
+ * Check if an authorization object has encrypted sensitive fields
  * @param auth - Authorization object to check
- * @returns true if sessionPrivateKey is encrypted
+ * @returns true if sensitive fields are encrypted
  */
 export function isAuthorizationEncrypted(auth: Authorization): boolean {
+  // Check serializedAccount (new pattern)
+  if (
+    "serializedAccount" in auth &&
+    auth.serializedAccount &&
+    isEncrypted(auth.serializedAccount)
+  ) {
+    return true;
+  }
+  // Check sessionPrivateKey (legacy)
   return (
     "sessionPrivateKey" in auth && !!auth.sessionPrivateKey && isEncrypted(auth.sessionPrivateKey)
   );
