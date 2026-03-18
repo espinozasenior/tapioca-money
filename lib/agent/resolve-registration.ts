@@ -10,7 +10,7 @@ import {
   SessionKey7702Authorization,
   SessionKeyErc4337Authorization,
 } from "@/lib/security/session-encryption";
-import { YO_GATEWAY_ADDRESS } from "@/lib/yo/constants";
+import { YO_GATEWAY_ADDRESS, MERKL_DISTRIBUTOR_ADDRESS_BASE } from "@/lib/yo/constants";
 import { AgentSession } from "@/lib/agent/agent-session";
 
 // ---------------------------------------------------------------------------
@@ -95,6 +95,21 @@ export function verifyVaultApproval(
   vaultAddress: string,
   protocol: string
 ): VaultApprovalResult {
+  if (protocol === "merkl") {
+    if (approvedVaults.length > 0) {
+      const distributorApproved = approvedVaults.some(
+        (v: string) => v.toLowerCase() === MERKL_DISTRIBUTOR_ADDRESS_BASE.toLowerCase()
+      );
+      if (!distributorApproved) {
+        return {
+          approved: false,
+          message: "Merkl Distributor not approved. Please re-register agent.",
+        };
+      }
+    }
+    return { approved: true };
+  }
+
   if (protocol === "yo") {
     if (approvedVaults.length > 0) {
       const gatewayApproved = approvedVaults.some(
