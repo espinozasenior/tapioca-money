@@ -105,7 +105,8 @@ export async function POST(request: NextRequest) {
 
     // Log successful claim to agent_actions for audit trail
     try {
-      const userRows = await sql`SELECT id FROM users WHERE wallet_address = ${userWalletAddress.toLowerCase()} LIMIT 1`;
+      const userRows =
+        await sql`SELECT id FROM users WHERE wallet_address = ${userWalletAddress.toLowerCase()} LIMIT 1`;
       if (userRows.length > 0) {
         await sql`
           INSERT INTO agent_actions (user_id, action_type, status, from_protocol, to_protocol, amount_usdc, tx_hash, metadata)

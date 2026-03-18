@@ -242,16 +242,21 @@ export async function POST(request: NextRequest) {
     // Phase 2: Auto-claim Merkl rewards for active users
     console.log("[Cron] Starting Merkl reward auto-claim phase...");
     const claimSummary: CronSummary = {
-      processed: 0, rebalanced: 0, claimed: 0, skipped: 0, errors: 0, details: [],
+      processed: 0,
+      rebalanced: 0,
+      claimed: 0,
+      skipped: 0,
+      errors: 0,
+      details: [],
     };
-    await processUsersInParallel(
-      activeUsers,
-      processUserRewardClaim,
-      claimSummary
-    );
+    await processUsersInParallel(activeUsers, processUserRewardClaim, claimSummary);
     summary.claimed = claimSummary.claimed;
-    summary.details.push(...claimSummary.details.filter(d => d.action === "claimed" || d.action === "error"));
-    console.log(`[Cron] Merkl claim phase: ${claimSummary.claimed} claimed, ${claimSummary.skipped} skipped`);
+    summary.details.push(
+      ...claimSummary.details.filter((d) => d.action === "claimed" || d.action === "error")
+    );
+    console.log(
+      `[Cron] Merkl claim phase: ${claimSummary.claimed} claimed, ${claimSummary.skipped} skipped`
+    );
 
     const duration = Date.now() - startTime;
     console.log(`[Cron] Cycle complete in ${duration}ms:`, {
@@ -603,10 +608,7 @@ const MERKL_CLAIM_COOLDOWN_MS = 24 * 60 * 60 * 1000;
  * Process Merkl reward claiming for a single user.
  * Threshold-gated ($2 USD) and rate-limited (once per 24h).
  */
-async function processUserRewardClaim(
-  user: any,
-  summary: CronSummary
-): Promise<void> {
+async function processUserRewardClaim(user: any, summary: CronSummary): Promise<void> {
   const userAddress = user.wallet_address as `0x${string}`;
   const userId = user.id;
   const sessionType = user.session_type;
@@ -706,8 +708,16 @@ async function processUserRewardClaim(
 
   // 8. Check simulation mode
   if (process.env.AGENT_SIMULATION_MODE === "true") {
-    console.log(`[SIMULATION] Would claim ${rewards.totalClaimableFormatted} $YO for ${userAddress}`);
-    await logClaimAction(userId, userAddress, rewards.totalClaimableFormatted, "simulation", "success");
+    console.log(
+      `[SIMULATION] Would claim ${rewards.totalClaimableFormatted} $YO for ${userAddress}`
+    );
+    await logClaimAction(
+      userId,
+      userAddress,
+      rewards.totalClaimableFormatted,
+      "simulation",
+      "success"
+    );
     summary.skipped++;
     return;
   }
@@ -732,7 +742,13 @@ async function processUserRewardClaim(
       action: "claimed",
       reason: `Claimed ${rewards.totalClaimableFormatted} $YO (~$${estimatedUsd.toFixed(2)})`,
     });
-    await logClaimAction(userId, userAddress, rewards.totalClaimableFormatted, result.txHash, "success");
+    await logClaimAction(
+      userId,
+      userAddress,
+      rewards.totalClaimableFormatted,
+      result.txHash,
+      "success"
+    );
     await invalidateYoRewards(smartAccountAddress, CHAIN_CONFIG.chainId);
     await incrementUserOpCount(userAddress);
     console.log(`[Cron] Claimed ${rewards.totalClaimableFormatted} $YO for ${userAddress}`);
@@ -743,7 +759,14 @@ async function processUserRewardClaim(
       action: "error",
       reason: result.error || "Merkl claim failed",
     });
-    await logClaimAction(userId, userAddress, rewards.totalClaimableFormatted, undefined, "failed", result.error);
+    await logClaimAction(
+      userId,
+      userAddress,
+      rewards.totalClaimableFormatted,
+      undefined,
+      "failed",
+      result.error
+    );
     console.error(`[Cron] Merkl claim failed for ${userAddress}:`, result.error);
   }
 }
