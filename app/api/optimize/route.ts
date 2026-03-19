@@ -47,24 +47,20 @@ export async function GET(request: NextRequest) {
       !authResult.authenticated &&
       authResult.error === "Address does not belong to authenticated user"
     ) {
-      // The address might be an agentAddress (smart wallet) from old frontend code.
-      // Authenticate the user by JWT only, then verify via resolveAgentAddress.
-      const { authenticateRequest, unauthorizedResponse: unauthResp } = await import(
-        "@/lib/auth/middleware"
-      );
+      // The requested address doesn't match any Privy wallet. This happens when:
+      // 1. Old frontend sends agentAddress (smart wallet) instead of walletAddress
+      // 2. User switched Privy accounts and frontend has stale addresses in state
+      // In both cases: authenticate by JWT only, resolve the user's actual agent address.
+      const { authenticateRequest } = await import("@/lib/auth/middleware");
       const jwtAuth = await authenticateRequest(request);
       if (!jwtAuth.authenticated) {
         return unauthorizedResponse(jwtAuth.error || "Unauthorized");
       }
       const allWallets = jwtAuth.allWalletAddresses ?? [];
       const resolvedAgent = await resolveAgentAddress(allWallets);
-      if (resolvedAgent && resolvedAgent.toLowerCase() === address.toLowerCase()) {
-        // The agentAddress belongs to this user — allow the request
-        authResult = jwtAuth;
-        queryAddress = resolvedAgent as `0x${string}`;
-      } else {
-        return forbiddenResponse("Address does not belong to authenticated user");
-      }
+      // Use the authenticated user's agent address regardless of what the frontend sent
+      authResult = jwtAuth;
+      queryAddress = (resolvedAgent ?? allWallets[0] ?? address) as `0x${string}`;
     } else if (!authResult.authenticated) {
       return unauthorizedResponse(authResult.error || "Unauthorized");
     } else {

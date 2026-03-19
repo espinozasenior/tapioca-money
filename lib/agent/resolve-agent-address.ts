@@ -59,6 +59,13 @@ export async function resolveAgentAddress(walletAddresses: string[]): Promise<st
   const auth = rows[0].authorization_7702 as any;
   const registeredWallet = rows[0].wallet_address as string;
 
+  console.log("[resolveAgentAddress] Found registration:", {
+    registeredWallet,
+    authType: auth?.type,
+    smartWalletAddress: auth?.smartWalletAddress,
+    eoaAddress: auth?.eoaAddress,
+  });
+
   // 4. Resolve based on session type
   let agentAddr: string;
   if (auth.type === "zerodev-erc4337-session" && auth.smartWalletAddress) {
