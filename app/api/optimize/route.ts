@@ -70,6 +70,13 @@ export async function GET(request: NextRequest) {
       queryAddress = agentAddr as `0x${string}`;
     }
 
+    // Resolve where funds actually live:
+    // - Path A (email/embedded): agentAddr = wallet address (same)
+    // - Path B (external/4337): agentAddr = smart wallet address (different)
+    const allWallets = authResult.allWalletAddresses ?? [address.toLowerCase()];
+    const agentAddr = (await resolveAgentAddress(allWallets)) ?? address;
+    const queryAddress = agentAddr as `0x${string}`;
+
     // Pass pre-fetched vaults to avoid redundant API calls (P0-1 fix)
     const decision = await yieldDecisionEngine.evaluateRebalancing(queryAddress, null, {
       morpho: morphoVaults,
