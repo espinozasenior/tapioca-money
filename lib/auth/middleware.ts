@@ -209,30 +209,6 @@ export async function requireAuthForAddress(
   const ownsAddress = allAddresses.includes(normalizedRequested);
 
   if (!ownsAddress) {
-    // The requested address may be a smart account (ERC-4337 Kernel wallet or
-    // EIP-7702 delegated EOA) created during agent registration. These addresses
-    // are not in Privy's linked accounts but ARE the user's agent addresses.
-    // Check if any of the user's wallets have this address registered as their agent.
-    try {
-      const { neon } = await import("@neondatabase/serverless");
-      const sql = neon(process.env.DATABASE_URL!);
-      const placeholders = allAddresses.map((_, i) => `$${i + 2}`).join(", ");
-      const rows = await sql(
-        `SELECT 1 FROM users
-         WHERE LOWER(authorization_7702->>'smartWalletAddress') = $1
-            OR LOWER(authorization_7702->>'eoaAddress') = $1
-         AND LOWER(wallet_address) IN (${placeholders})
-         LIMIT 1`,
-        [normalizedRequested, ...allAddresses]
-      );
-      if (rows.length > 0) {
-        return authResult; // Smart account belongs to this user
-      }
-    } catch (dbError: any) {
-      console.warn("[Auth] Smart account lookup failed:", dbError.message);
-      // Fall through to rejection — don't fail open
-    }
-
     console.warn(
       `[Auth] Address mismatch: requested ${normalizedRequested}, owned [${allAddresses.join(", ")}]`
     );
