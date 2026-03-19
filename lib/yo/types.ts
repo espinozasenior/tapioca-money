@@ -21,6 +21,25 @@ export interface YoVault {
   riskRating?: string; // Optional external risk rating
 }
 
+export interface YoRewardToken {
+  address: Address;
+  symbol: string;
+  decimals: number;
+  claimable: string; // bigint as string for JSON transport
+  claimableFormatted: string;
+  claimed: string;
+}
+
+export interface YoClaimableRewards {
+  chainId: number;
+  tokens: YoRewardToken[];
+  totalClaimable: string;
+  totalClaimableFormatted: string;
+  hasClaimable: boolean;
+  totalClaimableUsd: number | null;
+  rawChainRewards?: any; // Original SDK type for claim execution
+}
+
 export interface YoUserPosition {
   vaultId: string; // e.g. "yoUSD"
   vaultAddress: Address;

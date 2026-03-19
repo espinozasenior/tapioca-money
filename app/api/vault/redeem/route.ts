@@ -51,6 +51,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing shares amount" }, { status: 400 });
     }
 
+    // Validate shares: must be a non-negative integer string within uint256 range
+    const sharesStr = String(shares);
+    if (!/^\d+$/.test(sharesStr)) {
+      return NextResponse.json(
+        { error: "Invalid shares: must be a non-negative integer (digits only)" },
+        { status: 400 }
+      );
+    }
+    if (sharesStr.length > 78) {
+      return NextResponse.json(
+        { error: "Invalid shares: exceeds maximum uint256 value (78 digits max)" },
+        { status: 400 }
+      );
+    }
+    if (sharesStr === "0") {
+      return NextResponse.json(
+        { error: "Invalid shares: must be greater than 0" },
+        { status: 400 }
+      );
+    }
+
     // Validate vault address format
     if (!vaultAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
       return NextResponse.json({ error: "Invalid vault address format" }, { status: 400 });
@@ -145,6 +166,12 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("[Vault Redeem] Error:", error);
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+        ...(process.env.NODE_ENV === "development" && { details: error.message }),
+      },
+      { status: 500 }
+    );
   }
 }

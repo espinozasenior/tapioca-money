@@ -85,6 +85,7 @@ describe("Distributed Lock", () => {
         del: async (key: string) => {
           store.delete(key);
         },
+        eval: async () => null, // Lua not supported in mock — falls back to get+del
       }),
     }));
 

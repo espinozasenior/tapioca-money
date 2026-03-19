@@ -8,6 +8,7 @@ import {
   unauthorizedResponse,
   forbiddenResponse,
 } from "@/lib/auth/middleware";
+import { resolveAgentAddress } from "@/lib/agent/resolve-agent-address";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -36,25 +37,49 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // SECURITY: When address is provided, verify the caller owns it
-    const authResult = await requireAuthForAddress(request, address);
-    if (!authResult.authenticated) {
-      if (authResult.error === "Address does not belong to authenticated user") {
-        return forbiddenResponse(authResult.error);
+    // SECURITY: Verify the caller is authenticated and owns the requested address.
+    // The address param may be a walletAddress (new frontend) or agentAddress (old frontend).
+    // Try direct Privy wallet match first; if that fails, check if it's a registered agent address.
+    let authResult = await requireAuthForAddress(request, address);
+    let queryAddress = address as `0x${string}`;
+
+    if (
+      !authResult.authenticated &&
+      authResult.error === "Address does not belong to authenticated user"
+    ) {
+      // The requested address doesn't match any Privy wallet. This happens when:
+      // 1. Old frontend sends agentAddress (smart wallet) instead of walletAddress
+      // 2. User switched Privy accounts and frontend has stale addresses in state
+      // In both cases: authenticate by JWT only, resolve the user's actual agent address.
+      const { authenticateRequest } = await import("@/lib/auth/middleware");
+      const jwtAuth = await authenticateRequest(request);
+      if (!jwtAuth.authenticated) {
+        return unauthorizedResponse(jwtAuth.error || "Unauthorized");
       }
-      return unauthorizedResponse(authResult.error);
+      const allWallets = jwtAuth.allWalletAddresses ?? [];
+      const resolvedAgent = await resolveAgentAddress(allWallets);
+      // Use the authenticated user's agent address regardless of what the frontend sent
+      authResult = jwtAuth;
+      queryAddress = (resolvedAgent ?? allWallets[0] ?? address) as `0x${string}`;
+    } else if (!authResult.authenticated) {
+      return unauthorizedResponse(authResult.error || "Unauthorized");
+    } else {
+      // Auth passed with walletAddress — resolve agentAddress for position queries
+      const allWallets = authResult.allWalletAddresses ?? [address.toLowerCase()];
+      const agentAddr = (await resolveAgentAddress(allWallets)) ?? address;
+      queryAddress = agentAddr as `0x${string}`;
     }
 
     // Pass pre-fetched vaults to avoid redundant API calls (P0-1 fix)
-    const decision = await yieldDecisionEngine.evaluateRebalancing(address, null, {
+    const decision = await yieldDecisionEngine.evaluateRebalancing(queryAddress, null, {
       morpho: morphoVaults,
       yo: yoVaults,
     });
 
     // Pass pre-fetched morpho vaults to avoid N+1 fetchVault calls (P1-3 fix)
     const [morphoPositions, yoPositions] = await Promise.all([
-      yieldDecisionEngine.getMorphoPositionsWithApy(address, morphoVaults),
-      yieldDecisionEngine.getYoPositionsWithApy(address, yoVaults),
+      yieldDecisionEngine.getMorphoPositionsWithApy(queryAddress, morphoVaults),
+      yieldDecisionEngine.getYoPositionsWithApy(queryAddress, yoVaults),
     ]);
 
     const transformedMorphoPositions = morphoPositions.map((p) =>

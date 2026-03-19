@@ -19,9 +19,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ vaults: opportunities, timestamp: Date.now() });
   } catch (error: any) {
     console.error("[YO Vaults API] Error:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to fetch YO vaults" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch YO vaults" }, { status: 500 });
   }
 }

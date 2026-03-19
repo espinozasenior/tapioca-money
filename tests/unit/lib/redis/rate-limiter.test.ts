@@ -2,14 +2,19 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   checkRateLimit,
   recordRequest,
+  checkAndRecordRateLimit,
   checkTransferRateLimitRedis,
   recordTransferAttemptRedis,
   resetRateLimit,
   getRateLimitUsage,
+  getUserOpCount,
+  USEROP_DAILY_LIMIT,
 } from "@/lib/redis/rate-limiter";
 
 // Mocks
 const mockCache = {
+  get: vi.fn(),
+  set: vi.fn(),
   zremrangebyscore: vi.fn(),
   zrangebyscore: vi.fn(),
   zadd: vi.fn(),
@@ -171,6 +176,52 @@ describe("Redis Rate Limiter", () => {
         now,
         expect.stringContaining('"success":false')
       );
+    });
+  });
+
+  describe("getUserOpCount fail-closed", () => {
+    it("should return count from cache when available", async () => {
+      mockCache.get.mockResolvedValue("5");
+
+      const count = await getUserOpCount("0xuser");
+
+      expect(count).toBe(5);
+    });
+
+    it("should return 0 when cache key does not exist", async () => {
+      mockCache.get.mockResolvedValue(null);
+
+      const count = await getUserOpCount("0xuser");
+
+      expect(count).toBe(0);
+    });
+
+    it("should return USEROP_DAILY_LIMIT when cache throws (fail-closed)", async () => {
+      mockCache.get.mockRejectedValue(new Error("Redis down"));
+
+      const count = await getUserOpCount("0xuser");
+
+      expect(count).toBe(USEROP_DAILY_LIMIT);
+      expect(count).toBe(90);
+    });
+  });
+
+  describe("checkAndRecordRateLimit fail-closed default", () => {
+    it("should deny when Redis is down (defaults to failClosed: true)", async () => {
+      mockCache.zrangebyscore.mockRejectedValue(new Error("Redis down"));
+
+      const result = await checkAndRecordRateLimit("user1");
+
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toContain("unavailable");
+    });
+
+    it("should allow overriding failClosed to false", async () => {
+      mockCache.zrangebyscore.mockRejectedValue(new Error("Redis down"));
+
+      const result = await checkAndRecordRateLimit("user1", { failClosed: false });
+
+      expect(result.allowed).toBe(true);
     });
   });
 

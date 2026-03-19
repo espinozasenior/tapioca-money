@@ -30,6 +30,7 @@ vi.mock("@/lib/zerodev/transfer-session", () => ({
 vi.mock("@/lib/redis/rate-limiter", () => ({
   checkTransferRateLimitRedis: vi.fn(),
   recordTransferAttemptRedis: vi.fn(),
+  checkAndRecordRateLimit: vi.fn(),
 }));
 
 vi.mock("@/lib/zerodev/transfer-executor", () => ({
@@ -37,13 +38,18 @@ vi.mock("@/lib/zerodev/transfer-executor", () => ({
   executeGaslessTransfer: vi.fn(),
 }));
 
+vi.mock("@/lib/zerodev/transfer-recipient-validator", () => ({
+  validateTransferRecipient: vi.fn(),
+}));
+
 // 3. Import module under test
 import { POST } from "@/app/api/transfer/send/route";
 import { requireAuthForAddress } from "@/lib/auth/middleware";
 import { decryptAuthorization } from "@/lib/security/session-encryption";
 import { validateTransferSession } from "@/lib/zerodev/transfer-session";
-import { checkTransferRateLimitRedis } from "@/lib/redis/rate-limiter";
+import { checkTransferRateLimitRedis, checkAndRecordRateLimit } from "@/lib/redis/rate-limiter";
 import { validateTransferParams, executeGaslessTransfer } from "@/lib/zerodev/transfer-executor";
+import { validateTransferRecipient } from "@/lib/zerodev/transfer-recipient-validator";
 
 describe("Transfer Send API", () => {
   const mockUserAddress = "0xuser" as `0x${string}`;
@@ -64,10 +70,16 @@ describe("Transfer Send API", () => {
 
     (decryptAuthorization as any).mockReturnValue({
       smartAccountAddress: "0xsmart",
+      serializedAccount: "base64SerializedAccount",
+      // Legacy field also present for backward compat
       sessionPrivateKey: "0xpriv",
     });
 
     (validateTransferSession as any).mockReturnValue({ valid: true });
+
+    (validateTransferRecipient as any).mockReturnValue({ valid: true });
+
+    (checkAndRecordRateLimit as any).mockResolvedValue({ allowed: true });
 
     (checkTransferRateLimitRedis as any).mockResolvedValue({ allowed: true, remaining: 5 });
 

@@ -151,7 +151,8 @@ export async function checkAndRecordRateLimit(
   identifier: string,
   config: Partial<RateLimitConfig> = {}
 ): Promise<RateLimitResult> {
-  const result = await checkRateLimit(identifier, config);
+  // Default to fail-closed for financial operations that use the combined check+record path
+  const result = await checkRateLimit(identifier, { failClosed: true, ...config });
 
   if (result.allowed) {
     await recordRequest(identifier, config);
@@ -218,13 +219,18 @@ export async function getRateLimitUsage(
 
 const USEROP_BUDGET_KEY = (wallet: string) => `userop_budget:${wallet.toLowerCase()}`;
 
+/** Daily UserOp budget per wallet. Shared with cron route. */
+export const USEROP_DAILY_LIMIT = 90;
+
 export async function getUserOpCount(walletAddress: string): Promise<number> {
   try {
     const cache = await getCacheInterface();
     const val = await cache.get(USEROP_BUDGET_KEY(walletAddress));
     return val ? parseInt(val, 10) : 0;
   } catch {
-    return 0;
+    // Fail closed: return the daily limit so no operations are allowed
+    // until Redis recovers. Returning 0 would allow unlimited execution.
+    return USEROP_DAILY_LIMIT;
   }
 }
 

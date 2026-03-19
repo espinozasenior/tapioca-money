@@ -1,185 +1,221 @@
-<!DOCTYPE html>
-<html lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Multi-Asset Pearl Dashboard</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script id="tailwind-config">
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        "milktea": "#F5F5DC",
-                        "pearl": "#1A1A1A",
-                        "matcha": "#98FB98",
-                        "creamy": "#FFFDF5",
-                    },
-                    fontFamily: {
-                        "sans": ["Quicksand", "sans-serif"]
-                    },
-                    borderRadius: {
-                        "pearl": "20px",
-                    }
-                },
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Multi-Asset Pearl Dashboard</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <script id="tailwind-config">
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              milktea: "#F5F5DC",
+              pearl: "#1A1A1A",
+              matcha: "#98FB98",
+              creamy: "#FFFDF5",
             },
-        }
+            fontFamily: {
+              sans: ["Quicksand", "sans-serif"],
+            },
+            borderRadius: {
+              pearl: "20px",
+            },
+          },
+        },
+      };
     </script>
-<style type="text/tailwindcss">
-        @layer base {
-            body {
-                @apply bg-milktea text-pearl antialiased font-sans select-none;
-            }
+    <style type="text/tailwindcss">
+      @layer base {
+        body {
+          @apply bg-milktea text-pearl select-none font-sans antialiased;
         }
-        .pearl-float {
-            @apply absolute rounded-full bg-pearl pointer-events-none;
-            box-shadow: inset -3px -3px 6px rgba(255,255,255,0.1);
-        }
-        .ios-shadow {
-            box-shadow: 0 10px 30px -10px rgba(26, 26, 26, 0.08);
-        }
-        .nav-blur {
-            @apply backdrop-blur-lg bg-milktea/80;
-        }
-        .asset-card {
-            @apply bg-white rounded-pearl p-5 flex flex-col transition-transform active:scale-95 cursor-pointer border border-pearl/5 relative overflow-hidden;
-        }
-        .pulse-matcha {
-            @apply w-2 h-2 bg-matcha rounded-full;
-            box-shadow: 0 0 8px #98FB98;
-        }
-        .bubble-cluster {
-            @apply relative flex items-center justify-center w-10 h-10;
-        }
-        .bubble {
-            @apply absolute bg-pearl rounded-full;
-        }
+      }
+      .pearl-float {
+        @apply bg-pearl pointer-events-none absolute rounded-full;
+        box-shadow: inset -3px -3px 6px rgba(255, 255, 255, 0.1);
+      }
+      .ios-shadow {
+        box-shadow: 0 10px 30px -10px rgba(26, 26, 26, 0.08);
+      }
+      .nav-blur {
+        @apply bg-milktea/80 backdrop-blur-lg;
+      }
+      .asset-card {
+        @apply rounded-pearl border-pearl/5 relative flex cursor-pointer flex-col overflow-hidden border bg-white p-5 transition-transform active:scale-95;
+      }
+      .pulse-matcha {
+        @apply bg-matcha h-2 w-2 rounded-full;
+        box-shadow: 0 0 8px #98fb98;
+      }
+      .bubble-cluster {
+        @apply relative flex h-10 w-10 items-center justify-center;
+      }
+      .bubble {
+        @apply bg-pearl absolute rounded-full;
+      }
     </style>
-</head>
-<body class="pb-32 min-h-screen relative max-w-md mx-auto shadow-2xl bg-milktea">
-<div class="fixed inset-0 pointer-events-none z-0 overflow-hidden max-w-md mx-auto">
-<div class="pearl-float w-16 h-16 top-[15%] -left-8 opacity-[0.03]"></div>
-<div class="pearl-float w-24 h-24 top-[65%] -right-12 opacity-[0.04]"></div>
-</div>
-<header class="sticky top-0 z-50 nav-blur px-6 h-20 flex items-center justify-between">
-<div class="flex items-center gap-3">
-<div class="bubble-cluster">
-<div class="bubble w-6 h-6 -top-1 -left-1"></div>
-<div class="bubble w-4 h-4 top-4 right-0 opacity-80"></div>
-<div class="bubble w-3 h-3 bottom-0 left-2 opacity-60"></div>
-<div class="w-2 h-2 bg-matcha rounded-full absolute z-10"></div>
-</div>
-<h1 class="text-2xl font-bold tracking-tight">Home</h1>
-</div>
-<button class="w-10 h-10 flex items-center justify-center relative bg-white rounded-full ios-shadow">
-<span class="material-symbols-outlined text-2xl">notifications</span>
-<span class="absolute top-2.5 right-2.5 w-2 h-2 bg-matcha rounded-full border border-white"></span>
-</button>
-</header>
-<main class="relative z-10 px-6 py-4">
-<section class="text-center mb-10">
-<p class="text-pearl/40 font-bold text-xs uppercase tracking-[0.2em] mb-2">Total Balance</p>
-<h2 class="text-5xl font-black text-pearl tracking-tight mb-3">$24,847.53</h2>
-<div class="flex items-center justify-center gap-1.5 text-pearl bg-matcha px-4 py-1.5 rounded-full w-fit mx-auto font-bold text-xs">
-<span class="material-symbols-outlined text-sm font-black">arrow_upward</span>
-                +$127.43 this week
+  </head>
+  <body class="bg-milktea relative mx-auto min-h-screen max-w-md pb-32 shadow-2xl">
+    <div class="pointer-events-none fixed inset-0 z-0 mx-auto max-w-md overflow-hidden">
+      <div class="pearl-float -left-8 top-[15%] h-16 w-16 opacity-[0.03]"></div>
+      <div class="pearl-float -right-12 top-[65%] h-24 w-24 opacity-[0.04]"></div>
+    </div>
+    <header class="nav-blur sticky top-0 z-50 flex h-20 items-center justify-between px-6">
+      <div class="flex items-center gap-3">
+        <div class="bubble-cluster">
+          <div class="bubble -left-1 -top-1 h-6 w-6"></div>
+          <div class="bubble right-0 top-4 h-4 w-4 opacity-80"></div>
+          <div class="bubble bottom-0 left-2 h-3 w-3 opacity-60"></div>
+          <div class="bg-matcha absolute z-10 h-2 w-2 rounded-full"></div>
+        </div>
+        <h1 class="text-2xl font-bold tracking-tight">Home</h1>
+      </div>
+      <button
+        class="ios-shadow relative flex h-10 w-10 items-center justify-center rounded-full bg-white"
+      >
+        <span class="material-symbols-outlined text-2xl">notifications</span>
+        <span
+          class="bg-matcha absolute right-2.5 top-2.5 h-2 w-2 rounded-full border border-white"
+        ></span>
+      </button>
+    </header>
+    <main class="relative z-10 px-6 py-4">
+      <section class="mb-10 text-center">
+        <p class="text-pearl/40 mb-2 text-xs font-bold uppercase tracking-[0.2em]">Total Balance</p>
+        <h2 class="text-pearl mb-3 text-5xl font-black tracking-tight">$24,847.53</h2>
+        <div
+          class="text-pearl bg-matcha mx-auto flex w-fit items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold"
+        >
+          <span class="material-symbols-outlined text-sm font-black">arrow_upward</span>
+          +$127.43 this week
+        </div>
+      </section>
+      <section class="mb-8">
+        <div
+          class="bg-pearl rounded-pearl ios-shadow relative overflow-hidden border border-white/10 p-6 text-white"
+        >
+          <div class="bg-matcha/10 absolute -right-4 -top-4 h-24 w-24 rounded-full blur-2xl"></div>
+          <div class="mb-4 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="pulse-matcha animate-pulse"></div>
+              <span class="text-matcha text-xs font-bold uppercase tracking-wide"
+                >Active Agent</span
+              >
             </div>
-</section>
-<section class="mb-8">
-<div class="bg-pearl text-white rounded-pearl p-6 ios-shadow border border-white/10 relative overflow-hidden">
-<div class="absolute -right-4 -top-4 w-24 h-24 bg-matcha/10 rounded-full blur-2xl"></div>
-<div class="flex items-center justify-between mb-4">
-<div class="flex items-center gap-2.5">
-<div class="pulse-matcha animate-pulse"></div>
-<span class="font-bold text-xs tracking-wide uppercase text-matcha">Active Agent</span>
-</div>
-<span class="bg-white/10 text-white/60 text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wider">Live</span>
-</div>
-<p class="text-lg font-medium leading-snug">
-                    Agent is currently <span class="text-matcha font-bold">brewing</span> in Morpho Matcha
-                </p>
-<div class="mt-4 flex items-center justify-between pt-4 border-t border-white/10">
-<div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-matcha text-sm">bolt</span>
-<span class="text-xs font-bold text-white/70">Yield Optimized</span>
-</div>
-<span class="text-xs font-black text-matcha">12.5% APY</span>
-</div>
-</div>
-</section>
-<section class="mb-8">
-<div class="flex items-center justify-between mb-4 px-1">
-<h3 class="font-bold text-sm uppercase tracking-widest text-pearl/40">Your Assets</h3>
-<span class="material-symbols-outlined text-pearl/40 text-xl">tune</span>
-</div>
-<div class="grid grid-cols-2 gap-4">
-<div class="asset-card ios-shadow">
-<div class="flex justify-between items-start mb-4">
-<div class="w-10 h-10 bg-[#2775CA]/10 rounded-full flex items-center justify-center text-[#2775CA]">
-<span class="material-symbols-outlined font-bold">monetization_on</span>
-</div>
-<div class="flex items-center gap-1 bg-matcha/20 px-2 py-0.5 rounded-full">
-<div class="w-1.5 h-1.5 bg-matcha rounded-full animate-pulse"></div>
-<span class="text-[8px] font-black uppercase text-pearl/60">Brewing</span>
-</div>
-</div>
-<p class="text-xs font-bold text-pearl/40 uppercase mb-0.5">USDC</p>
-<p class="text-lg font-bold tracking-tight">$12,450.00</p>
-</div>
-<div class="asset-card ios-shadow">
-<div class="flex justify-between items-start mb-4">
-<div class="w-10 h-10 bg-[#627EEA]/10 rounded-full flex items-center justify-center text-[#627EEA]">
-<span class="material-symbols-outlined font-bold">eco</span>
-</div>
-</div>
-<p class="text-xs font-bold text-pearl/40 uppercase mb-0.5">ETH</p>
-<p class="text-lg font-bold tracking-tight">$8,240.12</p>
-</div>
-<div class="asset-card ios-shadow">
-<div class="flex justify-between items-start mb-4">
-<div class="w-10 h-10 bg-[#F7931A]/10 rounded-full flex items-center justify-center text-[#F7931A]">
-<span class="material-symbols-outlined font-bold">currency_bitcoin</span>
-</div>
-</div>
-<p class="text-xs font-bold text-pearl/40 uppercase mb-0.5">WBTC</p>
-<p class="text-lg font-bold tracking-tight">$3,157.41</p>
-</div>
-<div class="asset-card ios-shadow border-matcha/30">
-<div class="flex justify-between items-start mb-4">
-<div class="w-10 h-10 bg-pearl rounded-full flex items-center justify-center text-matcha">
-<span class="material-symbols-outlined font-bold text-lg">radio_button_checked</span>
-</div>
-<div class="flex items-center gap-1 bg-matcha/20 px-2 py-0.5 rounded-full">
-<div class="w-1.5 h-1.5 bg-matcha rounded-full animate-pulse"></div>
-<span class="text-[8px] font-black uppercase text-pearl/60">Brewing</span>
-</div>
-</div>
-<p class="text-xs font-bold text-pearl/40 uppercase mb-0.5">Tapioca</p>
-<p class="text-lg font-bold tracking-tight">$1,000.00</p>
-</div>
-</div>
-</section>
-</main>
-<nav class="fixed bottom-8 left-6 right-6 z-[100] max-w-md mx-auto px-4 pointer-events-none">
-<div class="bg-pearl/95 backdrop-blur-xl border border-white/10 rounded-full p-2 flex justify-between items-center shadow-2xl pointer-events-auto">
-<button class="flex flex-col items-center justify-center flex-1 py-1 text-matcha">
-<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1">account_balance_wallet</span>
-<span class="text-[10px] font-bold mt-1 uppercase tracking-tighter">Balance</span>
-</button>
-<button class="flex flex-col items-center justify-center flex-1 py-1 text-white/40">
-<span class="material-symbols-outlined text-2xl">local_cafe</span>
-<span class="text-[10px] font-bold mt-1 uppercase tracking-tighter">Brewing</span>
-</button>
-<button class="flex flex-col items-center justify-center flex-1 py-1 text-white/40">
-<span class="material-symbols-outlined text-2xl">notifications</span>
-<span class="text-[10px] font-bold mt-1 uppercase tracking-tighter">Alerts</span>
-</button>
-<button class="flex flex-col items-center justify-center flex-1 py-1 text-white/40">
-<span class="material-symbols-outlined text-2xl">account_circle</span>
-<span class="text-[10px] font-bold mt-1 uppercase tracking-tighter">Profile</span>
-</button>
-</div>
-</nav>
-
-</body></html>
+            <span
+              class="rounded-md bg-white/10 px-2 py-1 text-[10px] font-black uppercase tracking-wider text-white/60"
+              >Live</span
+            >
+          </div>
+          <p class="text-lg font-medium leading-snug">
+            Agent is currently <span class="text-matcha font-bold">brewing</span> in Morpho Matcha
+          </p>
+          <div class="mt-4 flex items-center justify-between border-t border-white/10 pt-4">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-matcha text-sm">bolt</span>
+              <span class="text-xs font-bold text-white/70">Yield Optimized</span>
+            </div>
+            <span class="text-matcha text-xs font-black">12.5% APY</span>
+          </div>
+        </div>
+      </section>
+      <section class="mb-8">
+        <div class="mb-4 flex items-center justify-between px-1">
+          <h3 class="text-pearl/40 text-sm font-bold uppercase tracking-widest">Your Assets</h3>
+          <span class="material-symbols-outlined text-pearl/40 text-xl">tune</span>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="asset-card ios-shadow">
+            <div class="mb-4 flex items-start justify-between">
+              <div
+                class="flex h-10 w-10 items-center justify-center rounded-full bg-[#2775CA]/10 text-[#2775CA]"
+              >
+                <span class="material-symbols-outlined font-bold">monetization_on</span>
+              </div>
+              <div class="bg-matcha/20 flex items-center gap-1 rounded-full px-2 py-0.5">
+                <div class="bg-matcha h-1.5 w-1.5 animate-pulse rounded-full"></div>
+                <span class="text-pearl/60 text-[8px] font-black uppercase">Brewing</span>
+              </div>
+            </div>
+            <p class="text-pearl/40 mb-0.5 text-xs font-bold uppercase">USDC</p>
+            <p class="text-lg font-bold tracking-tight">$12,450.00</p>
+          </div>
+          <div class="asset-card ios-shadow">
+            <div class="mb-4 flex items-start justify-between">
+              <div
+                class="flex h-10 w-10 items-center justify-center rounded-full bg-[#627EEA]/10 text-[#627EEA]"
+              >
+                <span class="material-symbols-outlined font-bold">eco</span>
+              </div>
+            </div>
+            <p class="text-pearl/40 mb-0.5 text-xs font-bold uppercase">ETH</p>
+            <p class="text-lg font-bold tracking-tight">$8,240.12</p>
+          </div>
+          <div class="asset-card ios-shadow">
+            <div class="mb-4 flex items-start justify-between">
+              <div
+                class="flex h-10 w-10 items-center justify-center rounded-full bg-[#F7931A]/10 text-[#F7931A]"
+              >
+                <span class="material-symbols-outlined font-bold">currency_bitcoin</span>
+              </div>
+            </div>
+            <p class="text-pearl/40 mb-0.5 text-xs font-bold uppercase">WBTC</p>
+            <p class="text-lg font-bold tracking-tight">$3,157.41</p>
+          </div>
+          <div class="asset-card ios-shadow border-matcha/30">
+            <div class="mb-4 flex items-start justify-between">
+              <div
+                class="bg-pearl text-matcha flex h-10 w-10 items-center justify-center rounded-full"
+              >
+                <span class="material-symbols-outlined text-lg font-bold"
+                  >radio_button_checked</span
+                >
+              </div>
+              <div class="bg-matcha/20 flex items-center gap-1 rounded-full px-2 py-0.5">
+                <div class="bg-matcha h-1.5 w-1.5 animate-pulse rounded-full"></div>
+                <span class="text-pearl/60 text-[8px] font-black uppercase">Brewing</span>
+              </div>
+            </div>
+            <p class="text-pearl/40 mb-0.5 text-xs font-bold uppercase">Tapioca</p>
+            <p class="text-lg font-bold tracking-tight">$1,000.00</p>
+          </div>
+        </div>
+      </section>
+    </main>
+    <nav class="pointer-events-none fixed bottom-8 left-6 right-6 z-[100] mx-auto max-w-md px-4">
+      <div
+        class="bg-pearl/95 pointer-events-auto flex items-center justify-between rounded-full border border-white/10 p-2 shadow-2xl backdrop-blur-xl"
+      >
+        <button class="text-matcha flex flex-1 flex-col items-center justify-center py-1">
+          <span
+            class="material-symbols-outlined text-2xl"
+            style="font-variation-settings: &quot;FILL&quot; 1"
+            >account_balance_wallet</span
+          >
+          <span class="mt-1 text-[10px] font-bold uppercase tracking-tighter">Balance</span>
+        </button>
+        <button class="flex flex-1 flex-col items-center justify-center py-1 text-white/40">
+          <span class="material-symbols-outlined text-2xl">local_cafe</span>
+          <span class="mt-1 text-[10px] font-bold uppercase tracking-tighter">Brewing</span>
+        </button>
+        <button class="flex flex-1 flex-col items-center justify-center py-1 text-white/40">
+          <span class="material-symbols-outlined text-2xl">notifications</span>
+          <span class="mt-1 text-[10px] font-bold uppercase tracking-tighter">Alerts</span>
+        </button>
+        <button class="flex flex-1 flex-col items-center justify-center py-1 text-white/40">
+          <span class="material-symbols-outlined text-2xl">account_circle</span>
+          <span class="mt-1 text-[10px] font-bold uppercase tracking-tighter">Profile</span>
+        </button>
+      </div>
+    </nav>
+  </body>
+</html>

@@ -12,12 +12,10 @@ interface PillButtonProps extends ComponentPropsWithoutRef<"button"> {
 }
 
 const variantStyles: Record<Variant, string> = {
-  primary:
-    "bg-[var(--pearl)] text-[var(--matcha)] px-14 py-6 text-xl font-extrabold shadow-xl",
+  primary: "bg-[var(--pearl)] text-[var(--matcha)] px-14 py-6 text-xl font-extrabold shadow-xl",
   secondary:
     "bg-white text-[var(--pearl)] border-4 border-[var(--pearl)] px-14 py-6 text-xl font-extrabold hover:bg-[var(--creamy)]",
-  nav:
-    "bg-[var(--pearl)] text-[var(--matcha)] px-8 py-3 text-sm font-bold shadow-lg",
+  nav: "bg-[var(--pearl)] text-[var(--matcha)] px-8 py-3 text-sm font-bold shadow-lg",
 };
 
 export function PillButton({

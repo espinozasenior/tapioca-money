@@ -59,6 +59,12 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Agent sync error:", error);
-    return NextResponse.json({ error: error.message || "Failed to sync user" }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Failed to sync user",
+        ...(process.env.NODE_ENV === "development" && { details: error.message }),
+      },
+      { status: 500 }
+    );
   }
 }

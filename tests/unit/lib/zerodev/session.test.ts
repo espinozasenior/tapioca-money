@@ -16,6 +16,7 @@ const {
   mockCreateKernelAccount,
   mockSignerToEcdsaValidator,
   mockToPermissionValidator,
+  mockSerializePermissionAccount,
   mockToCallPolicy,
   mockToECDSASigner,
   mockGeneratePrivateKey,
@@ -25,6 +26,7 @@ const {
   mockCreateKernelAccount: vi.fn(),
   mockSignerToEcdsaValidator: vi.fn(),
   mockToPermissionValidator: vi.fn(),
+  mockSerializePermissionAccount: vi.fn(),
   mockToCallPolicy: vi.fn(),
   mockToECDSASigner: vi.fn(),
   mockGeneratePrivateKey: vi.fn(),
@@ -33,6 +35,10 @@ const {
 
 vi.mock("@/lib/redis/client", () => ({
   getCacheInterface: mockGetCacheInterface,
+}));
+
+vi.mock("@/lib/config", () => ({
+  CHAIN_CONFIG: { rpcUrl: "http://localhost:8545" },
 }));
 
 vi.mock("viem", async (importOriginal) => {
@@ -50,6 +56,13 @@ vi.mock("viem", async (importOriginal) => {
 vi.mock("viem/accounts", () => ({
   generatePrivateKey: mockGeneratePrivateKey,
   privateKeyToAccount: mockPrivateKeyToAccount,
+  toAccount: vi.fn(({ address }) => ({
+    address,
+    type: "local",
+    signMessage: vi.fn(),
+    signTransaction: vi.fn(),
+    signTypedData: vi.fn(),
+  })),
 }));
 
 vi.mock("@zerodev/sdk", () => ({
@@ -69,11 +82,16 @@ vi.mock("@zerodev/ecdsa-validator", () => ({
 
 vi.mock("@zerodev/permissions", () => ({
   toPermissionValidator: mockToPermissionValidator,
+  serializePermissionAccount: mockSerializePermissionAccount,
 }));
 
 vi.mock("@zerodev/permissions/policies", () => ({
   toCallPolicy: mockToCallPolicy,
   CallPolicyVersion: { V0_0_5: "0.0.5" },
+  toGasPolicy: vi.fn(),
+  toRateLimitPolicy: vi.fn(),
+  toTimestampPolicy: vi.fn(),
+  ParamCondition: { LESS_THAN_OR_EQUAL: "LESS_THAN_OR_EQUAL" },
 }));
 
 vi.mock("@zerodev/permissions/signers", () => ({
@@ -96,15 +114,27 @@ describe("ZeroDev Session Management", () => {
     describe("validateTransferSession", () => {
       const validAuth: TransferSessionAuthorization = {
         type: "zerodev-transfer-session",
-        smartAccountAddress: "0xAccount",
-        sessionKeyAddress: "0xKey",
-        sessionPrivateKey: "0xPriv",
+        smartAccountAddress: "0xAccount" as `0x${string}`,
+        sessionKeyAddress: "0xKey" as `0x${string}`,
+        serializedAccount: "base64data",
         expiry: Math.floor(Date.now() / 1000) + 3600,
         createdAt: Date.now(),
       };
 
-      it("should return valid for correct auth", () => {
+      it("should return valid for auth with serializedAccount", () => {
         expect(validateTransferSession(validAuth).valid).toBe(true);
+      });
+
+      it("should return valid for legacy auth with sessionPrivateKey", () => {
+        const legacyAuth: TransferSessionAuthorization = {
+          type: "zerodev-transfer-session",
+          smartAccountAddress: "0xAccount" as `0x${string}`,
+          sessionKeyAddress: "0xKey" as `0x${string}`,
+          sessionPrivateKey: "0xPriv" as `0x${string}`,
+          expiry: Math.floor(Date.now() / 1000) + 3600,
+          createdAt: Date.now(),
+        };
+        expect(validateTransferSession(legacyAuth).valid).toBe(true);
       });
 
       it("should return invalid if expired", () => {
@@ -121,8 +151,12 @@ describe("ZeroDev Session Management", () => {
         expect(result.reason).toBe("Invalid session type");
       });
 
-      it("should return invalid if missing fields", () => {
-        const invalidAuth = { ...validAuth, sessionPrivateKey: undefined as any };
+      it("should return invalid if missing both serializedAccount and sessionPrivateKey", () => {
+        const invalidAuth = {
+          ...validAuth,
+          serializedAccount: undefined as any,
+          sessionPrivateKey: undefined as any,
+        };
         const result = validateTransferSession(invalidAuth);
         expect(result.valid).toBe(false);
         expect(result.reason).toBe("Invalid session data");
@@ -130,7 +164,7 @@ describe("ZeroDev Session Management", () => {
     });
 
     describe("createTransferSessionKey", () => {
-      it("should create session key successfully", async () => {
+      it("should create session key and serialize account", async () => {
         const mockWallet = {
           getEthereumProvider: vi.fn().mockResolvedValue({}),
           address: "0xUser",
@@ -139,13 +173,22 @@ describe("ZeroDev Session Management", () => {
         mockGeneratePrivateKey.mockReturnValue("0xSessionPriv");
         mockPrivateKeyToAccount.mockReturnValue({ address: "0xSessionKey" });
         mockCreateKernelAccount.mockResolvedValue({ address: "0xSmartAccount" });
+        mockSerializePermissionAccount.mockResolvedValue("base64SerializedAccount");
 
-        const result = await createTransferSessionKey(mockWallet, "0xUser");
+        const result = await createTransferSessionKey(mockWallet, "0xUser" as `0x${string}`);
 
         expect(result.type).toBe("zerodev-transfer-session");
         expect(result.smartAccountAddress).toBe("0xSmartAccount");
         expect(result.sessionKeyAddress).toBe("0xSessionKey");
-        expect(result.sessionPrivateKey).toBe("0xSessionPriv");
+        expect(result.serializedAccount).toBe("base64SerializedAccount");
+        // New sessions should NOT have sessionPrivateKey
+        expect(result.sessionPrivateKey).toBeUndefined();
+        // Verify serializePermissionAccount was called with the kernel account and session key
+        expect(mockSerializePermissionAccount).toHaveBeenCalledWith(
+          expect.objectContaining({ address: "0xSmartAccount" }),
+          "0xSessionPriv",
+          undefined
+        );
         expect(mockCreateKernelAccount).toHaveBeenCalled();
       });
 

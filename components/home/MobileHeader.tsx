@@ -36,28 +36,26 @@ export function MobileHeader() {
   return (
     <>
       <header
-        className={`sticky top-0 px-6 h-16 flex items-center justify-between md:hidden transition-colors duration-200 ${
+        className={`sticky top-0 flex h-16 items-center justify-between px-6 transition-colors duration-200 md:hidden ${
           open
-            ? "z-[60] bg-transparent border-b border-transparent"
-            : "z-50 nav-blur border-b border-[var(--pearl)]/5"
+            ? "z-[60] border-b border-transparent bg-transparent"
+            : "nav-blur border-[var(--pearl)]/5 z-50 border-b"
         }`}
       >
         {/* Logo — hidden when menu is open (dark-on-dark wouldn't read) */}
         <div
           className={`flex items-center gap-2 transition-opacity duration-200 ${
-            open ? "opacity-0 pointer-events-none" : "opacity-100"
+            open ? "pointer-events-none opacity-0" : "opacity-100"
           }`}
         >
-          <div className="w-8 h-8 bg-[var(--pearl)] rounded-full flex items-center justify-center">
-            <div className="w-5 h-5 bg-[var(--matcha)] rounded-full opacity-90 blur-[0.5px]" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--pearl)]">
+            <div className="h-5 w-5 rounded-full bg-[var(--matcha)] opacity-90 blur-[0.5px]" />
           </div>
-          <span className="text-xl font-bold tracking-tight text-[var(--pearl)]">
-            Tapioca
-          </span>
+          <span className="text-xl font-bold tracking-tight text-[var(--pearl)]">Tapioca</span>
         </div>
         <button
           onClick={() => setOpen((v) => !v)}
-          className="w-10 h-10 flex items-center justify-center"
+          className="flex h-10 w-10 items-center justify-center"
           aria-label={open ? "Close menu" : "Open menu"}
         >
           <AnimatePresence mode="wait" initial={false}>
@@ -69,7 +67,7 @@ export function MobileHeader() {
                 exit={{ rotate: 90, opacity: 0 }}
                 transition={{ duration: 0.15 }}
               >
-                <X className="w-7 h-7 text-[var(--milktea)]" />
+                <X className="h-7 w-7 text-[var(--milktea)]" />
               </m.span>
             ) : (
               <m.span
@@ -79,7 +77,7 @@ export function MobileHeader() {
                 exit={{ rotate: -90, opacity: 0 }}
                 transition={{ duration: 0.15 }}
               >
-                <Menu className="w-7 h-7 text-[var(--pearl)]" />
+                <Menu className="h-7 w-7 text-[var(--pearl)]" />
               </m.span>
             )}
           </AnimatePresence>
@@ -107,7 +105,7 @@ export function MobileHeader() {
 
             {/* Menu content */}
             <m.nav
-              className="relative z-10 flex flex-col justify-center items-center flex-1 px-8"
+              className="relative z-10 flex flex-1 flex-col items-center justify-center px-8"
               initial="hidden"
               animate="show"
               exit="hidden"
@@ -124,7 +122,7 @@ export function MobileHeader() {
                   key={link.label}
                   href={link.href}
                   onClick={close}
-                  className="text-3xl font-black text-[var(--milktea)] py-4 transition-colors hover:text-[var(--matcha)] active:text-[var(--matcha)]"
+                  className="py-4 text-3xl font-black text-[var(--milktea)] transition-colors hover:text-[var(--matcha)] active:text-[var(--matcha)]"
                   variants={{
                     hidden: { opacity: 0, y: 20 },
                     show: {
@@ -145,7 +143,7 @@ export function MobileHeader() {
               {/* CTA */}
               <m.button
                 onClick={handleStartSipping}
-                className="mt-10 bg-[var(--matcha)] text-[var(--pearl)] w-full py-5 rounded-full font-black text-xl text-center shadow-lg active:scale-95 transition-transform"
+                className="mt-10 w-full rounded-full bg-[var(--matcha)] py-5 text-center text-xl font-black text-[var(--pearl)] shadow-lg transition-transform active:scale-95"
                 variants={{
                   hidden: { opacity: 0, y: 20 },
                   show: {
@@ -164,7 +162,7 @@ export function MobileHeader() {
             </m.nav>
 
             {/* Decorative matcha glow */}
-            <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-[var(--matcha)] opacity-10 rounded-full blur-3xl pointer-events-none" />
+            <div className="pointer-events-none absolute -bottom-20 -right-20 h-64 w-64 rounded-full bg-[var(--matcha)] opacity-10 blur-3xl" />
           </m.div>
         )}
       </AnimatePresence>

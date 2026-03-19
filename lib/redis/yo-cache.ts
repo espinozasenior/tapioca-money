@@ -9,19 +9,21 @@
  * - Best vault: 5 minutes
  */
 
-import type { YoVault, YoUserPosition } from "@/lib/yo/types";
+import type { YoVault, YoUserPosition, YoClaimableRewards } from "@/lib/yo/types";
 import { getCacheInterface } from "./client";
 
 const CACHE_KEYS = {
   VAULTS: "yo:vaults",
   USER_POSITIONS: "yo:positions",
   BEST_VAULT: "yo:best",
+  REWARDS: "yo:rewards",
 };
 
 const CACHE_TTL = {
   VAULTS: 5 * 60,
   USER_POSITIONS: 30,
   BEST_VAULT: 5 * 60,
+  REWARDS: 60,
 };
 
 /** JSON replacer that converts BigInt to tagged string for safe serialization */
@@ -46,6 +48,10 @@ function userPositionsCacheKey(userAddress: string, chainId: number): string {
 
 function bestVaultCacheKey(chainId: number, assetSymbol: string, minTvl: number): string {
   return `${CACHE_KEYS.BEST_VAULT}:${chainId}:${assetSymbol.toLowerCase()}:${minTvl}`;
+}
+
+function rewardsCacheKey(userAddress: string, chainId: number): string {
+  return `${CACHE_KEYS.REWARDS}:${userAddress.toLowerCase()}:${chainId}`;
 }
 
 // --- Vaults ---
@@ -157,6 +163,50 @@ export async function setCachedYoBestVault(
     }
   } catch (error: any) {
     console.error("[YoCache] Error caching best vault:", error.message);
+  }
+}
+
+// --- Rewards ---
+
+export async function getCachedYoRewards(
+  userAddress: string,
+  chainId: number
+): Promise<YoClaimableRewards | null> {
+  const cache = await getCacheInterface();
+  const key = rewardsCacheKey(userAddress, chainId);
+  try {
+    const cached = await cache.get(key);
+    if (cached) {
+      return JSON.parse(cached, bigIntReviver);
+    }
+    return null;
+  } catch (error: any) {
+    console.error("[YoCache] Error reading rewards cache:", error.message);
+    return null;
+  }
+}
+
+export async function setCachedYoRewards(
+  userAddress: string,
+  chainId: number,
+  rewards: YoClaimableRewards
+): Promise<void> {
+  const cache = await getCacheInterface();
+  const key = rewardsCacheKey(userAddress, chainId);
+  try {
+    await cache.set(key, JSON.stringify(rewards, bigIntReplacer), CACHE_TTL.REWARDS);
+  } catch (error: any) {
+    console.error("[YoCache] Error caching rewards:", error.message);
+  }
+}
+
+export async function invalidateYoRewards(userAddress: string, chainId: number): Promise<void> {
+  const cache = await getCacheInterface();
+  const key = rewardsCacheKey(userAddress, chainId);
+  try {
+    await cache.del(key);
+  } catch (error: any) {
+    console.error("[YoCache] Error invalidating rewards:", error.message);
   }
 }
 

@@ -100,7 +100,7 @@ const transferAuth: TransferSessionAuthorization = {
 console.log(`Original sessionPrivateKey: ${transferAuth.sessionPrivateKey}`);
 const encryptedTransferAuth = encryptAuthorization(transferAuth);
 console.log(
-  `Encrypted sessionPrivateKey: ${encryptedTransferAuth.sessionPrivateKey.substring(0, 50)}...`
+  `Encrypted sessionPrivateKey: ${encryptedTransferAuth.sessionPrivateKey?.substring(0, 50)}...`
 );
 
 const decryptedTransferAuth = decryptAuthorization(encryptedTransferAuth);

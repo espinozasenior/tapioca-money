@@ -112,6 +112,15 @@ async function buildSessionKeyAndPermissions(approvedVaults: `0x${string}`[]) {
   });
 
   // USDC transfer — cap amount parameter
+  // SECURITY NOTE (H-3): The `to` argument is `null` (unconstrained) because
+  // transfers can go to arbitrary user-specified recipients. We cannot know all
+  // valid recipients at registration time. Defense-in-depth is enforced server-side:
+  //   1. Recipient validation (zero addr, self-transfer, known contract blocklist)
+  //      → lib/zerodev/transfer-recipient-validator.ts
+  //   2. Hourly rate limit (3 transfers/hour) + daily rate limit (20/day)
+  //      → app/api/transfer/send/route.ts
+  //   3. All transfer attempts logged to agent_actions table for monitoring
+  // See also: the amount is still capped on-chain at MAX_USDC_PER_CALL ($10k).
   permissions.push({
     target: USDC_ADDRESS,
     abi: parseAbi(["function transfer(address to, uint256 amount) returns (bool)"]),
@@ -121,8 +130,13 @@ async function buildSessionKeyAndPermissions(approvedVaults: `0x${string}`[]) {
   });
 
   // Import YO Gateway address early — needed to constrain vault approve spender
-  const { YO_GATEWAY_ADDRESS, YO_GATEWAY_DEPOSIT_SELECTOR, YO_GATEWAY_REDEEM_SELECTOR } =
-    await import("@/lib/yo/constants");
+  const {
+    YO_GATEWAY_ADDRESS,
+    YO_GATEWAY_DEPOSIT_SELECTOR,
+    YO_GATEWAY_REDEEM_SELECTOR,
+    MERKL_DISTRIBUTOR_ADDRESS_BASE,
+    MERKL_CLAIM_SELECTOR,
+  } = await import("@/lib/yo/constants");
 
   // Vault operations — cap deposit amounts, allow redeem/withdraw (funds return to user)
   for (const vault of approvedVaults) {
@@ -156,6 +170,13 @@ async function buildSessionKeyAndPermissions(approvedVaults: `0x${string}`[]) {
   permissions.push({
     target: YO_GATEWAY_ADDRESS as `0x${string}`,
     selector: YO_GATEWAY_REDEEM_SELECTOR,
+    valueLimit: 0n,
+  });
+
+  // Merkl Distributor — claim YO rewards
+  permissions.push({
+    target: MERKL_DISTRIBUTOR_ADDRESS_BASE as `0x${string}`,
+    selector: MERKL_CLAIM_SELECTOR,
     valueLimit: 0n,
   });
 
@@ -309,13 +330,24 @@ export async function registerAgentSecure(
       .filter((o: any) => o.metadata?.vaultAddress)
       .map((o: any) => o.metadata.vaultAddress) as `0x${string}`[];
 
-    // Include YO Gateway address for session key scoping
-    const { YO_GATEWAY_ADDRESS } = await import("@/lib/yo/constants");
+    // Include YO Gateway + Merkl Distributor for session key scoping
+    const { YO_GATEWAY_ADDRESS, MERKL_DISTRIBUTOR_ADDRESS_BASE } = await import(
+      "@/lib/yo/constants"
+    );
     if (!approvedVaults.some((v) => v.toLowerCase() === YO_GATEWAY_ADDRESS.toLowerCase())) {
       approvedVaults.push(YO_GATEWAY_ADDRESS as `0x${string}`);
     }
+    if (
+      !approvedVaults.some((v) => v.toLowerCase() === MERKL_DISTRIBUTOR_ADDRESS_BASE.toLowerCase())
+    ) {
+      approvedVaults.push(MERKL_DISTRIBUTOR_ADDRESS_BASE as `0x${string}`);
+    }
 
-    console.log("[ZeroDev 7702] Fetched", approvedVaults.length, "vaults (including YO Gateway)");
+    console.log(
+      "[ZeroDev 7702] Fetched",
+      approvedVaults.length,
+      "vaults (including YO Gateway + Merkl)"
+    );
 
     // 2. Create and serialize the kernel account client-side
     // This captures the enable signature from the EOA (sudo)
@@ -753,10 +785,17 @@ export async function registerAgentSecureExternal(
       .filter((o: any) => o.metadata?.vaultAddress)
       .map((o: any) => o.metadata.vaultAddress) as `0x${string}`[];
 
-    // Include YO Gateway address
-    const { YO_GATEWAY_ADDRESS } = await import("@/lib/yo/constants");
+    // Include YO Gateway + Merkl Distributor
+    const { YO_GATEWAY_ADDRESS, MERKL_DISTRIBUTOR_ADDRESS_BASE } = await import(
+      "@/lib/yo/constants"
+    );
     if (!approvedVaults.some((v) => v.toLowerCase() === YO_GATEWAY_ADDRESS.toLowerCase())) {
       approvedVaults.push(YO_GATEWAY_ADDRESS as `0x${string}`);
+    }
+    if (
+      !approvedVaults.some((v) => v.toLowerCase() === MERKL_DISTRIBUTOR_ADDRESS_BASE.toLowerCase())
+    ) {
+      approvedVaults.push(MERKL_DISTRIBUTOR_ADDRESS_BASE as `0x${string}`);
     }
 
     console.log("[ZeroDev 7702] Fetched", approvedVaults.length, "vaults");
@@ -837,10 +876,17 @@ export async function registerAgentErc4337(
       .filter((o: any) => o.metadata?.vaultAddress)
       .map((o: any) => o.metadata.vaultAddress) as `0x${string}`[];
 
-    // Include YO Gateway address
-    const { YO_GATEWAY_ADDRESS } = await import("@/lib/yo/constants");
+    // Include YO Gateway + Merkl Distributor
+    const { YO_GATEWAY_ADDRESS, MERKL_DISTRIBUTOR_ADDRESS_BASE } = await import(
+      "@/lib/yo/constants"
+    );
     if (!approvedVaults.some((v) => v.toLowerCase() === YO_GATEWAY_ADDRESS.toLowerCase())) {
       approvedVaults.push(YO_GATEWAY_ADDRESS as `0x${string}`);
+    }
+    if (
+      !approvedVaults.some((v) => v.toLowerCase() === MERKL_DISTRIBUTOR_ADDRESS_BASE.toLowerCase())
+    ) {
+      approvedVaults.push(MERKL_DISTRIBUTOR_ADDRESS_BASE as `0x${string}`);
     }
 
     console.log("[ZeroDev 4337] Fetched", approvedVaults.length, "vaults");

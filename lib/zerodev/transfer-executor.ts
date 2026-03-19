@@ -6,6 +6,7 @@
 import { encodeFunctionData, erc20Abi, parseUnits } from "viem";
 import { createDeserializedKernelClient, createSessionKernelClient } from "./kernel-client";
 import { withBuilderCode } from "@/lib/builder-code";
+import { validateTransferRecipient } from "./transfer-recipient-validator";
 
 const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
 
@@ -125,6 +126,14 @@ export function validateTransferParams(params: Partial<GaslessTransferParams>): 
 
   if (!params.recipient.match(/^0x[a-fA-F0-9]{40}$/)) {
     return { valid: false, error: "Invalid recipient address format" };
+  }
+
+  // Validate recipient is not a blocked address (zero addr, self, known contracts)
+  if (params.userAddress) {
+    const recipientCheck = validateTransferRecipient(params.recipient, params.userAddress);
+    if (!recipientCheck.valid) {
+      return { valid: false, error: recipientCheck.reason };
+    }
   }
 
   if (!params.amount) {

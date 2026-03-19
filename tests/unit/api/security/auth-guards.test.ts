@@ -175,17 +175,24 @@ describe("C-2: /api/optimize requires auth when address provided", () => {
     expect(res.status).toBe(401);
   });
 
-  it("GET returns 403 when address provided but belongs to different user", async () => {
+  it("GET returns 401 when address doesn't match and JWT is also invalid", async () => {
+    // When address doesn't belong to the authenticated user, the route
+    // falls back to JWT-only auth (graceful stale-address handling from 31eff43).
+    // If the JWT is also invalid, returns 401.
     (requireAuthForAddress as any).mockResolvedValue({
       authenticated: false,
       error: "Address does not belong to authenticated user",
+    });
+    (authenticateRequest as any).mockResolvedValue({
+      authenticated: false,
+      error: "Missing or invalid Authorization header",
     });
 
     const req = createRequest("http://localhost/api/optimize", "GET", undefined, {
       address: MOCK_ADDRESS,
     });
     const res = await GET(req);
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(401);
   });
 
   it("GET succeeds when address provided and authenticated", async () => {
