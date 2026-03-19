@@ -1,14 +1,16 @@
 "use client";
 
+import { useLoginRedirect } from "@/hooks/useLoginRedirect";
 import { PillButton } from "./PillButton";
 import { cn } from "@/lib/utils";
 
 interface TopNavProps {
-  onCtaClick?: () => void;
   className?: string;
 }
 
-export function TopNav({ onCtaClick, className }: TopNavProps) {
+export function TopNav({ className }: TopNavProps) {
+  const handleClick = useLoginRedirect();
+
   return (
     <nav
       className={cn(
@@ -17,7 +19,7 @@ export function TopNav({ onCtaClick, className }: TopNavProps) {
       )}
     >
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-8">
-        {/* Logo — dark circle with blurred matcha inner (per Stitch) */}
+        {/* Logo */}
         <div className="flex items-center gap-3">
           <div className="relative w-10 h-10 bg-[var(--pearl)] rounded-full flex items-center justify-center">
             <div className="w-6 h-6 bg-[var(--matcha)] rounded-full opacity-80 blur-[1px]" />
@@ -27,7 +29,7 @@ export function TopNav({ onCtaClick, className }: TopNavProps) {
           </span>
         </div>
 
-        {/* Desktop nav — not uppercase, gap-10 (per Stitch) */}
+        {/* Desktop nav */}
         <div className="hidden items-center gap-10 md:flex">
           <a
             href="#menu"
@@ -41,7 +43,7 @@ export function TopNav({ onCtaClick, className }: TopNavProps) {
           >
             Daily Toppings
           </a>
-          <PillButton variant="nav" onClick={onCtaClick}>
+          <PillButton variant="nav" onClick={handleClick}>
             Start Sipping
           </PillButton>
         </div>

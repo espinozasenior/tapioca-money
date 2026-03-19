@@ -1,6 +1,7 @@
 "use client";
 
 import { Shield, Droplets } from "lucide-react";
+import { useLoginRedirect } from "@/hooks/useLoginRedirect";
 
 const features = [
   { icon: Shield, title: "Safe & Vetted", offset: false },
@@ -8,6 +9,8 @@ const features = [
 ];
 
 export function CtaSection() {
+  const handleClick = useLoginRedirect();
+
   return (
     <section className="py-8 md:py-32 px-6 md:px-0 mb-12 md:mb-0">
       {/* Desktop: full CTA section with two columns */}
@@ -26,12 +29,12 @@ export function CtaSection() {
               Join thousands of others sipping on the best yields in DeFi. No
               bitter aftertaste, just pure growth.
             </p>
-            <a
-              href="/dashboard"
-              className="pill-button inline-block bg-[var(--matcha)] text-[var(--pearl)] px-16 py-6 rounded-full font-black text-2xl shadow-xl hover:scale-105 transition-all"
+            <button
+              onClick={handleClick}
+              className="pill-button bg-[var(--matcha)] text-[var(--pearl)] px-16 py-6 rounded-full font-black text-2xl shadow-xl hover:scale-105 transition-all"
             >
               Get Started Now
-            </a>
+            </button>
           </div>
 
           {/* Feature cards with offset */}
@@ -67,12 +70,12 @@ export function CtaSection() {
           <p className="text-white/60 text-sm mb-8 font-medium relative z-10">
             Join thousands of others sipping on the best yields in DeFi.
           </p>
-          <a
-            href="/dashboard"
+          <button
+            onClick={handleClick}
             className="pill-button block bg-[var(--matcha)] text-[var(--pearl)] w-full py-5 rounded-full font-black text-xl shadow-lg active:scale-95 transition-transform relative z-10"
           >
             Get Started Now
-          </a>
+          </button>
         </div>
       </div>
     </section>

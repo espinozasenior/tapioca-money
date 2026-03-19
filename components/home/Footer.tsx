@@ -13,26 +13,17 @@ export function Footer() {
             </span>
           </div>
 
-          {/* Center — Links */}
+          {/* Center — Links (future pages, use buttons until routes exist) */}
           <div className="flex flex-wrap justify-center gap-10 text-[var(--pearl)]/60 text-sm font-bold uppercase tracking-widest">
-            <a
-              href="#"
-              className="hover:text-[var(--matcha)] transition-colors"
-            >
+            <button className="hover:text-[var(--matcha)] transition-colors">
               Flavor Guide
-            </a>
-            <a
-              href="#"
-              className="hover:text-[var(--matcha)] transition-colors"
-            >
+            </button>
+            <button className="hover:text-[var(--matcha)] transition-colors">
               Lab Tests
-            </a>
-            <a
-              href="#"
-              className="hover:text-[var(--matcha)] transition-colors"
-            >
+            </button>
+            <button className="hover:text-[var(--matcha)] transition-colors">
               Recipe Book
-            </a>
+            </button>
           </div>
 
           {/* Right — Social icon in dark circle (per Stitch) */}

@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { TopNav } from "@/components/tapioca/TopNav";
 import { PearlField } from "@/components/tapioca/PearlMotif";
 import { MobileHeader } from "@/components/home/MobileHeader";
-import { HomeBottomNav } from "@/components/home/HomeBottomNav";
 import { HeroSection } from "@/components/home/HeroSection";
 import { ApyShowcase } from "@/components/home/ApyShowcase";
 import { HowItWorks } from "@/components/home/HowItWorks";
@@ -34,23 +33,17 @@ export default function HomePage() {
         <TopNav />
       </div>
 
-      {/* Mobile header — hidden on desktop */}
+      {/* Mobile header with burger menu — hidden on desktop */}
       <MobileHeader />
 
-      <main className="relative z-10 pb-32 md:pb-0 overflow-x-hidden">
+      <main className="relative z-10 overflow-x-hidden">
         <HeroSection />
         <ApyShowcase />
         <HowItWorks />
         <CtaSection />
       </main>
 
-      {/* Footer — visible on desktop, hidden on mobile (bottom nav takes over) */}
-      <div className="hidden md:block">
-        <Footer />
-      </div>
-
-      {/* Mobile bottom nav */}
-      <HomeBottomNav />
+      <Footer />
     </>
   );
 }

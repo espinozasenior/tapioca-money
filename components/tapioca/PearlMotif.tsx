@@ -27,8 +27,8 @@ interface PearlFieldProps {
 export function PearlField({ pearls }: PearlFieldProps) {
   return (
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden>
-      {pearls.map((pearl, i) => (
-        <PearlMotif key={i} {...pearl} />
+      {pearls.map((pearl) => (
+        <PearlMotif key={pearl.className} {...pearl} />
       ))}
     </div>
   );

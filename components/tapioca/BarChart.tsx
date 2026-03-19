@@ -1,13 +1,13 @@
 import { cn } from "@/lib/utils";
 
 const bars = [
-  { height: "40%", color: "bg-[var(--pearl)]/10" },
-  { height: "60%", color: "bg-[var(--matcha)]/40" },
-  { height: "50%", color: "bg-[var(--pearl)]/20" },
-  { height: "80%", color: "bg-[var(--matcha)]/60" },
-  { height: "100%", color: "bg-[var(--pearl)]", active: true },
-  { height: "75%", color: "bg-[var(--matcha)]/40" },
-  { height: "45%", color: "bg-[var(--pearl)]/10" },
+  { id: "b1", height: "40%", color: "bg-[var(--pearl)]/10" },
+  { id: "b2", height: "60%", color: "bg-[var(--matcha)]/40" },
+  { id: "b3", height: "50%", color: "bg-[var(--pearl)]/20" },
+  { id: "b4", height: "80%", color: "bg-[var(--matcha)]/60" },
+  { id: "b5", height: "100%", color: "bg-[var(--pearl)]", active: true },
+  { id: "b6", height: "75%", color: "bg-[var(--matcha)]/40" },
+  { id: "b7", height: "45%", color: "bg-[var(--pearl)]/10" },
 ];
 
 interface BarChartProps {
@@ -17,9 +17,9 @@ interface BarChartProps {
 export function BarChart({ className }: BarChartProps) {
   return (
     <div className={cn("h-32 flex items-end justify-center gap-4 overflow-hidden", className)}>
-      {bars.map((bar, i) => (
+      {bars.map((bar) => (
         <div
-          key={i}
+          key={bar.id}
           className={cn(
             "w-8 rounded-full",
             bar.color,
