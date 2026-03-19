@@ -2,18 +2,18 @@ import { BarChart } from "@/components/tapioca/BarChart";
 
 export function ApyShowcase() {
   return (
-    <section id="menu" className="py-8 md:py-24 px-6 md:px-8 relative">
-      <div className="max-w-[800px] mx-auto">
+    <section id="menu" className="relative px-6 py-8 md:px-8 md:py-24">
+      <div className="mx-auto max-w-[800px]">
         {/* Mobile: solid white + ios-shadow / Desktop: glassmorphic bubbly-card */}
-        <div className="bg-white md:bg-white/60 md:backdrop-blur-sm md:border-4 md:border-[var(--creamy)] rounded-[40px] p-8 md:p-20 text-center relative overflow-hidden ios-shadow">
+        <div className="ios-shadow relative overflow-hidden rounded-[40px] bg-white p-8 text-center md:border-4 md:border-[var(--creamy)] md:bg-white/60 md:p-20 md:backdrop-blur-sm">
           {/* Pearl motifs inside card (per Stitch web — hidden on mobile) */}
-          <div className="pearl-motif w-20 h-20 -top-10 -right-10 absolute hidden md:block" />
-          <div className="pearl-motif w-12 h-12 -bottom-4 left-20 absolute hidden md:block" />
+          <div className="pearl-motif absolute -right-10 -top-10 hidden h-20 w-20 md:block" />
+          <div className="pearl-motif absolute -bottom-4 left-20 hidden h-12 w-12 md:block" />
           {/* Mobile pearl (per Stitch mobile) */}
-          <div className="pearl-motif w-16 h-16 -top-6 -right-6 opacity-5 absolute md:hidden" />
+          <div className="pearl-motif absolute -right-6 -top-6 h-16 w-16 opacity-5 md:hidden" />
 
           {/* Caption — smaller on mobile */}
-          <p className="text-[var(--pearl)]/40 md:text-[var(--pearl)]/60 font-bold text-xs md:text-lg mb-4 uppercase tracking-widest md:tracking-[0.2em]">
+          <p className="text-[var(--pearl)]/40 md:text-[var(--pearl)]/60 mb-4 text-xs font-bold uppercase tracking-widest md:text-lg md:tracking-[0.2em]">
             Current Sweetness
             <span className="hidden md:inline"> Level</span>
           </p>
@@ -21,23 +21,23 @@ export function ApyShowcase() {
           {/* APY display — 12.5% on mobile, 5.5% on desktop (matching respective Stitch files) */}
           <div className="flex flex-col items-center">
             {/* Mobile APY */}
-            <h2 className="md:hidden text-6xl font-black text-[var(--pearl)] mb-4">
+            <h2 className="mb-4 text-6xl font-black text-[var(--pearl)] md:hidden">
               12.5%{" "}
-              <span className="text-xl align-top bg-[var(--pearl)] text-[var(--matcha)] px-2 py-0.5 rounded-md">
+              <span className="rounded-md bg-[var(--pearl)] px-2 py-0.5 align-top text-xl text-[var(--matcha)]">
                 APR
               </span>
             </h2>
             {/* Desktop APY */}
-            <h3 className="hidden md:block text-8xl md:text-9xl font-black text-[var(--pearl)] leading-none mb-8">
+            <h3 className="mb-8 hidden text-8xl font-black leading-none text-[var(--pearl)] md:block md:text-9xl">
               5.5%{" "}
-              <span className="text-4xl align-top text-[var(--matcha)] bg-[var(--pearl)] px-3 py-1 rounded-lg">
+              <span className="rounded-lg bg-[var(--pearl)] px-3 py-1 align-top text-4xl text-[var(--matcha)]">
                 APR
               </span>
             </h3>
           </div>
 
           {/* 30+ Yield Pools badge */}
-          <div className="inline-flex items-center gap-1.5 md:gap-3 bg-[var(--matcha)] text-[var(--pearl)] px-4 md:px-8 py-1.5 md:py-3 rounded-full text-sm md:text-lg font-extrabold md:font-bold border-2 border-[var(--pearl)]">
+          <div className="inline-flex items-center gap-1.5 rounded-full border-2 border-[var(--pearl)] bg-[var(--matcha)] px-4 py-1.5 text-sm font-extrabold text-[var(--pearl)] md:gap-3 md:px-8 md:py-3 md:text-lg md:font-bold">
             <svg
               width="16"
               height="16"
@@ -47,7 +47,7 @@ export function ApyShowcase() {
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="md:w-5 md:h-5"
+              className="md:h-5 md:w-5"
             >
               <circle cx="7.5" cy="11.5" r="4.5" />
               <circle cx="16.5" cy="11.5" r="4.5" />
@@ -57,7 +57,7 @@ export function ApyShowcase() {
           </div>
 
           {/* Bar chart — shorter on mobile */}
-          <div className="mt-10 md:mt-16 flex justify-center">
+          <div className="mt-10 flex justify-center md:mt-16">
             <BarChart className="h-20 md:h-32" />
           </div>
         </div>

@@ -1,7 +1,6 @@
 "use client";
 
 import { PrivyProvider, dataSuffix } from "@privy-io/react-auth";
-import { SmartWalletsProvider } from "@privy-io/react-auth/smart-wallets";
 import { toSolanaWalletConnectors } from "@privy-io/react-auth/solana";
 import { BUILDER_CODE_SUFFIX } from "@/lib/builder-code";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -58,9 +57,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           plugins: [dataSuffix(BUILDER_CODE_SUFFIX)],
         }}
       >
-        <SmartWalletsProvider>
-          <WalletSelectionProvider>{children}</WalletSelectionProvider>
-        </SmartWalletsProvider>
+        <WalletSelectionProvider>{children}</WalletSelectionProvider>
       </PrivyProvider>
     </QueryClientProvider>
   );

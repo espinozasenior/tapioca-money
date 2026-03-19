@@ -7,10 +7,10 @@
   --foreground: oklch(0.145 0 0);
 
   /* Tapioca "Playful Pearl" tokens */
-  --milktea: #F5F5DC;
-  --pearl: #1A1A1A;
-  --matcha: #98FB98;
-  --creamy: #FFFDF5;
+  --milktea: #f5f5dc;
+  --pearl: #1a1a1a;
+  --matcha: #98fb98;
+  --creamy: #fffdf5;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -144,8 +144,15 @@
 }
 
 @keyframes pulse-glow {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(1.4); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.4);
+  }
 }
 
 /* Selection highlight */
