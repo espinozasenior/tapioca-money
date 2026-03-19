@@ -37,21 +37,42 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // SECURITY: When address is provided, verify the caller owns it
-    const authResult = await requireAuthForAddress(request, address);
-    if (!authResult.authenticated) {
-      if (authResult.error === "Address does not belong to authenticated user") {
-        return forbiddenResponse(authResult.error);
-      }
-      return unauthorizedResponse(authResult.error);
-    }
+    // SECURITY: Verify the caller is authenticated and owns the requested address.
+    // The address param may be a walletAddress (new frontend) or agentAddress (old frontend).
+    // Try direct Privy wallet match first; if that fails, check if it's a registered agent address.
+    let authResult = await requireAuthForAddress(request, address);
+    let queryAddress = address as `0x${string}`;
 
-    // Resolve where funds actually live:
-    // - Path A (email/embedded): agentAddr = wallet address (same)
-    // - Path B (external/4337): agentAddr = smart wallet address (different)
-    const allWallets = authResult.allWalletAddresses ?? [address.toLowerCase()];
-    const agentAddr = (await resolveAgentAddress(allWallets)) ?? address;
-    const queryAddress = agentAddr as `0x${string}`;
+    if (
+      !authResult.authenticated &&
+      authResult.error === "Address does not belong to authenticated user"
+    ) {
+      // The address might be an agentAddress (smart wallet) from old frontend code.
+      // Authenticate the user by JWT only, then verify via resolveAgentAddress.
+      const { authenticateRequest, unauthorizedResponse: unauthResp } = await import(
+        "@/lib/auth/middleware"
+      );
+      const jwtAuth = await authenticateRequest(request);
+      if (!jwtAuth.authenticated) {
+        return unauthorizedResponse(jwtAuth.error || "Unauthorized");
+      }
+      const allWallets = jwtAuth.allWalletAddresses ?? [];
+      const resolvedAgent = await resolveAgentAddress(allWallets);
+      if (resolvedAgent && resolvedAgent.toLowerCase() === address.toLowerCase()) {
+        // The agentAddress belongs to this user — allow the request
+        authResult = jwtAuth;
+        queryAddress = resolvedAgent as `0x${string}`;
+      } else {
+        return forbiddenResponse("Address does not belong to authenticated user");
+      }
+    } else if (!authResult.authenticated) {
+      return unauthorizedResponse(authResult.error || "Unauthorized");
+    } else {
+      // Auth passed with walletAddress — resolve agentAddress for position queries
+      const allWallets = authResult.allWalletAddresses ?? [address.toLowerCase()];
+      const agentAddr = (await resolveAgentAddress(allWallets)) ?? address;
+      queryAddress = agentAddr as `0x${string}`;
+    }
 
     // Pass pre-fetched vaults to avoid redundant API calls (P0-1 fix)
     const decision = await yieldDecisionEngine.evaluateRebalancing(queryAddress, null, {
