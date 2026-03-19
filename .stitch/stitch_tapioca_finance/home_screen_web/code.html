@@ -1,0 +1,204 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Tapioca: Playful Pearl</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        "milktea": "#F5F5DC",
+                        "pearl": "#1A1A1A",
+                        "matcha": "#98FB98",
+                        "creamy": "#FFFDF5",
+                    },
+                    fontFamily: {
+                        "sans": ["Quicksand", "sans-serif"]
+                    }
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        @layer base {
+            body {
+                @apply bg-milktea text-pearl antialiased font-sans;
+            }
+        }
+        .pearl-motif {
+            @apply absolute rounded-full bg-pearl;
+            box-shadow: inset -4px -4px 8px rgba(255,255,255,0.1);
+        }
+        .bubbly-card {
+            @apply bg-white/60 backdrop-blur-sm border-4 border-creamy;
+            border-radius: 40px;
+        }
+        .matcha-accent {
+            @apply text-matcha bg-pearl font-bold;
+        }
+    </style>
+</head>
+<body class="selection:bg-matcha selection:text-pearl overflow-x-hidden">
+<div class="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+<div class="pearl-motif w-8 h-8 top-[10%] left-[5%] opacity-20"></div>
+<div class="pearl-motif w-12 h-12 top-[25%] right-[8%] opacity-15"></div>
+<div class="pearl-motif w-16 h-16 top-[60%] left-[2%] opacity-10"></div>
+<div class="pearl-motif w-6 h-6 top-[80%] right-[15%] opacity-20"></div>
+<div class="pearl-motif w-10 h-10 top-[40%] right-[40%] opacity-5"></div>
+</div>
+<nav class="sticky top-0 z-50 bg-milktea/90 backdrop-blur-md border-b-2 border-pearl/5">
+<div class="max-w-7xl mx-auto px-8 h-20 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="relative w-10 h-10 bg-pearl rounded-full flex items-center justify-center">
+<div class="w-6 h-6 bg-matcha rounded-full opacity-80 blur-[1px]"></div>
+</div>
+<span class="text-2xl font-bold tracking-tight text-pearl" style="">Tapioca</span>
+</div>
+<div class="hidden md:flex items-center gap-10">
+<a class="text-sm font-bold hover:text-matcha transition-colors" href="#menu" style="">Our Menu</a>
+<a class="text-sm font-bold hover:text-matcha transition-colors" href="#perks" style="">Daily Toppings</a>
+<button class="bg-pearl text-matcha px-8 py-3 rounded-full font-bold text-sm hover:scale-105 transition-all shadow-lg" style="">
+                Start Sipping
+            </button>
+</div>
+</div>
+</nav>
+<section class="relative min-h-[85vh] flex items-center justify-center overflow-hidden">
+<div class="max-w-7xl mx-auto px-8 text-center flex flex-col items-center relative z-10">
+<div class="bg-matcha/30 text-pearl px-6 py-2 rounded-full text-sm font-bold mb-8 border-2 border-matcha" style="">
+            Freshly Brewed Yield 🧋
+        </div>
+<h1 class="text-5xl md:text-8xl font-extrabold text-pearl leading-none mb-8 max-w-4xl" style="">
+            Simple as a Sip. <br>
+<span class="text-matcha bg-pearl px-4 py-1 rounded-2xl" style="">Sweet Rewards.</span>
+</h1>
+<p class="text-pearl/80 text-xl md:text-2xl font-medium max-w-[680px] leading-relaxed mb-12" style="">
+            The tastiest way to grow your assets. Our playful agents find the best spots for your funds while you kick back and relax. No stress, just bubbles.
+        </p>
+<div class="flex flex-col sm:flex-row gap-6">
+<button class="bg-pearl text-matcha px-14 py-6 rounded-full font-extrabold text-xl hover:scale-105 transition-all shadow-xl" style="">
+                Brew My Yield
+            </button>
+<button class="bg-white text-pearl border-4 border-pearl px-14 py-6 rounded-full font-extrabold text-xl hover:bg-creamy transition-all" style="">
+                Check the Menu
+            </button>
+</div>
+</div>
+</section>
+<section class="py-24 px-8 relative" id="menu">
+<div class="max-w-[800px] mx-auto">
+<div class="bubbly-card p-12 md:p-20 text-center relative overflow-hidden">
+<div class="pearl-motif w-20 h-20 -top-10 -right-10"></div>
+<div class="pearl-motif w-12 h-12 -bottom-4 left-20"></div>
+<p class="text-pearl/60 font-bold text-lg mb-4 uppercase tracking-[0.2em]" style="">Current Sweetness Level</p>
+<h3 class="text-8xl md:text-9xl font-black text-pearl leading-none mb-8" style="">5.5% <span class="text-4xl align-top text-matcha bg-pearl px-3 py-1 rounded-lg" style="">APR</span></h3>
+<div class="inline-flex items-center gap-3 bg-matcha text-pearl px-8 py-3 rounded-full text-lg font-bold border-2 border-pearl" style="">
+<span class="material-symbols-outlined font-bold" style="">bubble_chart</span>
+                30+ Yield Pools
+            </div>
+<div class="mt-16 h-32 flex items-end justify-center gap-4 overflow-hidden">
+<div class="w-8 h-[40%] bg-pearl/10 rounded-full"></div>
+<div class="w-8 h-[60%] bg-matcha/40 rounded-full"></div>
+<div class="w-8 h-[50%] bg-pearl/20 rounded-full"></div>
+<div class="w-8 h-[80%] bg-matcha/60 rounded-full"></div>
+<div class="w-8 h-[100%] bg-pearl rounded-full flex flex-col items-center pt-2">
+<div class="w-4 h-4 bg-matcha rounded-full animate-bounce"></div>
+</div>
+<div class="w-8 h-[75%] bg-matcha/40 rounded-full"></div>
+<div class="w-8 h-[45%] bg-pearl/10 rounded-full"></div>
+</div>
+</div>
+</div>
+</section>
+<section class="py-32 relative bg-white" id="perks">
+<div class="absolute inset-0 overflow-hidden pointer-events-none">
+<div class="pearl-motif w-6 h-6 top-10 left-[20%] opacity-40"></div>
+<div class="pearl-motif w-10 h-10 top-40 left-[15%] opacity-60"></div>
+<div class="pearl-motif w-4 h-4 top-80 left-[22%] opacity-30"></div>
+<div class="pearl-motif w-8 h-8 top-20 right-[20%] opacity-50"></div>
+<div class="pearl-motif w-12 h-12 top-60 right-[18%] opacity-70"></div>
+</div>
+<div class="max-w-5xl mx-auto px-8 relative z-10">
+<div class="text-center mb-24">
+<h2 class="text-5xl font-black mb-6" style="">How it Works</h2>
+<p class="text-pearl/60 text-xl font-medium" style="">As easy as ordering your favorite drink.</p>
+</div>
+<div class="grid md:grid-cols-3 gap-12">
+<div class="text-center group">
+<div class="w-24 h-24 bg-milktea rounded-[40%] flex items-center justify-center mx-auto mb-8 border-4 border-pearl group-hover:bg-matcha transition-colors">
+<span class="material-symbols-outlined text-4xl" style="">local_mall</span>
+</div>
+<h4 class="text-2xl font-extrabold mb-4" style="">1. Place Order</h4>
+<p class="text-pearl/70 leading-relaxed font-medium" style="">Deposit your tokens into our magic shaker. We take it from there.</p>
+</div>
+<div class="text-center group">
+<div class="w-24 h-24 bg-milktea rounded-[40%] flex items-center justify-center mx-auto mb-8 border-4 border-pearl group-hover:bg-matcha transition-colors">
+<span class="material-symbols-outlined text-4xl" style="">blender</span>
+</div>
+<h4 class="text-2xl font-extrabold mb-4" style="">2. Shake &amp; Brew</h4>
+<p class="text-pearl/70 leading-relaxed font-medium" style="">Our bots mix and match the best opportunities 24/7 for peak freshness.</p>
+</div>
+<div class="text-center group">
+<div class="w-24 h-24 bg-milktea rounded-[40%] flex items-center justify-center mx-auto mb-8 border-4 border-pearl group-hover:bg-matcha transition-colors">
+<span class="material-symbols-outlined text-4xl" style="">celebration</span>
+</div>
+<h4 class="text-2xl font-extrabold mb-4" style="">3. Enjoy!</h4>
+<p class="text-pearl/70 leading-relaxed font-medium" style="">Watch your straw get bigger as the rewards compound automatically.</p>
+</div>
+</div>
+</div>
+</section>
+<section class="py-32">
+<div class="max-w-7xl mx-auto px-8">
+<div class="bg-pearl text-milktea rounded-[60px] p-12 md:p-24 flex flex-col md:flex-row items-center gap-16 relative overflow-hidden">
+<div class="absolute -right-20 -bottom-20 w-80 h-80 bg-matcha opacity-10 rounded-full blur-3xl"></div>
+<div class="flex-1 text-center md:text-left">
+<h2 class="text-5xl md:text-6xl font-black mb-8 leading-tight" style="">Ready for a <br><span class="text-matcha" style="">Fresh Brew?</span></h2>
+<p class="text-milktea/70 text-xl mb-12 font-medium" style="">Join thousands of others sipping on the best yields in DeFi. No bitter aftertaste, just pure growth.</p>
+<button class="bg-matcha text-pearl px-16 py-6 rounded-full font-black text-2xl hover:scale-105 transition-all shadow-xl" style="">
+                    Get Started Now
+                </button>
+</div>
+<div class="flex-1 grid grid-cols-2 gap-6 w-full">
+<div class="bg-white/10 p-8 rounded-[40px] text-center border border-white/10">
+<span class="material-symbols-outlined text-matcha text-5xl mb-4" style="">verified</span>
+<p class="font-bold" style="">Safe &amp; Vetted</p>
+</div>
+<div class="bg-white/10 p-8 rounded-[40px] text-center border border-white/10 mt-8">
+<span class="material-symbols-outlined text-matcha text-5xl mb-4" style="">water_drop</span>
+<p class="font-bold" style="">Pure Liquidity</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<footer class="py-20 border-t-4 border-pearl/5">
+<div class="max-w-7xl mx-auto px-8">
+<div class="flex flex-col md:flex-row justify-between items-center gap-10">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-pearl rounded-full flex items-center justify-center">
+<div class="w-4 h-4 bg-matcha rounded-full"></div>
+</div>
+<span class="font-black text-2xl text-pearl" style="">Tapioca</span>
+</div>
+<div class="flex flex-wrap justify-center gap-10 text-pearl/60 text-sm font-bold uppercase tracking-widest">
+<a class="hover:text-matcha transition-colors" href="#" style="">Flavor Guide</a>
+<a class="hover:text-matcha transition-colors" href="#" style="">Lab Tests</a>
+<a class="hover:text-matcha transition-colors" href="#" style="">Recipe Book</a>
+</div>
+<div class="flex gap-4">
+<a class="w-12 h-12 flex items-center justify-center rounded-full bg-pearl text-matcha hover:scale-110 transition-all" href="#" style="">
+<svg class="w-5 h-5 fill-currentColor" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.84 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"></path></svg>
+</a>
+</div>
+</div>
+<div class="mt-20 text-center text-pearl/30 text-xs font-black tracking-[0.4em] uppercase" style="">
+            © 2024 TAPIOCA FINANCE • BREWED WITH LOVE
+        </div>
+</div>
+</footer>
+
+</body></html>

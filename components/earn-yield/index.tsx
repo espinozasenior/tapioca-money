@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useReducer } from "react";
 import { useWallet } from "@/hooks/useWallet";
 import { useWalletSelection } from "@/hooks/useWalletSelection";
 import { Check, ArrowLeft } from "lucide-react";
@@ -23,12 +23,42 @@ interface EarnYieldModalProps {
 type Step = "list" | "deposit" | "processing" | "success";
 type Tab = "opportunities" | "positions";
 
+type ModalState = {
+  step: Step;
+  activeTab: Tab;
+  selectedYield: YieldOpportunity | null;
+};
+
+type ModalAction =
+  | { type: "selectYield"; yield: YieldOpportunity }
+  | { type: "setTab"; tab: Tab }
+  | { type: "setStep"; step: Step }
+  | { type: "back"; hasInitialYield: boolean }
+  | { type: "reset" };
+
+function modalReducer(state: ModalState, action: ModalAction): ModalState {
+  switch (action.type) {
+    case "selectYield":
+      return { ...state, selectedYield: action.yield, step: "deposit" };
+    case "setTab":
+      return { ...state, activeTab: action.tab };
+    case "setStep":
+      return { ...state, step: action.step };
+    case "back":
+      if (state.step === "deposit" && !action.hasInitialYield) {
+        return { ...state, step: "list", selectedYield: null };
+      }
+      return { ...state, step: "list", selectedYield: null };
+    case "reset":
+      return { step: "list", activeTab: "opportunities", selectedYield: null };
+  }
+}
+
 export function EarnYieldModal({ open, onClose, initialYield }: EarnYieldModalProps) {
   const { wallet } = useWallet();
   const { agentAddress } = useWalletSelection();
   const { balances } = useBalance();
   const { yields, isLoading: yieldsLoading, error: yieldsError } = useYields();
-  // Use agentAddress for position queries: EOA for 7702, smart wallet for 4337
   const positionQueryAddress = agentAddress ?? wallet?.address;
   const {
     positions,
@@ -38,35 +68,35 @@ export function EarnYieldModal({ open, onClose, initialYield }: EarnYieldModalPr
   } = useYieldPositions(positionQueryAddress ?? undefined);
   const { refetch: refetchActivityFeed } = useActivityFeed();
 
-  const [step, setStep] = useState<Step>(initialYield ? "deposit" : "list");
-  const [activeTab, setActiveTab] = useState<Tab>("opportunities");
-  const [selectedYield, setSelectedYield] = useState<YieldOpportunity | null>(initialYield ?? null);
+  const [state, dispatch] = useReducer(modalReducer, {
+    step: initialYield ? "deposit" : "list",
+    activeTab: "opportunities",
+    selectedYield: initialYield ?? null,
+  });
+
+  const { step, activeTab, selectedYield } = state;
 
   // Sync when initialYield changes (e.g. opening from AccountCard)
   React.useEffect(() => {
     if (open && initialYield) {
-      setSelectedYield(initialYield);
-      setStep("deposit");
+      dispatch({ type: "selectYield", yield: initialYield });
     }
   }, [open, initialYield]);
 
   const handleSelectYield = (yieldOpp: YieldOpportunity) => {
-    setSelectedYield(yieldOpp);
-    setStep("deposit");
+    dispatch({ type: "selectYield", yield: yieldOpp });
   };
 
   const handleBack = () => {
     if (step === "deposit" && !initialYield) {
-      setStep("list");
-      setSelectedYield(null);
+      dispatch({ type: "back", hasInitialYield: false });
     } else {
       handleDone();
     }
   };
 
   const handleDone = () => {
-    setStep("list");
-    setSelectedYield(null);
+    dispatch({ type: "reset" });
     onClose();
   };
 
@@ -76,7 +106,7 @@ export function EarnYieldModal({ open, onClose, initialYield }: EarnYieldModalPr
   };
 
   const handleDepositSuccess = () => {
-    setStep("success");
+    dispatch({ type: "setStep", step: "success" });
     refetchPositions();
     refetchActivityFeed();
   };
@@ -123,7 +153,7 @@ export function EarnYieldModal({ open, onClose, initialYield }: EarnYieldModalPr
             {/* Tabs */}
             <div className="flex w-full rounded-xl border border-gray-200 bg-gray-100 p-1">
               <button
-                onClick={() => setActiveTab("opportunities")}
+                onClick={() => dispatch({ type: "setTab", tab: "opportunities" })}
                 className={cn(
                   "flex-1 rounded-xl px-4 py-2.5 text-sm font-medium transition",
                   activeTab === "opportunities"
@@ -134,7 +164,7 @@ export function EarnYieldModal({ open, onClose, initialYield }: EarnYieldModalPr
                 Opportunities
               </button>
               <button
-                onClick={() => setActiveTab("positions")}
+                onClick={() => dispatch({ type: "setTab", tab: "positions" })}
                 className={cn(
                   "flex-1 rounded-xl px-4 py-2.5 text-sm font-medium transition",
                   activeTab === "positions"
@@ -178,7 +208,7 @@ export function EarnYieldModal({ open, onClose, initialYield }: EarnYieldModalPr
           <DepositYield
             yieldOpportunity={selectedYield}
             onSuccess={handleDepositSuccess}
-            onProcessing={() => setStep("processing")}
+            onProcessing={() => dispatch({ type: "setStep", step: "processing" })}
           />
         )}
 

@@ -46,6 +46,7 @@
     "@zerodev/session-key": "^5.5.4",
     "base64url": "^3.0.1",
     "clsx": "^2.1.1",
+    "framer-motion": "^12.38.0",
     "graphql": "^16.12.0",
     "ioredis": "^5.9.2",
     "libsodium-wrappers": "^0.7.15",

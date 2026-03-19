@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useReducer } from "react";
 import Image from "next/image";
 import { ArrowUpRight, ArrowRightLeft, Wallet, MoreVertical, RefreshCw } from "lucide-react";
 import { WalletBalance } from "./WalletBallance";
@@ -21,16 +21,40 @@ interface DashboardSummaryProps {
   onSendClick: () => void;
 }
 
+type PanelState = {
+  walletDetails: boolean;
+  walletSwitcher: boolean;
+  warningModal: boolean;
+};
+
+type PanelAction =
+  | { type: "open"; panel: keyof PanelState }
+  | { type: "close"; panel: keyof PanelState }
+  | { type: "set"; panel: keyof PanelState; value: boolean };
+
+function panelReducer(state: PanelState, action: PanelAction): PanelState {
+  switch (action.type) {
+    case "open":
+      return { ...state, [action.panel]: true };
+    case "close":
+      return { ...state, [action.panel]: false };
+    case "set":
+      return { ...state, [action.panel]: action.value };
+  }
+}
+
 export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSummaryProps) {
-  const [showWalletDetails, setShowWalletDetails] = useState(false);
-  const [showWalletSwitcher, setShowWalletSwitcher] = useState(false);
+  const [panels, dp] = useReducer(panelReducer, {
+    walletDetails: false,
+    walletSwitcher: false,
+    warningModal: false,
+  });
   const { wallet } = useWallet();
   const { user } = useAuth();
-  const [openWarningModal, setOpenWarningModal] = useState(false);
 
   const handleWithdraw = () => {
     if (process.env.NEXT_PUBLIC_CROSSMINT_CLIENT_API_KEY?.includes("staging")) {
-      setOpenWarningModal(true);
+      dp({ type: "open", panel: "warningModal" });
     } else {
       window.location.href = `https://pay.coinbase.com/v3/sell/input?${new URLSearchParams({
         appId: process.env.NEXT_PUBLIC_COINBASE_APP_ID!,
@@ -65,7 +89,7 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => setShowWalletSwitcher(true)}>
+              <DropdownMenuItem onSelect={() => dp({ type: "open", panel: "walletSwitcher" })}>
                 <RefreshCw className="h-4 w-4" />
                 Switch Wallet
               </DropdownMenuItem>
@@ -73,7 +97,7 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
                 <ArrowRightLeft className="h-4 w-4" />
                 Withdraw
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setShowWalletDetails(true)}>
+              <DropdownMenuItem onSelect={() => dp({ type: "open", panel: "walletDetails" })}>
                 <Wallet className="h-4 w-4" />
                 Wallet Details
               </DropdownMenuItem>
@@ -82,10 +106,10 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
         </div>
       </Container>
 
-      <WalletDetails onClose={() => setShowWalletDetails(false)} open={showWalletDetails} />
-      <WalletSwitcher open={showWalletSwitcher} onClose={() => setShowWalletSwitcher(false)} />
+      <WalletDetails onClose={() => dp({ type: "close", panel: "walletDetails" })} open={panels.walletDetails} />
+      <WalletSwitcher open={panels.walletSwitcher} onClose={() => dp({ type: "close", panel: "walletSwitcher" })} />
 
-      <Dialog open={openWarningModal} onOpenChange={setOpenWarningModal}>
+      <Dialog open={panels.warningModal} onOpenChange={(v) => dp({ type: "set", panel: "warningModal", value: v })}>
         <DialogContent className="flex h-[400px] max-h-[85vh] flex-col rounded-3xl bg-white sm:max-w-md">
           <DialogTitle className="sr-only">Withdraw is not enabled</DialogTitle>
           <div className="flex w-full flex-1 flex-col items-center justify-center px-4">
@@ -115,7 +139,7 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
           </div>
           <div className="mt-auto w-full pt-8">
             <button
-              onClick={() => setOpenWarningModal(false)}
+              onClick={() => dp({ type: "close", panel: "warningModal" })}
               className="w-full rounded-full border border-gray-200 bg-white px-6 py-3.5 text-base font-semibold text-gray-900 transition hover:bg-gray-50"
             >
               Close

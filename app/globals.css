@@ -5,6 +5,12 @@
   --radius: 0.625rem;
   --background: #f5f5f5;
   --foreground: oklch(0.145 0 0);
+
+  /* Tapioca "Playful Pearl" tokens */
+  --milktea: #F5F5DC;
+  --pearl: #1A1A1A;
+  --matcha: #98FB98;
+  --creamy: #FFFDF5;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -74,6 +80,12 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Tapioca tokens */
+  --color-milktea: var(--milktea);
+  --color-pearl: var(--pearl);
+  --color-matcha: var(--matcha);
+  --color-creamy: var(--creamy);
 }
 
 @layer base {
@@ -88,4 +100,56 @@
   [role="button"]:not([disabled]) {
     cursor: pointer;
   }
+}
+
+/* Tapioca "Playful Pearl" utility classes */
+.pearl-motif {
+  border-radius: 9999px;
+  background-color: var(--pearl);
+  box-shadow: inset -4px -4px 8px rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+}
+
+.bubbly-card {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(4px);
+  border: 4px solid var(--creamy);
+  border-radius: 40px;
+}
+
+.ios-shadow {
+  box-shadow: 0 10px 30px -10px rgba(26, 26, 26, 0.15);
+}
+
+.nav-blur {
+  backdrop-filter: blur(16px);
+  background-color: color-mix(in srgb, var(--milktea) 80%, transparent);
+}
+
+.pill-button {
+  border-radius: 9999px;
+  font-weight: 700;
+  transition: transform 0.15s ease;
+}
+.pill-button:active {
+  transform: scale(0.95);
+}
+
+.pulse-matcha {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background-color: var(--matcha);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.4); }
+}
+
+/* Selection highlight */
+::selection {
+  background-color: var(--matcha);
+  color: var(--pearl);
 }
