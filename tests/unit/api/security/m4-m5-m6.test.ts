@@ -263,11 +263,11 @@ describe("M-4: Error messages not leaked in production catch blocks", () => {
   });
 
   afterEach(() => {
-    process.env.NODE_ENV = originalEnv;
+    (process.env as any).NODE_ENV = originalEnv;
   });
 
   it("vault/redeem catch block does not leak error.message in production", async () => {
-    process.env.NODE_ENV = "production";
+    (process.env as any).NODE_ENV = "production";
 
     (authenticateRequest as any).mockRejectedValue(new Error("secret DB connection string leaked"));
 
@@ -286,7 +286,7 @@ describe("M-4: Error messages not leaked in production catch blocks", () => {
   });
 
   it("transfer/send catch block does not leak error.message in production", async () => {
-    process.env.NODE_ENV = "production";
+    (process.env as any).NODE_ENV = "production";
 
     // Force a throw in the route handler by making json() throw
     const mod = await import("@/app/api/transfer/send/route");
