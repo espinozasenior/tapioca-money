@@ -2,20 +2,24 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { Menu, X } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
+import { useLoginRedirect } from "@/hooks/useLoginRedirect";
 
 const navLinks = [
   { label: "Our Menu", href: "#menu" },
   { label: "Daily Toppings", href: "#how-it-works" },
-  { label: "Flavor Guide", href: "#" },
-  { label: "Lab Tests", href: "#" },
-  { label: "Recipe Book", href: "#" },
 ];
 
 export function MobileHeader() {
   const [open, setOpen] = useState(false);
+  const loginRedirect = useLoginRedirect();
 
   const close = useCallback(() => setOpen(false), []);
+
+  const handleStartSipping = () => {
+    close();
+    loginRedirect();
+  };
 
   // Lock body scroll when menu is open
   useEffect(() => {
@@ -58,7 +62,7 @@ export function MobileHeader() {
         >
           <AnimatePresence mode="wait" initial={false}>
             {open ? (
-              <motion.span
+              <m.span
                 key="close"
                 initial={{ rotate: -90, opacity: 0 }}
                 animate={{ rotate: 0, opacity: 1 }}
@@ -66,9 +70,9 @@ export function MobileHeader() {
                 transition={{ duration: 0.15 }}
               >
                 <X className="w-7 h-7 text-[var(--milktea)]" />
-              </motion.span>
+              </m.span>
             ) : (
-              <motion.span
+              <m.span
                 key="menu"
                 initial={{ rotate: 90, opacity: 0 }}
                 animate={{ rotate: 0, opacity: 1 }}
@@ -76,7 +80,7 @@ export function MobileHeader() {
                 transition={{ duration: 0.15 }}
               >
                 <Menu className="w-7 h-7 text-[var(--pearl)]" />
-              </motion.span>
+              </m.span>
             )}
           </AnimatePresence>
         </button>
@@ -85,7 +89,7 @@ export function MobileHeader() {
       {/* Full-screen mobile menu overlay */}
       <AnimatePresence>
         {open && (
-          <motion.div
+          <m.div
             className="fixed inset-0 z-[55] flex flex-col md:hidden"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -93,7 +97,7 @@ export function MobileHeader() {
             transition={{ duration: 0.2 }}
           >
             {/* Backdrop */}
-            <motion.div
+            <m.div
               className="absolute inset-0 bg-[var(--pearl)]"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -102,7 +106,7 @@ export function MobileHeader() {
             />
 
             {/* Menu content */}
-            <motion.nav
+            <m.nav
               className="relative z-10 flex flex-col justify-center items-center flex-1 px-8"
               initial="hidden"
               animate="show"
@@ -116,7 +120,7 @@ export function MobileHeader() {
               }}
             >
               {navLinks.map((link) => (
-                <motion.a
+                <m.a
                   key={link.label}
                   href={link.href}
                   onClick={close}
@@ -135,12 +139,12 @@ export function MobileHeader() {
                   }}
                 >
                   {link.label}
-                </motion.a>
+                </m.a>
               ))}
 
               {/* CTA */}
-              <motion.a
-                href="/dashboard"
+              <m.button
+                onClick={handleStartSipping}
                 className="mt-10 bg-[var(--matcha)] text-[var(--pearl)] w-full py-5 rounded-full font-black text-xl text-center shadow-lg active:scale-95 transition-transform"
                 variants={{
                   hidden: { opacity: 0, y: 20 },
@@ -156,12 +160,12 @@ export function MobileHeader() {
                 }}
               >
                 Start Sipping
-              </motion.a>
-            </motion.nav>
+              </m.button>
+            </m.nav>
 
             {/* Decorative matcha glow */}
             <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-[var(--matcha)] opacity-10 rounded-full blur-3xl pointer-events-none" />
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </>

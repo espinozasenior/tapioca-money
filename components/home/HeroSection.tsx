@@ -1,8 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { usePrivy } from "@privy-io/react-auth";
-import { useRouter } from "next/navigation";
+import { m } from "framer-motion";
+import { useLoginRedirect } from "@/hooks/useLoginRedirect";
 import { PillButton } from "@/components/tapioca/PillButton";
 
 const container = {
@@ -26,35 +25,26 @@ const item = {
 };
 
 export function HeroSection() {
-  const { login, authenticated } = usePrivy();
-  const router = useRouter();
-
-  const handleBrewClick = () => {
-    if (authenticated) {
-      router.push("/dashboard");
-    } else {
-      login();
-    }
-  };
+  const handleBrewClick = useLoginRedirect();
 
   return (
     <section className="relative min-h-[85vh] md:min-h-[85vh] flex items-center justify-center overflow-hidden pt-12 pb-10 md:py-0">
-      <motion.div
+      <m.div
         className="max-w-7xl mx-auto px-6 md:px-8 text-center flex flex-col items-center relative z-10"
         variants={container}
         initial="hidden"
         animate="show"
       >
         {/* Badge — matcha tint with matcha border per Stitch */}
-        <motion.div
+        <m.div
           variants={item}
           className="bg-[var(--matcha)]/30 border-2 border-[var(--matcha)] text-[var(--pearl)] rounded-full px-6 py-2 text-sm font-bold inline-block mb-8"
         >
           Freshly Brewed Yield 🧋
-        </motion.div>
+        </m.div>
 
         {/* H1 — centered, "Sweet Rewards" in matcha-accent (green text on dark pill) */}
-        <motion.h1
+        <m.h1
           variants={item}
           className="text-5xl md:text-8xl font-extrabold leading-none text-[var(--pearl)] mb-8 max-w-4xl font-[family-name:var(--font-quicksand)]"
         >
@@ -63,20 +53,20 @@ export function HeroSection() {
           <span className="text-[var(--matcha)] bg-[var(--pearl)] px-4 py-1 rounded-2xl inline-block mt-2">
             Sweet Rewards.
           </span>
-        </motion.h1>
+        </m.h1>
 
         {/* Subtitle */}
-        <motion.p
+        <m.p
           variants={item}
           className="text-[var(--pearl)]/80 text-xl md:text-2xl font-medium max-w-[680px] leading-relaxed mb-12"
         >
           The tastiest way to grow your assets. Our playful agents find the best
           spots for your funds while you kick back and relax. No stress, just
           bubbles.
-        </motion.p>
+        </m.p>
 
         {/* CTAs — full-width stacked on mobile, inline on sm+ (per Stitch mobile) */}
-        <motion.div
+        <m.div
           variants={item}
           className="flex flex-col sm:flex-row gap-4 sm:gap-6 w-full sm:w-auto px-6 sm:px-0"
         >
@@ -94,8 +84,8 @@ export function HeroSection() {
           >
             Check the Menu
           </PillButton>
-        </motion.div>
-      </motion.div>
+        </m.div>
+      </m.div>
     </section>
   );
 }

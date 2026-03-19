@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import type { ComponentPropsWithoutRef } from "react";
 
 type Variant = "primary" | "secondary" | "nav";
@@ -31,7 +31,7 @@ export function PillButton({
 
   if (href) {
     return (
-      <motion.a
+      <m.a
         href={href}
         className={classes}
         whileHover={{ scale: 1.05 }}
@@ -39,19 +39,19 @@ export function PillButton({
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
       >
         {children}
-      </motion.a>
+      </m.a>
     );
   }
 
   return (
-    <motion.button
+    <m.button
       className={classes}
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
-      {...(props as ComponentPropsWithoutRef<typeof motion.button>)}
+      {...(props as ComponentPropsWithoutRef<typeof m.button>)}
     >
       {children}
-    </motion.button>
+    </m.button>
   );
 }

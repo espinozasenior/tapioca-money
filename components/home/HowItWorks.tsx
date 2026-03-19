@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { ShoppingBag, Zap, Sparkles } from "lucide-react";
 
 const container = {
@@ -68,7 +68,7 @@ export function HowItWorks() {
         </div>
 
         {/* Desktop: 3-column grid / Mobile: vertical cards */}
-        <motion.div
+        <m.div
           className="hidden md:grid md:grid-cols-3 gap-12"
           variants={container}
           initial="hidden"
@@ -76,7 +76,7 @@ export function HowItWorks() {
           viewport={{ once: true, margin: "-100px" }}
         >
           {steps.map((step) => (
-            <motion.div
+            <m.div
               key={step.title}
               variants={item}
               className="text-center group"
@@ -94,9 +94,9 @@ export function HowItWorks() {
               <p className="text-[var(--pearl)]/70 leading-relaxed font-medium">
                 {step.description}
               </p>
-            </motion.div>
+            </m.div>
           ))}
-        </motion.div>
+        </m.div>
 
         {/* Mobile: horizontal card layout (per Stitch mobile) */}
         <div className="md:hidden space-y-6">
