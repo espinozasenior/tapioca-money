@@ -40,7 +40,9 @@ vi.mock("@/lib/zerodev/transfer-session", () => ({
 }));
 
 vi.mock("@/lib/agent/resolve-registration", () => ({
-  buildWalletAddresses: vi.fn().mockReturnValue({ primaryAddress: "0xabc", allAddresses: ["0xabc"] }),
+  buildWalletAddresses: vi
+    .fn()
+    .mockReturnValue({ primaryAddress: "0xabc", allAddresses: ["0xabc"] }),
   resolveAndDecryptRegistration: vi.fn().mockResolvedValue({
     ok: true,
     decryptedAuth: { serializedAccount: "mock-serialized", type: "zerodev-7702-session" },

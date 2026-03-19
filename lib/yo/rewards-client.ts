@@ -41,7 +41,14 @@ export async function fetchClaimableRewards(
   });
 
   // 3. Fetch from SDK (merges Merkl API + on-chain claimed amounts)
-  const chainRewards = await yoClient.getClaimableRewards(userAddress);
+  let chainRewards;
+  try {
+    chainRewards = await yoClient.getClaimableRewards(userAddress);
+  } catch (error: any) {
+    // Merkl API unreachable (DNS failure, timeout, etc.) — return null, not 500
+    console.warn("[YoRewards] Merkl API unreachable:", error.cause?.code || error.message);
+    return null;
+  }
   if (!chainRewards || !yoClient.hasMerklClaimableRewards(chainRewards)) {
     return null;
   }
