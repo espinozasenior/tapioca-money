@@ -19,7 +19,8 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:integration": "vitest run tests/integration",
-    "test:watch": "vitest watch"
+    "test:watch": "vitest watch",
+    "prepare": "husky"
   },
   "dependencies": {
     "@crossmint/client-sdk-react-ui": "^2.6.16",
@@ -83,12 +84,17 @@
     "fast-check": "^4.5.3",
     "graphql-tag": "^2.12.6",
     "happy-dom": "^20.4.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "msw": "^2.12.7",
     "prettier": "^3.2.5",
     "prettier-plugin-tailwindcss": "^0.5.11",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.0.18"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,json,css,md}": "prettier --write"
   },
   "pnpm": {
     "overrides": {

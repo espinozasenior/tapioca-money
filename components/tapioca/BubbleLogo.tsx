@@ -19,7 +19,7 @@ export function BubbleLogo({ size = "md", className }: BubbleLogoProps) {
       >
         <div className={cn("rounded-full bg-[var(--matcha)]", inner)} />
       </div>
-      <span className="font-[var(--font-quicksand)] text-lg font-black tracking-tight text-[var(--pearl)]">
+      <span className="text-lg font-[var(--font-quicksand)] font-black tracking-tight text-[var(--pearl)]">
         Tapioca
       </span>
     </div>

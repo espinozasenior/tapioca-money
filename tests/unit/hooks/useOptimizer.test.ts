@@ -109,7 +109,6 @@ describe("useOptimizer Hooks", () => {
       isSolanaWallet: false,
       supportsSmartAccount: true,
       supportsEip7702: true,
-      smartWalletAddress: null,
       agentAddress: "0xuser",
       allWallets: [mockWalletEntry],
       selectWallet: vi.fn(),

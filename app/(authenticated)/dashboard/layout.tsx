@@ -27,11 +27,7 @@ function useWalletTimeout(waitingForWallet: boolean, ms: number): boolean {
   return timedOut;
 }
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { wallet } = useWallet();
   const { user, ready, authenticated } = useAuth();
   const { getAccessToken } = usePrivy();
@@ -70,50 +66,50 @@ export default function DashboardLayout({
   if (isLoading) {
     return (
       <div className="min-h-dvh bg-[var(--milktea)] font-[family-name:var(--font-quicksand)]">
-        <div className="max-w-md md:max-w-5xl mx-auto px-6 md:px-10 py-4 md:py-8">
+        <div className="mx-auto max-w-md px-6 py-4 md:max-w-5xl md:px-10 md:py-8">
           {/* Header skeleton */}
-          <div className="flex items-center justify-between py-4 mb-4">
+          <div className="mb-4 flex items-center justify-between py-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[var(--pearl)]/10 animate-pulse" />
-              <div className="w-20 h-5 rounded-full bg-[var(--pearl)]/10 animate-pulse hidden md:block" />
+              <div className="bg-[var(--pearl)]/10 h-10 w-10 animate-pulse rounded-full" />
+              <div className="bg-[var(--pearl)]/10 hidden h-5 w-20 animate-pulse rounded-full md:block" />
             </div>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[var(--pearl)]/10 animate-pulse" />
-              <div className="w-20 h-8 rounded-full bg-[var(--pearl)]/5 animate-pulse hidden md:block" />
+              <div className="bg-[var(--pearl)]/10 h-10 w-10 animate-pulse rounded-full" />
+              <div className="bg-[var(--pearl)]/5 hidden h-8 w-20 animate-pulse rounded-full md:block" />
             </div>
           </div>
           {/* Desktop: two-column skeleton / Mobile: stacked */}
-          <div className="md:flex md:items-end md:justify-between mb-10 md:mb-12">
-            <div className="flex flex-col items-center md:items-start gap-3">
-              <div className="w-24 h-3 rounded-full bg-[var(--pearl)]/10 animate-pulse" />
-              <div className="w-48 md:w-64 h-12 md:h-14 rounded-full bg-[var(--pearl)]/10 animate-pulse" />
-              <div className="w-36 h-6 rounded-full bg-[var(--matcha)]/20 animate-pulse" />
+          <div className="mb-10 md:mb-12 md:flex md:items-end md:justify-between">
+            <div className="flex flex-col items-center gap-3 md:items-start">
+              <div className="bg-[var(--pearl)]/10 h-3 w-24 animate-pulse rounded-full" />
+              <div className="bg-[var(--pearl)]/10 h-12 w-48 animate-pulse rounded-full md:h-14 md:w-64" />
+              <div className="bg-[var(--matcha)]/20 h-6 w-36 animate-pulse rounded-full" />
             </div>
             {/* Desktop action button skeletons */}
-            <div className="hidden md:flex items-center gap-3 mt-4 md:mt-0">
-              <div className="w-28 h-10 rounded-full bg-white/80 animate-pulse" />
-              <div className="w-24 h-10 rounded-full bg-white/80 animate-pulse" />
-              <div className="w-32 h-10 rounded-full bg-[var(--pearl)]/10 animate-pulse" />
+            <div className="mt-4 hidden items-center gap-3 md:mt-0 md:flex">
+              <div className="h-10 w-28 animate-pulse rounded-full bg-white/80" />
+              <div className="h-10 w-24 animate-pulse rounded-full bg-white/80" />
+              <div className="bg-[var(--pearl)]/10 h-10 w-32 animate-pulse rounded-full" />
             </div>
           </div>
           {/* Mobile action buttons skeleton */}
-          <div className="flex items-center justify-center gap-6 mb-8 md:hidden">
+          <div className="mb-8 flex items-center justify-center gap-6 md:hidden">
             {["deposit", "send", "earn"].map((action) => (
               <div key={action} className="flex flex-col items-center gap-1.5">
-                <div className="w-12 h-12 rounded-full bg-white/80 animate-pulse" />
-                <div className="w-10 h-2 rounded-full bg-[var(--pearl)]/10 animate-pulse" />
+                <div className="h-12 w-12 animate-pulse rounded-full bg-white/80" />
+                <div className="bg-[var(--pearl)]/10 h-2 w-10 animate-pulse rounded-full" />
               </div>
             ))}
           </div>
           {/* Agent card + stats skeleton */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="md:col-span-2 rounded-[20px] md:rounded-[28px] bg-[var(--pearl)]/10 h-32 md:h-40 animate-pulse" />
-            <div className="hidden md:block rounded-[28px] bg-white/60 h-40 animate-pulse" />
+          <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
+            <div className="bg-[var(--pearl)]/10 h-32 animate-pulse rounded-[20px] md:col-span-2 md:h-40 md:rounded-[28px]" />
+            <div className="hidden h-40 animate-pulse rounded-[28px] bg-white/60 md:block" />
           </div>
           {/* Asset grid skeleton */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             {["usdc", "eth", "wbtc", "tapi"].map((token) => (
-              <div key={token} className="rounded-[20px] bg-white/60 h-28 md:h-32 animate-pulse" />
+              <div key={token} className="h-28 animate-pulse rounded-[20px] bg-white/60 md:h-32" />
             ))}
           </div>
         </div>
@@ -132,13 +128,13 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-dvh bg-[var(--milktea)] font-[family-name:var(--font-quicksand)] relative">
+    <div className="relative min-h-dvh bg-[var(--milktea)] font-[family-name:var(--font-quicksand)]">
       {/* Pearl floats — full viewport, not constrained by content max-width */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="pearl-motif w-16 h-16 absolute top-[15%] left-[5%] opacity-[0.03]" />
-        <div className="pearl-motif w-24 h-24 absolute top-[65%] right-[5%] opacity-[0.04]" />
-        <div className="pearl-motif w-20 h-20 absolute top-[40%] right-[30%] opacity-[0.02] hidden md:block" />
-        <div className="pearl-motif w-12 h-12 absolute top-[85%] left-[15%] opacity-[0.03] hidden md:block" />
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        <div className="pearl-motif absolute left-[5%] top-[15%] h-16 w-16 opacity-[0.03]" />
+        <div className="pearl-motif absolute right-[5%] top-[65%] h-24 w-24 opacity-[0.04]" />
+        <div className="pearl-motif absolute right-[30%] top-[40%] hidden h-20 w-20 opacity-[0.02] md:block" />
+        <div className="pearl-motif absolute left-[15%] top-[85%] hidden h-12 w-12 opacity-[0.03] md:block" />
       </div>
       <div className="relative z-10 pb-32 md:pb-12">{children}</div>
       {/* BottomNav — mobile only */}
@@ -155,24 +151,24 @@ function WalletReconnect() {
 
   return (
     <div className="flex min-h-dvh w-full items-center justify-center bg-[var(--milktea)] font-[family-name:var(--font-quicksand)]">
-      <div className="flex flex-col items-center gap-4 text-center px-6">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-3 h-3 rounded-full bg-[var(--matcha)] opacity-60" />
-          <div className="w-2 h-2 rounded-full bg-[var(--pearl)] opacity-20" />
+      <div className="flex flex-col items-center gap-4 px-6 text-center">
+        <div className="mb-2 flex items-center gap-2">
+          <div className="h-3 w-3 rounded-full bg-[var(--matcha)] opacity-60" />
+          <div className="h-2 w-2 rounded-full bg-[var(--pearl)] opacity-20" />
         </div>
-        <p className="text-sm font-medium text-[var(--pearl)]/70">
+        <p className="text-[var(--pearl)]/70 text-sm font-medium">
           Wallet disconnected. Please reconnect to continue.
         </p>
-        <div className="flex gap-3 mt-2">
+        <div className="mt-2 flex gap-3">
           <button
             onClick={() => connectWallet()}
-            className="pill-button bg-[var(--pearl)] text-white px-6 py-2.5 text-sm"
+            className="pill-button bg-[var(--pearl)] px-6 py-2.5 text-sm text-white"
           >
             Reconnect Wallet
           </button>
           <button
             onClick={() => logout()}
-            className="pill-button border border-[var(--pearl)]/10 bg-white text-[var(--pearl)]/60 px-6 py-2.5 text-sm"
+            className="pill-button border-[var(--pearl)]/10 text-[var(--pearl)]/60 border bg-white px-6 py-2.5 text-sm"
           >
             Log Out
           </button>

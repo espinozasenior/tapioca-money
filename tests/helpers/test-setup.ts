@@ -301,10 +301,22 @@ export async function createTestTransferSession(walletAddress: string): Promise<
   const smartAccount = `0x${crypto.randomBytes(20).toString("hex")}` as `0x${string}`;
   const sessionKey = `0x${crypto.randomBytes(20).toString("hex")}` as `0x${string}`;
 
+  // Mock serialized account — in production this is a base64-encoded JSON blob
+  // from serializePermissionAccount(). The session private key is embedded inside.
+  const mockSessionPrivateKey = `0x${crypto.randomBytes(32).toString("hex")}`;
+  const mockSerializedPayload = JSON.stringify({
+    privateKey: mockSessionPrivateKey,
+    accountAddress: smartAccount,
+    sessionKeyAddress: sessionKey,
+  });
+  const mockSerializedAccount = Buffer.from(mockSerializedPayload).toString("base64");
+
   const transferAuth = {
     type: "zerodev-transfer-session",
     smartAccountAddress: smartAccount,
     sessionKeyAddress: sessionKey,
+    serializedAccount: mockSerializedAccount,
+    // Legacy field kept for backward-compat tests
     sessionPrivateKey: `0x${crypto.randomBytes(32).toString("hex")}` as `0x${string}`,
     expiry: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60, // 30 days
     createdAt: Date.now(),

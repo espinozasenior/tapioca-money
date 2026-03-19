@@ -215,7 +215,7 @@ describe("Client Secure (ZeroDev)", () => {
       expect(result.sessionKeyAddress).toBe("0xsessionKey");
       expect(result.approvedVaults).toEqual(expect.arrayContaining(["0xvault1", "0xvault2"]));
       // YO Gateway address is also included for session key scoping
-      expect(result.approvedVaults).toHaveLength(3);
+      expect(result.approvedVaults).toHaveLength(4);
       // serializedAccount is not returned, but sent to server
 
       // Verify fetch calls
@@ -448,7 +448,7 @@ describe("Client Secure (ZeroDev)", () => {
       expect(result.smartAccountAddress).toBe(mockAddress);
       expect(result.sessionKeyAddress).toBe("0xsessionKey");
       expect(result.approvedVaults).toEqual(expect.arrayContaining(["0xvault1", "0xvault2"]));
-      expect(result.approvedVaults).toHaveLength(3); // 2 from /api/optimize + YO Gateway
+      expect(result.approvedVaults).toHaveLength(4); // 2 from /api/optimize + YO Gateway
 
       // Verify server call includes serialized account (no eip7702Auth)
       expect(global.fetch).toHaveBeenNthCalledWith(

@@ -7,6 +7,7 @@ const { mockCache } = vi.hoisted(() => ({
     set: vi.fn(),
     del: vi.fn(),
     setNX: vi.fn(),
+    eval: vi.fn(),
   },
 }));
 
@@ -46,19 +47,53 @@ describe("Distributed Lock", () => {
       expect(result.lockId).toBeUndefined();
     });
 
-    it("should release lock only when lockId matches", async () => {
+    it("should release lock atomically via Lua script when Redis supports eval", async () => {
+      // eval returns 1 (key was deleted) — Redis handled it
+      mockCache.eval.mockResolvedValue(1);
+
+      await releaseUserLock("0xuser", "my-lock-id");
+
+      // Should call eval with the Lua script, key, and lockId
+      expect(mockCache.eval).toHaveBeenCalledTimes(1);
+      expect(mockCache.eval).toHaveBeenCalledWith(
+        expect.stringContaining("redis.call('get', KEYS[1])"),
+        [expect.stringContaining("0xuser")],
+        ["my-lock-id"]
+      );
+      // Should NOT fall through to non-atomic get+del
+      expect(mockCache.get).not.toHaveBeenCalled();
+      expect(mockCache.del).not.toHaveBeenCalled();
+    });
+
+    it("should not delete lock via Lua when lockId does not match", async () => {
+      // eval returns 0 (lockId mismatch, key not deleted)
+      mockCache.eval.mockResolvedValue(0);
+
+      await releaseUserLock("0xuser", "my-lock-id");
+
+      expect(mockCache.eval).toHaveBeenCalledTimes(1);
+      expect(mockCache.del).not.toHaveBeenCalled();
+    });
+
+    it("should fall back to non-atomic release when eval returns null (in-memory)", async () => {
+      // eval returns null (in-memory fallback, Lua not supported)
+      mockCache.eval.mockResolvedValue(null);
       mockCache.get.mockResolvedValue("my-lock-id");
 
       await releaseUserLock("0xuser", "my-lock-id");
 
+      // Should fall through to get+del
+      expect(mockCache.get).toHaveBeenCalledTimes(1);
       expect(mockCache.del).toHaveBeenCalledTimes(1);
     });
 
-    it("should NOT release lock when lockId does not match", async () => {
+    it("should NOT release in fallback path when lockId does not match", async () => {
+      mockCache.eval.mockResolvedValue(null);
       mockCache.get.mockResolvedValue("other-lock-id");
 
       await releaseUserLock("0xuser", "my-lock-id");
 
+      expect(mockCache.get).toHaveBeenCalledTimes(1);
       expect(mockCache.del).not.toHaveBeenCalled();
     });
   });

@@ -128,7 +128,12 @@ export function Checkout({
         case "creating":
           return { ...state, isCreating: true, error: "" };
         case "success":
-          return { ...state, orderId: action.orderId, clientSecret: action.clientSecret, isCreating: false };
+          return {
+            ...state,
+            orderId: action.orderId,
+            clientSecret: action.clientSecret,
+            isCreating: false,
+          };
         case "error":
           return { ...state, error: action.message, isCreating: false };
         case "done":
@@ -156,10 +161,17 @@ export function Checkout({
         throw new Error(result.error);
       }
 
-      dispatchOrder({ type: "success", orderId: result.data.order.orderId, clientSecret: result.data.clientSecret });
+      dispatchOrder({
+        type: "success",
+        orderId: result.data.order.orderId,
+        clientSecret: result.data.clientSecret,
+      });
     } catch (error) {
       console.error("Error creating order:", error);
-      dispatchOrder({ type: "error", message: error instanceof Error ? error.message : "Failed to create order" });
+      dispatchOrder({
+        type: "error",
+        message: error instanceof Error ? error.message : "Failed to create order",
+      });
     }
   };
 

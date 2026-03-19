@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { ErrorTracker } from "@/lib/monitoring/error-tracker";
 import { authenticateRequest, unauthorizedResponse } from "@/lib/auth/middleware";
+import { verifySecret } from "@/lib/security/verify-secret";
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -16,8 +17,7 @@ type ServiceStatus = "up" | "down";
 export async function GET(request: NextRequest) {
   // SECURITY: Require CRON_SECRET header or authenticated user
   const cronSecret = request.headers.get("x-cron-secret");
-  const validCronSecret =
-    cronSecret && process.env.CRON_SECRET && cronSecret === process.env.CRON_SECRET;
+  const validCronSecret = verifySecret(cronSecret, process.env.CRON_SECRET);
 
   if (!validCronSecret) {
     const authResult = await authenticateRequest(request);
@@ -214,7 +214,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         status: "down" as HealthStatus,
-        error: error.message,
+        error: "Health check failed",
+        ...(process.env.NODE_ENV === "development" && { details: error.message }),
         services: checks,
         timestamp: new Date().toISOString(),
       },

@@ -16,8 +16,8 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-8 left-6 right-6 z-[100] max-w-md mx-auto px-4 pointer-events-none">
-      <div className="bg-[var(--pearl)]/95 backdrop-blur-xl border border-white/10 rounded-full p-2 flex justify-between items-center shadow-2xl pointer-events-auto">
+    <nav className="pointer-events-none fixed bottom-8 left-6 right-6 z-[100] mx-auto max-w-md px-4">
+      <div className="bg-[var(--pearl)]/95 pointer-events-auto flex items-center justify-between rounded-full border border-white/10 p-2 shadow-2xl backdrop-blur-xl">
         {navItems.map(({ icon: Icon, label, href }) => {
           const isActive = pathname === href;
           return (
@@ -25,16 +25,12 @@ export function BottomNav() {
               key={href}
               href={href}
               className={cn(
-                "flex flex-col items-center justify-center flex-1 py-1 transition-colors",
-                isActive
-                  ? "text-[var(--matcha)]"
-                  : "text-white/40"
+                "flex flex-1 flex-col items-center justify-center py-1 transition-colors",
+                isActive ? "text-[var(--matcha)]" : "text-white/40"
               )}
             >
-              <Icon className="w-6 h-6" strokeWidth={isActive ? 2.5 : 2} />
-              <span className="text-[10px] font-bold mt-1 uppercase tracking-tighter">
-                {label}
-              </span>
+              <Icon className="h-6 w-6" strokeWidth={isActive ? 2.5 : 2} />
+              <span className="mt-1 text-[10px] font-bold uppercase tracking-tighter">{label}</span>
             </Link>
           );
         })}

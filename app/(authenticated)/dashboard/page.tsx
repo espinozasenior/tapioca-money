@@ -53,7 +53,7 @@ export default function DashboardPage() {
   const [modals, dispatch] = useReducer(modalReducer, initialModalState);
 
   return (
-    <div className="max-w-md md:max-w-5xl mx-auto relative">
+    <div className="relative mx-auto max-w-md md:max-w-5xl">
       <BalanceHeader />
 
       {/* ====== MOBILE LAYOUT ====== */}
@@ -61,10 +61,22 @@ export default function DashboardPage() {
         <BalanceDisplay balance={displayableBalance} />
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-center gap-6 mb-8">
-          <ActionButton icon={Plus} label="Deposit" onClick={() => dispatch({ type: "open", modal: "deposit" })} />
-          <ActionButton icon={ArrowUpRight} label="Send" onClick={() => dispatch({ type: "open", modal: "send" })} />
-          <ActionButton icon={Sparkles} label="Earn" onClick={() => dispatch({ type: "open", modal: "earnYield" })} />
+        <div className="mb-8 flex items-center justify-center gap-6">
+          <ActionButton
+            icon={Plus}
+            label="Deposit"
+            onClick={() => dispatch({ type: "open", modal: "deposit" })}
+          />
+          <ActionButton
+            icon={ArrowUpRight}
+            label="Send"
+            onClick={() => dispatch({ type: "open", modal: "send" })}
+          />
+          <ActionButton
+            icon={Sparkles}
+            label="Earn"
+            onClick={() => dispatch({ type: "open", modal: "earnYield" })}
+          />
         </div>
 
         <section className="mb-8">
@@ -77,9 +89,9 @@ export default function DashboardPage() {
       </main>
 
       {/* ====== DESKTOP LAYOUT ====== */}
-      <main className="relative z-10 px-10 py-8 hidden md:block">
+      <main className="relative z-10 hidden px-10 py-8 md:block">
         {/* Top row: Balance + Actions */}
-        <div className="flex items-end justify-between mb-12">
+        <div className="mb-12 flex items-end justify-between">
           <BalanceDisplay balance={displayableBalance} />
 
           {/* Desktop action buttons — horizontal row with labels */}
@@ -104,7 +116,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Two-column: Agent card + placeholder */}
-        <div className="grid grid-cols-3 gap-6 mb-10">
+        <div className="mb-10 grid grid-cols-3 gap-6">
           <div className="col-span-2">
             <AgentCard />
           </div>
@@ -149,12 +161,12 @@ function ActionButton({
   return (
     <button
       onClick={onClick}
-      className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform"
+      className="flex flex-col items-center gap-1.5 transition-transform active:scale-95"
     >
-      <div className="bg-white rounded-full p-4 ios-shadow">
-        <Icon className="w-5 h-5 text-[var(--pearl)]" />
+      <div className="ios-shadow rounded-full bg-white p-4">
+        <Icon className="h-5 w-5 text-[var(--pearl)]" />
       </div>
-      <span className="text-xs font-bold text-[var(--pearl)]/60">{label}</span>
+      <span className="text-[var(--pearl)]/60 text-xs font-bold">{label}</span>
     </button>
   );
 }
@@ -174,13 +186,13 @@ function DesktopActionButton({
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm transition-all hover:scale-[1.02] active:scale-95 ${
+      className={`flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold transition-all hover:scale-[1.02] active:scale-95 ${
         primary
           ? "bg-[var(--pearl)] text-[var(--matcha)] shadow-lg"
-          : "bg-white text-[var(--pearl)] border border-[var(--pearl)]/10 ios-shadow"
+          : "border-[var(--pearl)]/10 ios-shadow border bg-white text-[var(--pearl)]"
       }`}
     >
-      <Icon className="w-4 h-4" />
+      <Icon className="h-4 w-4" />
       {label}
     </button>
   );

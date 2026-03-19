@@ -117,6 +117,12 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("[Undelegate] Failed:", error);
-    return NextResponse.json({ error: error.message || "Undelegation failed" }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: "Undelegation failed",
+        ...(process.env.NODE_ENV === "development" && { details: error.message }),
+      },
+      { status: 500 }
+    );
   }
 }

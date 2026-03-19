@@ -14,7 +14,6 @@ import {
   usePrivy,
   type ConnectedWallet as EthConnectedWallet,
 } from "@privy-io/react-auth";
-import { useSmartWallets } from "@privy-io/react-auth/smart-wallets";
 import { useWallets as useSolWallets } from "@privy-io/react-auth/solana";
 
 export type WalletType = "embedded" | "external-evm" | "solana";
@@ -45,9 +44,7 @@ interface WalletSelectionContextValue {
   isSolanaWallet: boolean;
   /** Whether the active wallet supports EIP-7702 (Privy embedded only) */
   supportsEip7702: boolean;
-  /** Privy smart wallet address (ERC-4337 counterfactual Kernel) */
-  smartWalletAddress: string | null;
-  /** Address where the agent operates: EOA for 7702, smart wallet for 4337 */
+  /** Address where the agent operates: EOA for 7702, null for 4337 (server resolves) */
   agentAddress: string | null;
 }
 
@@ -71,7 +68,6 @@ export function WalletSelectionProvider({ children }: { children: React.ReactNod
   const { wallets: ethWallets } = useEthWallets();
   const { wallets: solWallets } = useSolWallets();
   const { user, authenticated } = usePrivy();
-  const { client: smartWalletClient } = useSmartWallets();
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
   // Track whether the current selection was explicitly chosen by the user
   // (via selectWallet or restored from localStorage). Auto-selections are
@@ -171,18 +167,14 @@ export function WalletSelectionProvider({ children }: { children: React.ReactNod
   // EIP-7702 is only available via Privy embedded wallets (they have the signAuthorization hook)
   const supportsEip7702 = activeWalletType === "embedded";
 
-  // Privy smart wallet address (ERC-4337 Kernel, auto-created when SmartWalletsProvider is active)
-  const smartWalletAddress = useMemo(() => (user as any)?.smartWallet?.address ?? null, [user]);
-
   // Address where the agent operates:
   // - EIP-7702 users: EOA = smart account (same address)
-  // - ERC-4337 users: Privy Kernel smart wallet (separate address, funds live here)
+  // - ERC-4337 users: null — server resolves via resolveAgentAddress (DB has the Kernel address)
   const agentAddress = useMemo(() => {
     if (!activeWallet) return null;
     if (supportsEip7702) return activeWallet.address;
-    if (smartWalletAddress) return smartWalletAddress;
     return null;
-  }, [activeWallet, supportsEip7702, smartWalletAddress]);
+  }, [activeWallet, supportsEip7702]);
 
   const value = useMemo<WalletSelectionContextValue>(
     () => ({
@@ -194,7 +186,6 @@ export function WalletSelectionProvider({ children }: { children: React.ReactNod
       isEvmWallet,
       isSolanaWallet,
       supportsEip7702,
-      smartWalletAddress,
       agentAddress,
     }),
     [
@@ -206,7 +197,6 @@ export function WalletSelectionProvider({ children }: { children: React.ReactNod
       isEvmWallet,
       isSolanaWallet,
       supportsEip7702,
-      smartWalletAddress,
       agentAddress,
     ]
   );

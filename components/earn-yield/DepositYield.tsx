@@ -77,11 +77,12 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
     register,
     isRegistering,
   } = useAgent();
-  const { activeWallet, supportsEip7702, smartWalletAddress, agentAddress } = useWalletSelection();
+  const { activeWallet, supportsEip7702, agentAddress, supportsSmartAccount } =
+    useWalletSelection();
   const isExternalWallet =
     activeWallet?.walletClientType !== "privy" && activeWallet?.chainType === "ethereum";
-  // User can register if they have either 7702 support OR an ERC-4337 smart wallet
-  const canRegister = supportsEip7702 || !!smartWalletAddress;
+  // User can register if they have EVM wallet support (7702 or 4337 fallback)
+  const canRegister = supportsSmartAccount;
   const [state, dispatch] = useReducer(depositReducer, initialState);
 
   const isAmountValid =
@@ -207,11 +208,8 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
           )}
           {isExternalWallet && canRegister && !supportsEip7702 && (
             <p className="mb-4 text-sm text-blue-600">
-              Your agent will use a smart wallet. After registration, deposit USDC to{" "}
-              <span className="font-mono text-xs">
-                {smartWalletAddress?.slice(0, 8)}...{smartWalletAddress?.slice(-6)}
-              </span>{" "}
-              to start earning.
+              Your agent will use a smart wallet. After registration, your agent address will be
+              shown in the dashboard.
             </p>
           )}
           <PrimaryButton onClick={() => register()} disabled={isRegistering || !canRegister}>

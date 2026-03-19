@@ -223,8 +223,7 @@ export function useAgent() {
   const address = wallet?.address;
 
   // Access active wallet for ZeroDev integration
-  const { activeWallet, allWallets, supportsSmartAccount, supportsEip7702, smartWalletAddress } =
-    useWalletSelection();
+  const { activeWallet, allWallets, supportsSmartAccount, supportsEip7702 } = useWalletSelection();
   const { getAccessToken, user } = usePrivy();
   const { signAuthorization } = useSign7702Authorization();
 
@@ -338,49 +337,51 @@ export function useAgent() {
             signedAuth,
             walletClient
           );
-        } else if (enableErc4337 && smartWalletAddress) {
-          // ── Path B: ERC-4337 fallback (Privy Kernel smart wallet) ──
+        } else if (enableErc4337) {
+          // ── Path B: ERC-4337 fallback (ZeroDev Kernel V3.3) ──
+          // Computes deterministic Kernel address from embedded wallet signer
+          // instead of reading from Privy's SmartWalletsProvider.
           const { registerAgentErc4337 } = await import("@/lib/zerodev/client-secure");
-
-          console.log("[Agent Registration] Using ERC-4337 fallback path...");
-          console.log("[Agent Registration] Smart wallet:", smartWalletAddress);
+          const { computeKernelAddress } = await import("@/lib/zerodev/compute-kernel-address");
 
           // Get the embedded wallet (auto-created by Privy for all users) as the signer.
-          // If multiple embedded wallets exist, prefer the one linked to the Privy user
-          // (user.wallet.address) since that's the one the SmartWalletsProvider uses.
-          const embeddedWallets = allWallets.filter(
+          const erc4337EmbeddedWallets = allWallets.filter(
             (w) => w.walletClientType === "privy" && w.chainType === "ethereum"
           );
-          if (embeddedWallets.length === 0) {
+          if (erc4337EmbeddedWallets.length === 0) {
             throw new Error(
               "No embedded wallet found. Please log out and log back in to create one."
             );
           }
-          // When user.wallet points to an embedded wallet, use that specific one
-          const privyLinkedAddress = user?.wallet?.address?.toLowerCase();
-          const embeddedWallet =
-            (privyLinkedAddress &&
-              embeddedWallets.find((w) => w.address.toLowerCase() === privyLinkedAddress)) ||
-            embeddedWallets[0];
-          if (embeddedWallets.length > 1) {
-            console.warn(
-              "[Agent Registration] Multiple embedded wallets found:",
-              embeddedWallets.map((w) => w.address),
-              "| Using:",
-              embeddedWallet.address
-            );
-          }
+          const erc4337PrivyLinkedAddress = user?.wallet?.address?.toLowerCase();
+          const erc4337EmbeddedWallet =
+            (erc4337PrivyLinkedAddress &&
+              erc4337EmbeddedWallets.find(
+                (w) => w.address.toLowerCase() === erc4337PrivyLinkedAddress
+              )) ||
+            erc4337EmbeddedWallets[0];
 
-          await embeddedWallet.raw.switchChain(8453);
-          const embeddedProvider = await embeddedWallet.raw.getEthereumProvider();
+          // Compute deterministic Kernel V3.3 address from embedded wallet signer
+          const computedSmartWalletAddress = await computeKernelAddress(
+            erc4337EmbeddedWallet.address as `0x${string}`
+          );
+
+          console.log("[Agent Registration] Using ERC-4337 fallback path...");
+          console.log(
+            "[Agent Registration] Computed Kernel V3.3 address:",
+            computedSmartWalletAddress
+          );
+
+          await erc4337EmbeddedWallet.raw.switchChain(8453);
+          const embeddedProvider = await erc4337EmbeddedWallet.raw.getEthereumProvider();
           const embeddedWalletClient = createWalletClient({
-            account: embeddedWallet.address as `0x${string}`,
+            account: erc4337EmbeddedWallet.address as `0x${string}`,
             chain: base,
             transport: custom(embeddedProvider),
           });
 
           result = await registerAgentErc4337(
-            smartWalletAddress as `0x${string}`,
+            computedSmartWalletAddress,
             address as `0x${string}`,
             accessToken,
             embeddedWalletClient

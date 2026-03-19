@@ -417,6 +417,32 @@ describe("verifyVaultApproval", () => {
     // We test behavior: yo protocol checks gateway, not vault
     expect(result.approved).toBe(false);
   });
+
+  // Merkl protocol tests
+  it("returns approved when Merkl Distributor is in approvedVaults", () => {
+    const merklAddress = "0x3Ef3D8bA38EBe18DB133cEc108f4D14CE00Dd9Ae";
+    const result = verifyVaultApproval([merklAddress], merklAddress, "merkl");
+    expect(result.approved).toBe(true);
+  });
+
+  it("returns approved for merkl when approvedVaults is empty (open policy)", () => {
+    const result = verifyVaultApproval([], "0xanything", "merkl");
+    expect(result.approved).toBe(true);
+  });
+
+  it("returns not approved when Merkl Distributor is NOT in approvedVaults", () => {
+    const result = verifyVaultApproval(["0xNotMerkl"], "0xanything", "merkl");
+    expect(result.approved).toBe(false);
+    if (!result.approved) {
+      expect(result.message).toContain("Merkl Distributor not approved");
+    }
+  });
+
+  it("merkl check is case-insensitive", () => {
+    const merklAddress = "0x3ef3d8ba38ebe18db133cec108f4d14ce00dd9ae"; // lowercase
+    const result = verifyVaultApproval([merklAddress], "0xanything", "merkl");
+    expect(result.approved).toBe(true);
+  });
 });
 
 describe("resetAgentRegistration", () => {

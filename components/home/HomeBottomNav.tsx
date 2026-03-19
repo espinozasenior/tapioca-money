@@ -12,18 +12,16 @@ const navItems = [
 export function HomeBottomNav() {
   return (
     <nav className="fixed bottom-8 left-6 right-6 z-[100] md:hidden">
-      <div className="bg-[var(--pearl)]/95 backdrop-blur-xl border border-white/10 rounded-[32px] p-2 flex justify-between items-center ios-shadow">
+      <div className="bg-[var(--pearl)]/95 ios-shadow flex items-center justify-between rounded-[32px] border border-white/10 p-2 backdrop-blur-xl">
         {navItems.map(({ icon: Icon, label, active }) => (
           <button
             key={label}
-            className={`flex flex-col items-center justify-center w-16 py-1 ${
+            className={`flex w-16 flex-col items-center justify-center py-1 ${
               active ? "text-[var(--matcha)]" : "text-white/50"
             }`}
           >
-            <Icon className="w-6 h-6" strokeWidth={active ? 2.5 : 2} />
-            <span className="text-[10px] font-bold mt-1 uppercase">
-              {label}
-            </span>
+            <Icon className="h-6 w-6" strokeWidth={active ? 2.5 : 2} />
+            <span className="mt-1 text-[10px] font-bold uppercase">{label}</span>
           </button>
         ))}
       </div>

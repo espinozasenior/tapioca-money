@@ -59,7 +59,8 @@ export function EarnYieldModal({ open, onClose, initialYield }: EarnYieldModalPr
   const { agentAddress } = useWalletSelection();
   const { balances } = useBalance();
   const { yields, isLoading: yieldsLoading, error: yieldsError } = useYields();
-  const positionQueryAddress = agentAddress ?? wallet?.address;
+  // Send wallet address for auth — server resolves agentAddress for position queries
+  const positionQueryAddress = wallet?.address;
   const {
     positions,
     positionCount,

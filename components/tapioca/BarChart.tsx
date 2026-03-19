@@ -16,7 +16,7 @@ interface BarChartProps {
 
 export function BarChart({ className }: BarChartProps) {
   return (
-    <div className={cn("h-32 flex items-end justify-center gap-4 overflow-hidden", className)}>
+    <div className={cn("flex h-32 items-end justify-center gap-4 overflow-hidden", className)}>
       {bars.map((bar) => (
         <div
           key={bar.id}
@@ -27,9 +27,7 @@ export function BarChart({ className }: BarChartProps) {
           )}
           style={{ height: bar.height }}
         >
-          {bar.active && (
-            <div className="w-4 h-4 bg-[var(--matcha)] rounded-full animate-bounce" />
-          )}
+          {bar.active && <div className="h-4 w-4 animate-bounce rounded-full bg-[var(--matcha)]" />}
         </div>
       ))}
     </div>

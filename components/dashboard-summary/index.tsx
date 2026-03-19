@@ -106,10 +106,19 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
         </div>
       </Container>
 
-      <WalletDetails onClose={() => dp({ type: "close", panel: "walletDetails" })} open={panels.walletDetails} />
-      <WalletSwitcher open={panels.walletSwitcher} onClose={() => dp({ type: "close", panel: "walletSwitcher" })} />
+      <WalletDetails
+        onClose={() => dp({ type: "close", panel: "walletDetails" })}
+        open={panels.walletDetails}
+      />
+      <WalletSwitcher
+        open={panels.walletSwitcher}
+        onClose={() => dp({ type: "close", panel: "walletSwitcher" })}
+      />
 
-      <Dialog open={panels.warningModal} onOpenChange={(v) => dp({ type: "set", panel: "warningModal", value: v })}>
+      <Dialog
+        open={panels.warningModal}
+        onOpenChange={(v) => dp({ type: "set", panel: "warningModal", value: v })}
+      >
         <DialogContent className="flex h-[400px] max-h-[85vh] flex-col rounded-3xl bg-white sm:max-w-md">
           <DialogTitle className="sr-only">Withdraw is not enabled</DialogTitle>
           <div className="flex w-full flex-1 flex-col items-center justify-center px-4">

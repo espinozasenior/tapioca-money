@@ -25,14 +25,12 @@ export function AssetCard({
   return (
     <div
       className={cn(
-        "bg-white rounded-[20px] p-5 flex flex-col transition-transform active:scale-95 cursor-pointer border relative overflow-hidden ios-shadow",
-        accentBorder
-          ? "border-[var(--matcha)]/30"
-          : "border-[var(--pearl)]/5"
+        "ios-shadow relative flex cursor-pointer flex-col overflow-hidden rounded-[20px] border bg-white p-5 transition-transform active:scale-95",
+        accentBorder ? "border-[var(--matcha)]/30" : "border-[var(--pearl)]/5"
       )}
     >
       {/* Top row: token icon + brewing badge */}
-      <div className="flex justify-between items-start mb-2">
+      <div className="mb-2 flex items-start justify-between">
         <Image
           src={iconSrc}
           alt={ticker}
@@ -52,7 +50,7 @@ export function AssetCard({
         {/* APY pill badge */}
         {apy && (
           <div className="mt-2">
-            <span className="inline-block bg-[var(--pearl)] text-[var(--matcha)] text-xs font-bold px-2 py-0.5 rounded-md">
+            <span className="inline-block rounded-md bg-[var(--pearl)] px-2 py-0.5 text-xs font-bold text-[var(--matcha)]">
               {apy} APY
             </span>
           </div>
@@ -60,22 +58,15 @@ export function AssetCard({
       </div>
 
       {/* Ticker */}
-      <p className="text-sm font-bold text-[var(--pearl)] uppercase tracking-wide">
-        {ticker}
-      </p>
+      <p className="text-sm font-bold uppercase tracking-wide text-[var(--pearl)]">{ticker}</p>
 
       {/* Label (vault name or "Wallet") */}
       {label && (
-        <p className="text-xs font-medium text-[var(--pearl)]/40 mt-0.5 truncate">
-          {label}
-        </p>
+        <p className="text-[var(--pearl)]/40 mt-0.5 truncate text-xs font-medium">{label}</p>
       )}
-      <div className="flex justify-between items-end">
-      {/* Amount — primary data, clear hierarchy */}
-      <p className="text-xl font-black tracking-tight text-[var(--pearl)] mt-2">
-        {amount}
-      </p>
-      
+      <div className="flex items-end justify-between">
+        {/* Amount — primary data, clear hierarchy */}
+        <p className="mt-2 text-xl font-black tracking-tight text-[var(--pearl)]">{amount}</p>
       </div>
     </div>
   );
