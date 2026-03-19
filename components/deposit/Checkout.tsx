@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
 import { CrossmintEmbeddedCheckout, useCrossmintCheckout } from "@crossmint/client-sdk-react-ui";
 import { CreditCard } from "lucide-react";
 import { AmountBreakdown } from "./AmountBreakdown";
@@ -108,16 +108,42 @@ export function Checkout({
   goBack,
 }: CheckoutProps) {
   const { order } = useCrossmintCheckout();
-  const [orderId, setOrderId] = useState<string>("");
-  const [clientSecret, setClientSecret] = useState<string>("");
-  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
-  const [orderError, setOrderError] = useState<string>("");
+
+  type OrderState = {
+    orderId: string;
+    clientSecret: string;
+    isCreating: boolean;
+    error: string;
+  };
+
+  type OrderAction =
+    | { type: "creating" }
+    | { type: "success"; orderId: string; clientSecret: string }
+    | { type: "error"; message: string }
+    | { type: "done" };
+
+  const [orderState, dispatchOrder] = useReducer(
+    (state: OrderState, action: OrderAction): OrderState => {
+      switch (action.type) {
+        case "creating":
+          return { ...state, isCreating: true, error: "" };
+        case "success":
+          return { ...state, orderId: action.orderId, clientSecret: action.clientSecret, isCreating: false };
+        case "error":
+          return { ...state, error: action.message, isCreating: false };
+        case "done":
+          return { ...state, isCreating: false };
+      }
+    },
+    { orderId: "", clientSecret: "", isCreating: false, error: "" }
+  );
+
+  const { orderId, clientSecret, isCreating: isCreatingOrder, error: orderError } = orderState;
 
   const handleCreateOrder = async () => {
     if (!amount || !isAmountValid || !receiptEmail || !walletAddress) return;
 
-    setIsCreatingOrder(true);
-    setOrderError("");
+    dispatchOrder({ type: "creating" });
 
     try {
       const result = await createOrder({
@@ -130,13 +156,10 @@ export function Checkout({
         throw new Error(result.error);
       }
 
-      setOrderId(result.data.order.orderId);
-      setClientSecret(result.data.clientSecret);
+      dispatchOrder({ type: "success", orderId: result.data.order.orderId, clientSecret: result.data.clientSecret });
     } catch (error) {
       console.error("Error creating order:", error);
-      setOrderError(error instanceof Error ? error.message : "Failed to create order");
-    } finally {
-      setIsCreatingOrder(false);
+      dispatchOrder({ type: "error", message: error instanceof Error ? error.message : "Failed to create order" });
     }
   };
 

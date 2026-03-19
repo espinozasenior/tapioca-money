@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useReducer } from "react";
 import { Plus, ArrowUpRight, Sparkles } from "lucide-react";
 import { useBalance } from "@/hooks/useBalance";
 import { useWallet } from "@/hooks/useWallet";
@@ -11,28 +11,49 @@ import { BalanceHeader } from "@/components/dashboard/BalanceHeader";
 import { BalanceDisplay } from "@/components/dashboard/BalanceDisplay";
 import { AgentCard } from "@/components/dashboard/AgentCard";
 import { AssetGrid } from "@/components/dashboard/AssetGrid";
+import { StatsPanel } from "@/components/dashboard/StatsPanel";
 import type { YieldOpportunity } from "@/hooks/useOptimizer";
+
+type ModalState = {
+  deposit: boolean;
+  send: boolean;
+  earnYield: boolean;
+  selectedVault: YieldOpportunity | null;
+};
+
+type ModalAction =
+  | { type: "open"; modal: "deposit" | "send" | "earnYield" }
+  | { type: "close"; modal: "deposit" | "send" | "earnYield" };
+
+function modalReducer(state: ModalState, action: ModalAction): ModalState {
+  switch (action.type) {
+    case "open":
+      return { ...state, [action.modal]: true };
+    case "close":
+      return {
+        ...state,
+        [action.modal]: false,
+        ...(action.modal === "earnYield" ? { selectedVault: null } : {}),
+      };
+  }
+}
+
+const initialModalState: ModalState = {
+  deposit: false,
+  send: false,
+  earnYield: false,
+  selectedVault: null,
+};
 
 export default function DashboardPage() {
   const { wallet } = useWallet();
   const { displayableBalance } = useBalance();
   const walletAddress = wallet?.address ?? "";
 
-  const [showDepositModal, setShowDepositModal] = useState(false);
-  const [showSendModal, setShowSendModal] = useState(false);
-  const [showEarnYieldModal, setShowEarnYieldModal] = useState(false);
-  const [selectedVaultForDeposit, setSelectedVaultForDeposit] =
-    useState<YieldOpportunity | null>(null);
+  const [modals, dispatch] = useReducer(modalReducer, initialModalState);
 
   return (
     <div className="max-w-md md:max-w-5xl mx-auto relative">
-      {/* Pearl floats */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden max-w-md md:max-w-5xl mx-auto">
-        <div className="pearl-motif w-16 h-16 absolute top-[15%] -left-8 opacity-[0.03]" />
-        <div className="pearl-motif w-24 h-24 absolute top-[65%] -right-12 opacity-[0.04]" />
-        <div className="pearl-motif w-20 h-20 absolute top-[40%] right-[30%] opacity-[0.02] hidden md:block" />
-      </div>
-
       <BalanceHeader />
 
       {/* ====== MOBILE LAYOUT ====== */}
@@ -41,9 +62,9 @@ export default function DashboardPage() {
 
         {/* Action Buttons */}
         <div className="flex items-center justify-center gap-6 mb-8">
-          <ActionButton icon={Plus} label="Deposit" onClick={() => setShowDepositModal(true)} />
-          <ActionButton icon={ArrowUpRight} label="Send" onClick={() => setShowSendModal(true)} />
-          <ActionButton icon={Sparkles} label="Earn" onClick={() => setShowEarnYieldModal(true)} />
+          <ActionButton icon={Plus} label="Deposit" onClick={() => dispatch({ type: "open", modal: "deposit" })} />
+          <ActionButton icon={ArrowUpRight} label="Send" onClick={() => dispatch({ type: "open", modal: "send" })} />
+          <ActionButton icon={Sparkles} label="Earn" onClick={() => dispatch({ type: "open", modal: "earnYield" })} />
         </div>
 
         <section className="mb-8">
@@ -66,17 +87,17 @@ export default function DashboardPage() {
             <DesktopActionButton
               icon={Plus}
               label="Deposit"
-              onClick={() => setShowDepositModal(true)}
+              onClick={() => dispatch({ type: "open", modal: "deposit" })}
             />
             <DesktopActionButton
               icon={ArrowUpRight}
               label="Send"
-              onClick={() => setShowSendModal(true)}
+              onClick={() => dispatch({ type: "open", modal: "send" })}
             />
             <DesktopActionButton
               icon={Sparkles}
               label="Earn Yield"
-              onClick={() => setShowEarnYieldModal(true)}
+              onClick={() => dispatch({ type: "open", modal: "earnYield" })}
               primary
             />
           </div>
@@ -87,26 +108,7 @@ export default function DashboardPage() {
           <div className="col-span-2">
             <AgentCard />
           </div>
-          {/* Quick stats panel */}
-          <div className="bg-white/60 backdrop-blur-sm rounded-[28px] border border-[var(--pearl)]/5 p-8 flex flex-col justify-between">
-            <div>
-              <p className="font-bold text-xs uppercase tracking-widest text-[var(--pearl)]/40 mb-3">
-                Performance
-              </p>
-              <p className="text-3xl font-black text-[var(--pearl)] tracking-tight">
-                +5.2%
-              </p>
-              <p className="text-sm font-medium text-[var(--pearl)]/50 mt-1">
-                30-day return
-              </p>
-            </div>
-            <div className="border-t border-[var(--pearl)]/5 pt-4 mt-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-[var(--pearl)]/40">Total deposited</span>
-                <span className="text-sm font-bold text-[var(--pearl)]">$24,847.53</span>
-              </div>
-            </div>
-          </div>
+          <StatsPanel />
         </div>
 
         {/* Assets — full width, 4 columns on desktop */}
@@ -117,21 +119,18 @@ export default function DashboardPage() {
 
       {/* Modals */}
       <DepositModal
-        open={showDepositModal}
-        onClose={() => setShowDepositModal(false)}
+        open={modals.deposit}
+        onClose={() => dispatch({ type: "close", modal: "deposit" })}
         walletAddress={walletAddress}
       />
       <SendFundsModal
-        open={showSendModal}
-        onClose={() => setShowSendModal(false)}
+        open={modals.send}
+        onClose={() => dispatch({ type: "close", modal: "send" })}
       />
       <EarnYieldModal
-        open={showEarnYieldModal}
-        onClose={() => {
-          setShowEarnYieldModal(false);
-          setSelectedVaultForDeposit(null);
-        }}
-        initialYield={selectedVaultForDeposit ?? undefined}
+        open={modals.earnYield}
+        onClose={() => dispatch({ type: "close", modal: "earnYield" })}
+        initialYield={modals.selectedVault ?? undefined}
       />
     </div>
   );
