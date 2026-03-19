@@ -1,45 +1,39 @@
 "use client";
 
-import { DollarSign, Hexagon, Bitcoin, Circle, SlidersHorizontal } from "lucide-react";
+import Image from "next/image";
+import { SlidersHorizontal } from "lucide-react";
+import { useWallet } from "@/hooks/useWallet";
+import { useWalletSelection } from "@/hooks/useWalletSelection";
+import { useBalance } from "@/hooks/useBalance";
+import { useYieldPositions } from "@/hooks/useOptimizer";
 import { AssetCard } from "./AssetCard";
 
-const assets = [
-  {
-    ticker: "USDC",
-    amount: "$12,450.00",
-    iconBg: "rgba(39, 117, 202, 0.1)",
-    iconColor: "#2775CA",
-    icon: DollarSign,
-    brewing: true,
-  },
-  {
-    ticker: "ETH",
-    amount: "$8,240.12",
-    iconBg: "rgba(98, 126, 234, 0.1)",
-    iconColor: "#627EEA",
-    icon: Hexagon,
-    brewing: false,
-  },
-  {
-    ticker: "WBTC",
-    amount: "$3,157.41",
-    iconBg: "rgba(247, 147, 26, 0.1)",
-    iconColor: "#F7931A",
-    icon: Bitcoin,
-    brewing: false,
-  },
-  {
-    ticker: "Tapioca",
-    amount: "$1,000.00",
-    iconBg: "var(--pearl)",
-    iconColor: "var(--matcha)",
-    icon: Circle,
-    brewing: true,
-    accentBorder: true,
-  },
-] as const;
-
 export function AssetGrid() {
+  const { wallet } = useWallet();
+  const { agentAddress } = useWalletSelection();
+  const { displayableBalance, isLoading: balanceLoading } = useBalance();
+  const { positions, isLoading: positionsLoading } = useYieldPositions(
+    agentAddress ?? wallet?.address
+  );
+
+  const isLoading = balanceLoading || positionsLoading;
+
+  // Wallet USDC (idle, not deposited)
+  const walletUsdcRaw = parseFloat(displayableBalance?.replace(/,/g, "") || "0");
+  const walletUsdc = isNaN(walletUsdcRaw) ? 0 : walletUsdcRaw;
+
+  // Deposited positions (all USDC strategies)
+  const depositedPositions = positions.filter(
+    (p) => parseFloat(p.amountUsd || p.amount || "0") > 0
+  );
+
+  const totalDeposited = depositedPositions.reduce(
+    (sum, p) => sum + parseFloat(p.amountUsd || p.amount || "0"),
+    0
+  );
+
+  const hasPositions = depositedPositions.length > 0;
+
   return (
     <div>
       {/* Header */}
@@ -52,21 +46,66 @@ export function AssetGrid() {
         </button>
       </div>
 
-      {/* Mobile: 2x2 / Desktop: 4-column row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {assets.map((asset) => (
-          <AssetCard
-            key={asset.ticker}
-            ticker={asset.ticker}
-            amount={asset.amount}
-            iconBg={asset.iconBg}
-            iconColor={asset.iconColor}
-            icon={asset.icon}
-            brewing={asset.brewing}
-            accentBorder={"accentBorder" in asset && asset.accentBorder}
-          />
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {["skel-1", "skel-2"].map((id) => (
+            <div
+              key={id}
+              className="rounded-[20px] bg-white/60 h-[168px] animate-pulse"
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Deposited USDC positions */}
+          {depositedPositions.map((position) => {
+            const amt = parseFloat(position.amountUsd || position.amount || "0");
+            return (
+              <AssetCard
+                key={position.id}
+                ticker="USDC"
+                label={position.vaultName || position.protocol}
+                amount={`$${amt.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                iconSrc="/usdc.svg"
+                brewing
+                apy={position.apy > 0 ? `${(position.apy * 100).toFixed(1)}%` : undefined}
+              />
+            );
+          })}
+
+          {/* Empty state when no positions */}
+          {!hasPositions && (
+            <div className="bg-white/40 rounded-[20px] p-5 border border-dashed border-[var(--pearl)]/10 flex flex-col items-center justify-center text-center min-h-[168px]">
+              <Image
+                src="/usdc.svg"
+                alt="USDC"
+                width={28}
+                height={28}
+                className="opacity-20 mb-3"
+                unoptimized
+              />
+              <p className="text-xs font-bold uppercase text-[var(--pearl)]/30">
+                No active vaults
+              </p>
+              <p className="text-[10px] text-[var(--pearl)]/20 mt-1">
+                Deposit to start brewing
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Total deposited summary */}
+      {hasPositions && (
+        <div className="mt-4 px-1 flex items-center justify-between">
+          <span className="text-xs font-bold text-[var(--pearl)]/30">
+            Total deposited
+          </span>
+          <span className="text-sm font-black text-[var(--pearl)]">
+            ${totalDeposited.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

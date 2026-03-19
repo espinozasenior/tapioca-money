@@ -8,31 +8,40 @@ import { usePrivy, useConnectWallet } from "@privy-io/react-auth";
 import { useProcessWithdrawal } from "@/hooks/useProcessWithdrawal";
 import { BottomNav } from "@/components/tapioca/BottomNav";
 
+/**
+ * Custom hook: returns true after `ms` if `active` stays true.
+ * Replaces useState + useEffect for the wallet timeout pattern.
+ */
+function useWalletTimeout(waitingForWallet: boolean, ms: number): boolean {
+  const [timedOut, setTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (!waitingForWallet) {
+      setTimedOut(false);
+      return;
+    }
+    const id = setTimeout(() => setTimedOut(true), ms);
+    return () => clearTimeout(id);
+  }, [waitingForWallet, ms]);
+
+  return timedOut;
+}
+
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { wallet, isReady: walletReady } = useWallet();
-  const { status, isReady: authReady, user, ready, authenticated } = useAuth();
+  const { wallet } = useWallet();
+  const { user, ready, authenticated } = useAuth();
   const { getAccessToken } = usePrivy();
 
   useProcessWithdrawal(user?.id, wallet ?? undefined);
 
   const isLoggedIn = authenticated && !!wallet;
-
-  // Timeout: stop waiting for wallet after 5s to avoid infinite spinner.
-  const [walletTimeout, setWalletTimeout] = useState(false);
-  useEffect(() => {
-    if (!ready || !authenticated || wallet) {
-      setWalletTimeout(false);
-      return;
-    }
-    const timer = setTimeout(() => setWalletTimeout(true), 5000);
-    return () => clearTimeout(timer);
-  }, [ready, authenticated, wallet]);
-
-  const isLoading = !ready || (authenticated && ready && !wallet && !walletTimeout);
+  const waitingForWallet = ready && authenticated && !wallet;
+  const walletTimeout = useWalletTimeout(waitingForWallet, 5000);
+  const isLoading = !ready || (waitingForWallet && !walletTimeout);
 
   // Sync user with Postgres on login
   const { mutate: syncUser } = useMutation({
@@ -54,26 +63,9 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (isLoggedIn && walletAddress) {
-      syncUser({
-        address: walletAddress,
-        email: user?.email,
-      });
+      syncUser({ address: walletAddress, email: user?.email });
     }
   }, [isLoggedIn, walletAddress, user?.email, syncUser]);
-
-  // Debug logging
-  useEffect(() => {
-    console.log("[Dashboard] State:", {
-      ready,
-      authenticated,
-      walletReady,
-      authReady,
-      status,
-      hasWallet: !!wallet,
-      isLoggedIn,
-      isLoading,
-    });
-  }, [ready, authenticated, walletReady, authReady, status, wallet, isLoggedIn, isLoading]);
 
   if (isLoading) {
     return (
@@ -106,8 +98,8 @@ export default function DashboardLayout({
           </div>
           {/* Mobile action buttons skeleton */}
           <div className="flex items-center justify-center gap-6 mb-8 md:hidden">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="flex flex-col items-center gap-1.5">
+            {["deposit", "send", "earn"].map((action) => (
+              <div key={action} className="flex flex-col items-center gap-1.5">
                 <div className="w-12 h-12 rounded-full bg-white/80 animate-pulse" />
                 <div className="w-10 h-2 rounded-full bg-[var(--pearl)]/10 animate-pulse" />
               </div>
@@ -120,8 +112,8 @@ export default function DashboardLayout({
           </div>
           {/* Asset grid skeleton */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="rounded-[20px] bg-white/60 h-28 md:h-32 animate-pulse" />
+            {["usdc", "eth", "wbtc", "tapi"].map((token) => (
+              <div key={token} className="rounded-[20px] bg-white/60 h-28 md:h-32 animate-pulse" />
             ))}
           </div>
         </div>
@@ -140,8 +132,15 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-dvh bg-[var(--milktea)] font-[family-name:var(--font-quicksand)]">
-      <div className="pb-32 md:pb-12">{children}</div>
+    <div className="min-h-dvh bg-[var(--milktea)] font-[family-name:var(--font-quicksand)] relative">
+      {/* Pearl floats — full viewport, not constrained by content max-width */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div className="pearl-motif w-16 h-16 absolute top-[15%] left-[5%] opacity-[0.03]" />
+        <div className="pearl-motif w-24 h-24 absolute top-[65%] right-[5%] opacity-[0.04]" />
+        <div className="pearl-motif w-20 h-20 absolute top-[40%] right-[30%] opacity-[0.02] hidden md:block" />
+        <div className="pearl-motif w-12 h-12 absolute top-[85%] left-[15%] opacity-[0.03] hidden md:block" />
+      </div>
+      <div className="relative z-10 pb-32 md:pb-12">{children}</div>
       {/* BottomNav — mobile only */}
       <div className="md:hidden">
         <BottomNav />
