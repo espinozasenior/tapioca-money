@@ -4,11 +4,10 @@
  * Uses user's session key authorization for gasless execution via ZeroDev
  */
 
-import { createPublicClient, encodeFunctionData, http, parseUnits, type Address } from "viem";
-import { base } from "viem/chains";
+import { encodeFunctionData, parseUnits, type Address } from "viem";
 import { createDeserializedKernelClient } from "./kernel-client";
 import { withBuilderCode } from "@/lib/builder-code";
-import { CHAIN_CONFIG } from "@/lib/config";
+import { baseClient } from "@/lib/shared/rpc-client";
 import {
   YO_GATEWAY_ADDRESS,
   YO_GATEWAY_ABI,
@@ -59,10 +58,7 @@ export async function executeYoGaslessDeposit(params: YoDepositParams): Promise<
     const amountBigInt = parseUnits(params.amount, params.underlyingDecimals);
 
     // Quote minimum shares out with 0.5% slippage
-    const publicClient = createPublicClient({
-      chain: base,
-      transport: http(CHAIN_CONFIG.rpcUrl),
-    });
+    const publicClient = baseClient;
 
     const expectedShares = await publicClient.readContract({
       address: YO_GATEWAY_ADDRESS as Address,

@@ -6,19 +6,28 @@ import {
 } from "@/lib/zerodev/kernel-client";
 import { checkSmartAccountActive } from "@/lib/zerodev/client-secure";
 
-// Mock dependencies
-const mockGetCode = vi.fn().mockResolvedValue("0xef0100abc123");
+// Mock dependencies — vi.hoisted ensures these are available before vi.mock factories run
+const { mockGetCode, mockPublicClient } = vi.hoisted(() => {
+  const mockGetCode = vi.fn().mockResolvedValue("0xef0100abc123");
+  const mockPublicClient = {
+    waitForTransactionReceipt: vi.fn().mockResolvedValue({ status: "success" }),
+    getCode: mockGetCode,
+  };
+  return { mockGetCode, mockPublicClient };
+});
+
 vi.mock("viem", async (importOriginal) => {
   const actual = await importOriginal<typeof import("viem")>();
   return {
     ...actual,
-    createPublicClient: vi.fn(() => ({
-      waitForTransactionReceipt: vi.fn().mockResolvedValue({ status: "success" }),
-      getCode: mockGetCode,
-    })),
+    createPublicClient: vi.fn(() => mockPublicClient),
     http: vi.fn(),
   };
 });
+
+vi.mock("@/lib/shared/rpc-client", () => ({
+  baseClient: mockPublicClient,
+}));
 
 vi.mock("@/lib/zerodev/client-secure", () => ({
   checkSmartAccountActive: vi.fn(),

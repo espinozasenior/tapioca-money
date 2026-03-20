@@ -9,11 +9,14 @@ import {
   registerAgentSecureExternal,
 } from "@/lib/zerodev/client-secure";
 
-// Mock dependencies
-const mockPublicClient = {
-  getBytecode: vi.fn(),
-  waitForTransactionReceipt: vi.fn().mockResolvedValue({ status: "success" }),
-};
+// Mock dependencies — vi.hoisted ensures these are available before vi.mock factories run
+const { mockPublicClient } = vi.hoisted(() => {
+  const mockPublicClient = {
+    getBytecode: vi.fn(),
+    waitForTransactionReceipt: vi.fn().mockResolvedValue({ status: "success" }),
+  };
+  return { mockPublicClient };
+});
 
 vi.mock("viem", async (importOriginal) => {
   const actual = await importOriginal<typeof import("viem")>();
@@ -25,6 +28,10 @@ vi.mock("viem", async (importOriginal) => {
     toAccount: vi.fn((config) => ({ ...config, type: "local" })),
   };
 });
+
+vi.mock("@/lib/shared/rpc-client", () => ({
+  baseClient: mockPublicClient,
+}));
 
 // Mock ZeroDev SDKs (used via dynamic imports in the code under test)
 vi.mock("@zerodev/sdk", () => ({

@@ -4,11 +4,10 @@
  * Uses user's session key authorization for gasless execution via ZeroDev
  */
 
-import { createPublicClient, encodeFunctionData, http, type Address } from "viem";
-import { base } from "viem/chains";
+import { encodeFunctionData, type Address } from "viem";
 import { createDeserializedKernelClient } from "./kernel-client";
 import { withBuilderCode } from "@/lib/builder-code";
-import { CHAIN_CONFIG } from "@/lib/config";
+import { baseClient } from "@/lib/shared/rpc-client";
 import {
   YO_GATEWAY_ADDRESS,
   YO_GATEWAY_ABI,
@@ -58,10 +57,7 @@ export async function executeYoVaultRedeem(params: YoRedeemParams): Promise<YoRe
     const kernelClient = await createDeserializedKernelClient(params.serializedAccount);
 
     // Quote minimum assets out with 0.5% slippage
-    const publicClient = createPublicClient({
-      chain: base,
-      transport: http(CHAIN_CONFIG.rpcUrl),
-    });
+    const publicClient = baseClient;
 
     const expectedAssets = await publicClient.readContract({
       address: YO_GATEWAY_ADDRESS as Address,

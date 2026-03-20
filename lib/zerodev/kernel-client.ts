@@ -8,11 +8,11 @@
  *    (will fail with "sudo validator not set" for first UserOp)
  */
 
-import { createPublicClient, http, type Hex } from "viem";
+import { http, type Hex } from "viem";
 import { base } from "viem/chains";
 import { privateKeyToAccount } from "viem/accounts";
 import { checkSmartAccountActive, type DelegationStatus } from "./client-secure";
-import { CHAIN_CONFIG } from "@/lib/config";
+import { baseClient } from "@/lib/shared/rpc-client";
 
 import { ENTRYPOINT_V07 } from "@/lib/zerodev/constants";
 
@@ -75,10 +75,7 @@ export async function createDeserializedKernelClient(
 
 /** Internal: build a kernel client with or without enable signature */
 async function _buildKernelClient(serializedAccount: string, preInstalled: boolean) {
-  const publicClient = createPublicClient({
-    chain: base,
-    transport: http(CHAIN_CONFIG.rpcUrl),
-  });
+  const publicClient = baseClient;
 
   const { createKernelAccountClient } = await import("@zerodev/sdk");
   const { KERNEL_V3_3 } = await import("@zerodev/sdk/constants");
@@ -226,11 +223,8 @@ export async function createSessionKernelClient(params: CreateSessionKernelClien
   // 1. Create session key signer from private key
   const sessionKeySigner = privateKeyToAccount(params.sessionPrivateKey);
 
-  // 2. Create public client (use configured RPC URL, not rate-limited public endpoint)
-  const publicClient = createPublicClient({
-    chain: base,
-    transport: http(CHAIN_CONFIG.rpcUrl),
-  });
+  // 2. Public client (shared singleton — uses configured RPC URL, not rate-limited public endpoint)
+  const publicClient = baseClient;
 
   // 3. Import ZeroDev SDK (dynamic to avoid bundling issues)
   const { createKernelAccount, createKernelAccountClient } = await import("@zerodev/sdk");
@@ -363,10 +357,7 @@ export async function verifyDelegationAfterExecution(
   address: `0x${string}`,
   txHash: string
 ): Promise<boolean> {
-  const verifyClient = createPublicClient({
-    chain: base,
-    transport: http(CHAIN_CONFIG.rpcUrl),
-  });
+  const verifyClient = baseClient;
 
   // Wait for receipt to ensure tx is confirmed
   await verifyClient.waitForTransactionReceipt({ hash: txHash as `0x${string}` });

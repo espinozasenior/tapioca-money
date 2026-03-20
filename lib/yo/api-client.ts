@@ -12,8 +12,8 @@
  * Caching: Redis with yo: prefix keys (same TTLs as Morpho).
  */
 
-import { createPublicClient, http, type Address } from "viem";
-import { base } from "viem/chains";
+import { type Address } from "viem";
+import { baseClient } from "@/lib/shared/rpc-client";
 import { z } from "zod";
 import {
   createYoClient,
@@ -61,10 +61,7 @@ export class YoApiClient {
   private yoClient;
 
   constructor() {
-    this.publicClient = createPublicClient({
-      chain: base,
-      transport: http(CHAIN_CONFIG.rpcUrl),
-    });
+    this.publicClient = baseClient;
 
     this.yoClient = createYoClient({
       chainId: CHAIN_ID as any,
