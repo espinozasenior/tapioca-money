@@ -24,7 +24,8 @@ type ModalState = {
 
 type ModalAction =
   | { type: "open"; modal: "deposit" | "send" | "earnYield" }
-  | { type: "close"; modal: "deposit" | "send" | "earnYield" };
+  | { type: "close"; modal: "deposit" | "send" | "earnYield" }
+  | { type: "selectYield"; vault: YieldOpportunity };
 
 function modalReducer(state: ModalState, action: ModalAction): ModalState {
   switch (action.type) {
@@ -36,6 +37,8 @@ function modalReducer(state: ModalState, action: ModalAction): ModalState {
         [action.modal]: false,
         ...(action.modal === "earnYield" ? { selectedVault: null } : {}),
       };
+    case "selectYield":
+      return { ...state, earnYield: true, selectedVault: action.vault };
   }
 }
 
@@ -87,7 +90,7 @@ export default function DashboardPage() {
         </section>
 
         <section className="mb-8">
-          <AssetGrid />
+          <AssetGrid onSelectYield={(v) => dispatch({ type: "selectYield", vault: v })} />
         </section>
       </main>
 
@@ -126,9 +129,9 @@ export default function DashboardPage() {
           <StatsPanel />
         </div>
 
-        {/* Assets — full width, 4 columns on desktop */}
+        {/* Opportunities — full width, 4 columns on desktop */}
         <section>
-          <AssetGrid />
+          <AssetGrid onSelectYield={(v) => dispatch({ type: "selectYield", vault: v })} />
         </section>
       </main>
 

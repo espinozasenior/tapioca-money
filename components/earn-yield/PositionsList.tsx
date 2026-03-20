@@ -11,6 +11,7 @@ import {
   getProtocolInfo,
 } from "@/hooks/useOptimizer";
 import { formatUserError } from "@/lib/yo/error-messages";
+import { getTokenIcon } from "@/lib/config";
 
 interface PositionsListProps {
   positions: YieldPosition[];
@@ -92,7 +93,7 @@ function EmptyState() {
       </div>
       <p className="text-gray-600">No active yield positions</p>
       <p className="mt-1 text-sm text-gray-400">
-        Deposit USDC into a yield opportunity to start earning
+        Deposit into a yield opportunity to start earning
       </p>
     </div>
   );
@@ -265,9 +266,17 @@ function PositionCard({
       {/* Header row */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Image src="/usdc.svg" alt={vaultName} width={40} height={40} unoptimized />
+          <Image
+            src={getTokenIcon(position.underlyingSymbol ?? "USDC")}
+            alt={vaultName}
+            width={40}
+            height={40}
+            unoptimized
+          />
           <div>
-            <p className="font-semibold text-gray-900">${displayAmount} USDC</p>
+            <p className="font-semibold text-gray-900">
+              ${displayAmount} {position.underlyingSymbol ?? "USDC"}
+            </p>
             <p className="text-sm text-gray-700">{vaultName}</p>
             <div className="mt-1 flex items-center gap-2">
               <span

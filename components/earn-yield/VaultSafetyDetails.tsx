@@ -7,6 +7,13 @@ interface VaultSafetyDetailsProps {
   vault: any;
 }
 
+function formatTvl(value: number): string {
+  if (value >= 1_000_000_000) return `$${(value / 1_000_000_000_000).toFixed(2)}b`;
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}m`;
+  if (value >= 1_000) return `$${(value / 1_000).toFixed(2)}k`;
+  return `$${value.toFixed(2)}`;
+}
+
 export function VaultSafetyDetails({ vault }: VaultSafetyDetailsProps) {
   // Extract metadata or use vault data directly
   const riskScore = vault.riskScore ?? 0.2;
@@ -25,24 +32,32 @@ export function VaultSafetyDetails({ vault }: VaultSafetyDetailsProps) {
     <div className="space-y-3">
       {/* Risk Level Badge */}
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-700">Safety Rating</span>
+        <span className="text-xs font-bold text-white/50">Safety Rating</span>
         <div className="flex items-center gap-2">
           <Shield className="h-4 w-4" style={{ color: riskColor }} />
-          <span className="text-sm font-semibold capitalize" style={{ color: riskColor }}>
+          <span className="text-xs font-bold capitalize" style={{ color: riskColor }}>
             {riskLevel} Risk
           </span>
         </div>
       </div>
 
+      {/* TVL Size */}
+      {totalAssetsUsd > 0 && (
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-white/50">Total Value Locked</span>
+          <span className="text-xs font-bold text-white/80">{formatTvl(totalAssetsUsd)}</span>
+        </div>
+      )}
+
       {/* Warnings */}
       {warnings && warnings.length > 0 && (
-        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3">
+        <div className="rounded-[12px] border border-yellow-500/30 bg-yellow-500/10 p-3">
           <div className="flex items-start gap-2">
-            <AlertTriangle className="mt-0.5 h-4 w-4 text-yellow-600" />
+            <AlertTriangle className="mt-0.5 h-4 w-4 text-yellow-400" />
             <div>
-              <p className="text-sm font-medium text-yellow-800">Warnings</p>
+              <p className="text-xs font-bold text-yellow-300">Warnings</p>
               {warnings.map((w: any) => (
-                <p key={w.type} className="mt-1 text-xs text-yellow-700">
+                <p key={w.type} className="mt-1 text-[10px] font-medium text-yellow-400/70">
                   {w.type.replace(/_/g, " ")}
                 </p>
               ))}
@@ -53,37 +68,24 @@ export function VaultSafetyDetails({ vault }: VaultSafetyDetailsProps) {
 
       {/* Curator */}
       {curators?.items && curators.items.length > 0 && (
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600">Curator</span>
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-white/50">Curator</span>
           <div className="flex items-center gap-1">
             {isTrustedCurator(curators.items[0].name) && (
-              <Award className="h-3 w-3 text-emerald-600" />
+              <Award className="h-3 w-3 text-[var(--matcha)]" />
             )}
-            <span className="font-medium text-gray-900">{curators.items[0].name}</span>
+            <span className="text-xs font-bold text-white/80">{curators.items[0].name}</span>
           </div>
-        </div>
-      )}
-
-      {/* TVL Size */}
-      {totalAssetsUsd > 0 && (
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600">Total Value Locked</span>
-          <span className="font-medium text-gray-900">
-            $
-            {totalAssetsUsd.toLocaleString("en-US", {
-              maximumFractionDigits: 0,
-            })}
-          </span>
         </div>
       )}
 
       {/* Liquidity */}
       {liquidityUsd !== undefined && totalAssetsUsd > 0 && (
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600">Available Liquidity</span>
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-white/50">Available Liquidity</span>
           <div className="flex items-center gap-1">
-            <Coins className="h-3 w-3 text-gray-400" />
-            <span className="font-medium text-gray-900">
+            <Coins className="h-3 w-3 text-white/40" />
+            <span className="text-xs font-bold text-white/80">
               {((liquidityUsd / totalAssetsUsd) * 100).toFixed(0)}%
             </span>
           </div>
@@ -92,16 +94,16 @@ export function VaultSafetyDetails({ vault }: VaultSafetyDetailsProps) {
 
       {/* Fees */}
       {(performanceFee || managementFee) && (
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600">Fees</span>
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-white/50">Fees</span>
           <div className="text-right">
             {performanceFee ? (
-              <div className="text-xs text-gray-900">
+              <div className="text-[10px] font-bold text-white/80">
                 {(performanceFee * 100).toFixed(1)}% performance
               </div>
             ) : null}
             {managementFee ? (
-              <div className="text-xs text-gray-500">
+              <div className="text-[10px] font-medium text-white/50">
                 {(managementFee * 100).toFixed(2)}% annual
               </div>
             ) : null}
@@ -111,9 +113,9 @@ export function VaultSafetyDetails({ vault }: VaultSafetyDetailsProps) {
 
       {/* Whitelisted Badge */}
       {whitelisted && (
-        <div className="flex items-center gap-2 rounded-lg bg-emerald-50 p-2">
-          <Shield className="h-3 w-3 text-emerald-600" />
-          <span className="text-xs font-medium text-emerald-700">Morpho Whitelisted</span>
+        <div className="bg-[var(--matcha)]/10 flex items-center gap-2 rounded-full px-3 py-1.5">
+          <Shield className="h-3 w-3 text-[var(--matcha)]" />
+          <span className="text-[10px] font-bold text-[var(--matcha)]">Morpho Whitelisted</span>
         </div>
       )}
     </div>

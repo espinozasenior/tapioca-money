@@ -6,7 +6,7 @@
  */
 
 import { parseAbi } from "viem";
-import { USDC_ADDRESS } from "@/lib/config";
+import { SUPPORTED_TOKENS } from "@/lib/config";
 import { baseClient } from "@/lib/shared/rpc-client";
 import { ENTRYPOINT_V07 } from "@/lib/zerodev/constants";
 import { REDEEM_SELECTOR, WITHDRAW_SELECTOR } from "@/lib/constants/selectors";
@@ -14,10 +14,12 @@ import { REDEEM_SELECTOR, WITHDRAW_SELECTOR } from "@/lib/constants/selectors";
 // Session key expiry: 7 days
 const SESSION_KEY_EXPIRY_DAYS = 7;
 
-// Maximum USDC amount per session key call (10,000.000001 USDC with 6 decimals)
-// The +1 forces a new permissionHash to break the re-registration deadlock
-// where the old validator blocks new installations with the same hash.
-const MAX_USDC_PER_CALL = BigInt(10_000) * BigInt(1e6) + 1n;
+// Maximum vault deposit per call — uses the largest maxPerCall across all supported tokens
+// This caps the deposit() amount parameter for any vault (underlying-agnostic)
+const MAX_DEPOSIT_PER_CALL = Object.values(SUPPORTED_TOKENS).reduce(
+  (max, t) => (t.maxPerCall > max ? t.maxPerCall : max),
+  0n
+);
 
 /**
  * Shared session key + permission builder.
@@ -61,32 +63,36 @@ export async function buildSessionKeyAndPermissions(approvedVaults: `0x${string}
   // 4. Build scoped permissions with value limits and amount caps
   const permissions: any[] = [];
 
-  // USDC approve — cap amount parameter
-  permissions.push({
-    target: USDC_ADDRESS,
-    abi: parseAbi(["function approve(address spender, uint256 amount) returns (bool)"]),
-    functionName: "approve",
-    args: [null, { condition: ParamCondition.LESS_THAN_OR_EQUAL, value: MAX_USDC_PER_CALL }],
-    valueLimit: 0n,
-  });
+  // Multi-token approve + transfer permissions — one pair per supported token
+  // Each token uses its own maxPerCall from the token registry (SUPPORTED_TOKENS)
+  for (const token of Object.values(SUPPORTED_TOKENS)) {
+    // Token approve — cap amount parameter
+    permissions.push({
+      target: token.address,
+      abi: parseAbi(["function approve(address spender, uint256 amount) returns (bool)"]),
+      functionName: "approve",
+      args: [null, { condition: ParamCondition.LESS_THAN_OR_EQUAL, value: token.maxPerCall }],
+      valueLimit: 0n,
+    });
 
-  // USDC transfer — cap amount parameter
-  // SECURITY NOTE (H-3): The `to` argument is `null` (unconstrained) because
-  // transfers can go to arbitrary user-specified recipients. We cannot know all
-  // valid recipients at registration time. Defense-in-depth is enforced server-side:
-  //   1. Recipient validation (zero addr, self-transfer, known contract blocklist)
-  //      → lib/zerodev/transfer-recipient-validator.ts
-  //   2. Hourly rate limit (3 transfers/hour) + daily rate limit (20/day)
-  //      → app/api/transfer/send/route.ts
-  //   3. All transfer attempts logged to agent_actions table for monitoring
-  // See also: the amount is still capped on-chain at MAX_USDC_PER_CALL ($10k).
-  permissions.push({
-    target: USDC_ADDRESS,
-    abi: parseAbi(["function transfer(address to, uint256 amount) returns (bool)"]),
-    functionName: "transfer",
-    args: [null, { condition: ParamCondition.LESS_THAN_OR_EQUAL, value: MAX_USDC_PER_CALL }],
-    valueLimit: 0n,
-  });
+    // Token transfer — cap amount parameter
+    // SECURITY NOTE (H-3): The `to` argument is `null` (unconstrained) because
+    // transfers can go to arbitrary user-specified recipients. Defense-in-depth
+    // is enforced server-side:
+    //   1. Recipient validation (zero addr, self-transfer, known contract blocklist)
+    //      → lib/zerodev/transfer-recipient-validator.ts
+    //   2. Hourly rate limit (3 transfers/hour) + daily rate limit (20/day)
+    //      → app/api/transfer/send/route.ts
+    //   3. All transfer attempts logged to agent_actions table for monitoring
+    // The amount is still capped on-chain at token.maxPerCall.
+    permissions.push({
+      target: token.address,
+      abi: parseAbi(["function transfer(address to, uint256 amount) returns (bool)"]),
+      functionName: "transfer",
+      args: [null, { condition: ParamCondition.LESS_THAN_OR_EQUAL, value: token.maxPerCall }],
+      valueLimit: 0n,
+    });
+  }
 
   // Import YO Gateway address early — needed to constrain vault approve spender
   const {
@@ -103,7 +109,7 @@ export async function buildSessionKeyAndPermissions(approvedVaults: `0x${string}
       target: vault,
       abi: parseAbi(["function deposit(uint256 assets, address receiver) returns (uint256)"]),
       functionName: "deposit",
-      args: [{ condition: ParamCondition.LESS_THAN_OR_EQUAL, value: MAX_USDC_PER_CALL }, null],
+      args: [{ condition: ParamCondition.LESS_THAN_OR_EQUAL, value: MAX_DEPOSIT_PER_CALL }, null],
       valueLimit: 0n,
     });
     // Approve vault share token (needed for YO Gateway redeem flow: approve shares → gateway.redeem)

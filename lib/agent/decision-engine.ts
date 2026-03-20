@@ -1,10 +1,10 @@
 import { MorphoClient, type MorphoVault, type MorphoUserPosition } from "../morpho/api-client";
 import { YoApiClient, yoApiClient } from "../yo/api-client";
 import type { YoVault, YoUserPosition } from "../yo/types";
-import { CHAIN_CONFIG, REBALANCE_THRESHOLDS } from "../config";
+import { CHAIN_CONFIG, REBALANCE_THRESHOLDS, USDC_ADDRESS, getTokenByAddress } from "../config";
 
 const CHAIN_ID = CHAIN_CONFIG.chainId;
-const ASSET_SYMBOL = "USDC";
+const MORPHO_ASSET_SYMBOL = "USDC"; // Morpho vaults remain USDC-only on Base
 
 export type Protocol = "morpho" | "yo";
 
@@ -18,6 +18,8 @@ export interface RebalanceDecision {
     shares: string;
     assets: string;
     protocol: Protocol;
+    underlyingAddress?: `0x${string}`;
+    underlyingSymbol?: string;
   } | null;
   targetVault: {
     address: `0x${string}`;
@@ -25,6 +27,8 @@ export interface RebalanceDecision {
     apy: number;
     liquidityUsd: number;
     protocol: Protocol;
+    underlyingAddress?: `0x${string}`;
+    underlyingSymbol?: string;
   } | null;
   apyImprovement: number;
   estimatedAnnualGain: number;
@@ -58,11 +62,24 @@ export class YieldDecisionEngine {
     prefetchedVaults?: { morpho: MorphoVault[]; yo: YoVault[] }
   ): Promise<RebalanceDecision> {
     try {
-      // 1. Fetch user's current positions from BOTH protocols in parallel
-      const [morphoPositions, yoPositions] = await Promise.all([
+      // 1. Fetch user's current positions and vault lists in parallel
+      // Vault lists are needed early: (a) to resolve YO position underlying tokens,
+      // (b) to look up current vault APY, (c) to find eligible rebalance targets.
+      const [morphoPositions, yoPositions, morphoVaults, yoVaults] = await Promise.all([
         this.morphoClient.fetchUserPositions(userAddress, CHAIN_ID),
         this.yoClient.fetchUserPositions(userAddress, CHAIN_ID),
+        prefetchedVaults?.morpho ??
+          this.morphoClient.fetchVaults(CHAIN_ID, MORPHO_ASSET_SYMBOL, 50),
+        prefetchedVaults?.yo ?? this.yoClient.fetchVaults(CHAIN_ID),
       ]);
+
+      // Build a vault→underlying lookup for YO vaults (used by position normalization)
+      const yoVaultUnderlyingMap = new Map(
+        yoVaults.map((v) => [
+          v.address.toLowerCase(),
+          { symbol: v.underlying.symbol, address: v.underlying.address as string },
+        ])
+      );
 
       // Normalize positions into a common shape for comparison
       type NormalizedPosition = {
@@ -72,6 +89,8 @@ export class YieldDecisionEngine {
         shares: string;
         assets: string;
         assetsUsd: number;
+        underlyingSymbol: string;
+        underlyingAddress: string;
       };
 
       const allPositions: NormalizedPosition[] = [
@@ -82,6 +101,8 @@ export class YieldDecisionEngine {
           shares: p.shares,
           assets: p.assets,
           assetsUsd: p.assetsUsd ?? 0,
+          underlyingSymbol: "USDC", // Morpho vaults are USDC-only on Base
+          underlyingAddress: USDC_ADDRESS,
         })),
         ...yoPositions.map((p) => ({
           protocol: "yo" as Protocol,
@@ -90,6 +111,11 @@ export class YieldDecisionEngine {
           shares: p.shares.toString(),
           assets: p.assets.toString(),
           assetsUsd: p.assetsUsd,
+          // Resolve underlying from the YO vault list
+          underlyingSymbol:
+            yoVaultUnderlyingMap.get(p.vaultAddress.toLowerCase())?.symbol ?? "USDC",
+          underlyingAddress:
+            yoVaultUnderlyingMap.get(p.vaultAddress.toLowerCase())?.address ?? USDC_ADDRESS,
         })),
       ];
 
@@ -109,13 +135,6 @@ export class YieldDecisionEngine {
       const currentPosition = allPositions.reduce((max, pos) =>
         pos.assetsUsd > max.assetsUsd ? pos : max
       );
-
-      // 3. Use prefetched vaults if available, otherwise fetch (P0-1 fix)
-      const morphoVaults =
-        prefetchedVaults?.morpho ??
-        (await this.morphoClient.fetchVaults(CHAIN_ID, ASSET_SYMBOL, 50));
-      const yoVaults =
-        prefetchedVaults?.yo ?? (await this.yoClient.fetchVaults(CHAIN_ID, ASSET_SYMBOL));
 
       // 4. Get current vault APY -- look up from vault list first to avoid extra API call
       let currentApy = 0;
@@ -157,6 +176,8 @@ export class YieldDecisionEngine {
         name: string;
         apy: number;
         liquidityUsd: number;
+        underlyingSymbol: string;
+        underlyingAddress: string;
       };
 
       const allVaults: NormalizedVault[] = [
@@ -166,6 +187,8 @@ export class YieldDecisionEngine {
           name: v.name,
           apy: v.avgNetApy ?? v.netApy ?? 0,
           liquidityUsd: v.totalAssetsUsd ?? 0,
+          underlyingSymbol: "USDC",
+          underlyingAddress: USDC_ADDRESS,
         })),
         ...yoVaults.map((v) => ({
           protocol: "yo" as Protocol,
@@ -173,13 +196,17 @@ export class YieldDecisionEngine {
           name: v.name,
           apy: v.apy,
           liquidityUsd: v.tvlUsd,
+          underlyingSymbol: v.underlying.symbol,
+          underlyingAddress: v.underlying.address as string,
         })),
       ];
 
+      // INVARIANT: Same-asset rebalance only — filter to vaults with the same underlying
       const eligibleVaults = allVaults.filter(
         (vault) =>
           vault.liquidityUsd >= REBALANCE_THRESHOLDS.minLiquidityUsd &&
-          vault.address.toLowerCase() !== currentPosition.vaultAddress.toLowerCase()
+          vault.address.toLowerCase() !== currentPosition.vaultAddress.toLowerCase() &&
+          vault.underlyingSymbol.toUpperCase() === currentPosition.underlyingSymbol.toUpperCase()
       );
 
       if (eligibleVaults.length === 0) {
@@ -193,6 +220,8 @@ export class YieldDecisionEngine {
             shares: currentPosition.shares,
             assets: currentPosition.assets,
             protocol: currentPosition.protocol,
+            underlyingAddress: currentPosition.underlyingAddress as `0x${string}`,
+            underlyingSymbol: currentPosition.underlyingSymbol,
           },
           targetVault: null,
           apyImprovement: 0,
@@ -234,6 +263,8 @@ export class YieldDecisionEngine {
           shares: currentPosition.shares,
           assets: currentPosition.assets,
           protocol: currentPosition.protocol,
+          underlyingAddress: currentPosition.underlyingAddress as `0x${string}`,
+          underlyingSymbol: currentPosition.underlyingSymbol,
         },
         targetVault: shouldRebalance
           ? {
@@ -242,6 +273,8 @@ export class YieldDecisionEngine {
               apy: bestVault.apy,
               liquidityUsd: bestVault.liquidityUsd,
               protocol: bestVault.protocol,
+              underlyingAddress: bestVault.underlyingAddress as `0x${string}`,
+              underlyingSymbol: bestVault.underlyingSymbol,
             }
           : null,
         apyImprovement,
@@ -263,17 +296,17 @@ export class YieldDecisionEngine {
   }
 
   /**
-   * Get all available Morpho vaults
+   * Get all available Morpho vaults (USDC-only on Base)
    */
   async getAvailableMorphoVaults(): Promise<MorphoVault[]> {
-    return await this.morphoClient.fetchVaults(CHAIN_ID, ASSET_SYMBOL, 20);
+    return await this.morphoClient.fetchVaults(CHAIN_ID, MORPHO_ASSET_SYMBOL, 20);
   }
 
   /**
-   * Get all available YO vaults
+   * Get all available YO vaults (multi-asset: USDC, WETH, cbBTC, EURC)
    */
   async getAvailableYoVaults(): Promise<YoVault[]> {
-    return await this.yoClient.fetchVaults(CHAIN_ID, ASSET_SYMBOL);
+    return await this.yoClient.fetchVaults(CHAIN_ID);
   }
 
   /**
@@ -282,7 +315,7 @@ export class YieldDecisionEngine {
    * Use getAvailableMorphoVaults() / getAvailableYoVaults() for typed access
    */
   async getAvailableVaults(): Promise<MorphoVault[]> {
-    return await this.morphoClient.fetchVaults(CHAIN_ID, ASSET_SYMBOL, 20);
+    return await this.morphoClient.fetchVaults(CHAIN_ID, MORPHO_ASSET_SYMBOL, 20);
   }
 
   /**

@@ -4,6 +4,7 @@ import Image from "next/image";
 import { YieldOpportunity } from "@/hooks/useOptimizer";
 import { cn } from "@/lib/utils";
 import { getRiskLevel, getRiskColor } from "@/lib/morpho/risk-scoring";
+import { getTokenIcon } from "@/lib/config";
 import {
   Collapsible,
   CollapsibleTrigger,
@@ -110,7 +111,7 @@ export function YieldList({ yields, isLoading, error, onSelectYield }: YieldList
                 <div className="flex items-center justify-between">
                   <div className="flex flex-1 items-center gap-3">
                     <Image
-                      src={"/usdc.svg"}
+                      src={getTokenIcon(yieldOpp.asset)}
                       alt={yieldOpp.metadata.name}
                       width={36}
                       height={36}

@@ -20,6 +20,67 @@ export const CHAIN_CONFIG = {
 // Using getAddress() ensures proper EIP-55 checksum for viem
 export const USDC_ADDRESS = getAddress("0x833589fCD6eDb6E08f4c7C32d4f71b54bdA02913");
 
+// --- Multi-Asset Token Registry ---
+// Canonical map of supported ERC-20 tokens on Base with address, decimals, icon, and per-call limits.
+// Single source of truth — all token metadata flows from here.
+
+export interface TokenConfig {
+  address: `0x${string}`;
+  symbol: string;
+  decimals: number;
+  icon: string;
+  /** Maximum amount per session key call (in token's smallest unit) */
+  maxPerCall: bigint;
+}
+
+export const SUPPORTED_TOKENS: Record<string, TokenConfig> = {
+  USDC: {
+    address: getAddress("0x833589fCD6eDb6E08f4c7C32d4f71b54bdA02913"),
+    symbol: "USDC",
+    decimals: 6,
+    icon: "/usdc.svg",
+    maxPerCall: BigInt(10_000) * BigInt(1e6) + 1n, // 10,000 USDC (+1 for permissionHash uniqueness)
+  },
+  WETH: {
+    address: getAddress("0x4200000000000000000000000000000000000006"),
+    symbol: "WETH",
+    decimals: 18,
+    icon: "/eth.svg",
+    maxPerCall: BigInt(3) * BigInt(1e18), // 3 ETH
+  },
+  cbBTC: {
+    address: getAddress("0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf"),
+    symbol: "cbBTC",
+    decimals: 8,
+    icon: "/btc.svg",
+    maxPerCall: BigInt(1) * BigInt(1e8), // 1 BTC
+  },
+  EURC: {
+    address: getAddress("0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42"),
+    symbol: "EURC",
+    decimals: 6,
+    icon: "/eur.svg",
+    maxPerCall: BigInt(10_000) * BigInt(1e6) + 1n, // 10,000 EURC
+  },
+} as const;
+
+/** Look up a token config by symbol (case-insensitive) */
+export function getTokenBySymbol(symbol: string): TokenConfig | undefined {
+  return SUPPORTED_TOKENS[symbol.toUpperCase()] ?? SUPPORTED_TOKENS[symbol];
+}
+
+/** Look up a token config by address (case-insensitive) */
+export function getTokenByAddress(address: string): TokenConfig | undefined {
+  const lower = address.toLowerCase();
+  return Object.values(SUPPORTED_TOKENS).find((t) => t.address.toLowerCase() === lower);
+}
+
+/** Get token icon path, with fallback to a generic coin icon */
+export function getTokenIcon(symbol: string): string {
+  const token = getTokenBySymbol(symbol);
+  return token?.icon ?? "/usdc.svg"; // fallback to USDC icon for unknown tokens
+}
+
 // Protocol deployments - Base Mainnet
 // https://docs.morpho.org/get-started/resources/addresses/
 export const PROTOCOLS = {

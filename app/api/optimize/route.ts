@@ -130,13 +130,22 @@ export async function GET(request: NextRequest) {
     let decisionTo = null;
     if (decision.targetVault) {
       if (decision.targetVault.protocol === "yo") {
+        // Resolve underlying from the target vault's metadata
+        const targetUnderlying = decision.targetVault.underlyingSymbol ?? "USDC";
+        const targetUnderlyingAddr = decision.targetVault.underlyingAddress ?? ("0x" as any);
+        const targetDecimals =
+          targetUnderlying === "WETH" ? 18 : targetUnderlying === "cbBTC" ? 8 : 6;
         decisionTo = transformYoVaultToOpportunity({
           id: "",
           address: decision.targetVault.address,
           name: decision.targetVault.name,
           apy: decision.targetVault.apy,
           tvlUsd: decision.targetVault.liquidityUsd,
-          underlying: { address: "0x" as any, symbol: "USDC", decimals: 6 },
+          underlying: {
+            address: targetUnderlyingAddr,
+            symbol: targetUnderlying,
+            decimals: targetDecimals,
+          },
           totalAssets: 0n,
           totalShares: 0n,
         });
@@ -144,7 +153,7 @@ export async function GET(request: NextRequest) {
         decisionTo = transformVaultToOpportunity({
           address: decision.targetVault.address,
           name: decision.targetVault.name,
-          asset: { symbol: "USDC" },
+          asset: { symbol: decision.targetVault.underlyingSymbol ?? "USDC" },
           avgNetApy: decision.targetVault.apy,
           totalAssetsUsd: decision.targetVault.liquidityUsd,
         } as any);
