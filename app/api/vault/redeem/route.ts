@@ -15,8 +15,7 @@ import {
   resolveAndDecryptRegistration,
   verifyVaultApproval,
 } from "@/lib/agent/resolve-registration";
-import { getExecutor } from "@/lib/agent/vault-executor";
-import { incrementUserOpCount } from "@/lib/redis/rate-limiter";
+import { redeem, VaultOperationError } from "@/lib/agent/vault-operation-service";
 
 export async function POST(request: NextRequest) {
   try {
@@ -101,55 +100,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 6. Execute vault redeem
-    const executor = getExecutor(protocol);
-    const result = await executor.redeem(
-      {
+    // 6. Delegate to VaultOperationService
+    const result = await redeem({
+      userWalletAddress,
+      vaultAddress: vaultAddress as `0x${string}`,
+      shares: BigInt(shares),
+      protocol,
+      ctx: {
         smartAccountAddress: accountAddress,
         serializedAccount: decryptedAuth.serializedAccount,
         decryptedAuth,
         approvedVaults: approvedVaults as `0x${string}`[],
       },
-      {
-        vaultAddress: vaultAddress as `0x${string}`,
-        shares: BigInt(shares),
-        receiver: accountAddress,
-      }
-    );
-
-    if (!result.success) {
-      let userMessage = result.error || "Vault redeem failed";
-      const isRateLimit =
-        result.error?.includes("operation limit") || result.error?.includes("0x3e4983f6");
-      const isValidationFailure =
-        !isRateLimit &&
-        (result.error?.includes("AA23") || result.error?.includes("validateUserOp"));
-      if (result.error?.includes("0xace2a47e")) {
-        userMessage =
-          "This vault rejected the redeem (error 0xace2a47e). " +
-          "The vault may restrict access to agent-operated accounts. " +
-          "Please redeem directly from your wallet.";
-      } else if (isRateLimit) {
-        userMessage =
-          "Agent daily operation limit reached. " +
-          "Please re-register your agent to reset the limit, or try again tomorrow.";
-      } else if (isValidationFailure) {
-        userMessage = "Session key validation failed. Please re-register your agent.";
-      }
-      console.error("[Vault Redeem] Execution failed:", result.error);
-      return NextResponse.json({ error: userMessage }, { status: 500 });
-    }
-
-    console.log("[Vault Redeem] Success:", result.txHash);
-    await incrementUserOpCount(userWalletAddress);
-
-    return NextResponse.json({
-      success: true,
-      txHash: result.txHash,
-      userOpHash: result.userOpHash,
-      redeemStatus: "redeemStatus" in result ? result.redeemStatus : undefined,
     });
+
+    return NextResponse.json(result);
   } catch (error: any) {
+    if (error instanceof VaultOperationError) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
     console.error("[Vault Redeem] Error:", error);
     return NextResponse.json(
       {

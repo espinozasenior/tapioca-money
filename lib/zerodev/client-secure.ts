@@ -27,6 +27,7 @@ export type {
   SignedEip7702Authorization,
   DecryptedAuthorization,
   SecureSessionKeyResult,
+  WalletClientSigner,
 } from "./client-secure-types";
 
 // Re-import types/functions needed by orchestration code in this file
@@ -36,7 +37,11 @@ import {
   createAndSerializeAccountExternal,
   createAndSerializeAccountErc4337,
 } from "./account-serializer";
-import type { SignedEip7702Authorization, SecureSessionKeyResult } from "./client-secure-types";
+import type {
+  SignedEip7702Authorization,
+  SecureSessionKeyResult,
+  WalletClientSigner,
+} from "./client-secure-types";
 
 /**
  * Serialize signed EIP-7702 authorization for JSON transport.
@@ -129,20 +134,20 @@ type RegisterAgentParams =
       userAddress: `0x${string}`;
       accessToken: string;
       signedEip7702Auth: SignedEip7702Authorization;
-      walletClient: any;
+      walletClient: WalletClientSigner;
     }
   | {
       path: "external";
       userAddress: `0x${string}`;
       accessToken: string;
-      walletClient: any;
+      walletClient: WalletClientSigner;
     }
   | {
       path: "erc4337";
       smartWalletAddress: `0x${string}`;
       eoaAddress: `0x${string}`;
       accessToken: string;
-      walletClient: any;
+      walletClient: WalletClientSigner;
     };
 
 /**
@@ -255,7 +260,7 @@ export async function registerAgentSecure(
   userAddress: `0x${string}`,
   accessToken: string,
   signedEip7702Auth: SignedEip7702Authorization,
-  walletClient: any
+  walletClient: WalletClientSigner
 ): Promise<SecureSessionKeyResult> {
   try {
     return await registerAgent({
@@ -278,7 +283,7 @@ export async function registerAgentSecure(
 export async function registerAgentSecureExternal(
   userAddress: `0x${string}`,
   accessToken: string,
-  walletClient: any
+  walletClient: WalletClientSigner
 ): Promise<SecureSessionKeyResult> {
   try {
     return await registerAgent({
@@ -300,7 +305,7 @@ export async function registerAgentErc4337(
   smartWalletAddress: `0x${string}`,
   eoaAddress: `0x${string}`,
   accessToken: string,
-  walletClient: any
+  walletClient: WalletClientSigner
 ): Promise<SecureSessionKeyResult> {
   try {
     return await registerAgent({
@@ -322,7 +327,7 @@ export async function registerAgentErc4337(
  * Delegate an external wallet (Brave, MetaMask) to Kernel V3.3 via a Type 4 transaction.
  */
 export async function delegateViaExternalWallet(
-  walletClient: any,
+  walletClient: WalletClientSigner,
   userAddress: `0x${string}`,
   implAddress: `0x${string}`
 ): Promise<`0x${string}`> {
@@ -334,7 +339,7 @@ export async function delegateViaExternalWallet(
   // Pre-check: query wallet_getCapabilities to see if EIP-7702 is supported.
   let has7702Support = false;
   try {
-    const capabilities: Record<string, any> = await walletClient.request({
+    const capabilities: Record<string, any> = await walletClient.request!({
       method: "wallet_getCapabilities",
       params: [userAddress],
     });
@@ -358,11 +363,11 @@ export async function delegateViaExternalWallet(
 
   // Ensure the external wallet is on Base before sending the Type 4 tx.
   try {
-    await walletClient.switchChain({ id: base.id });
+    await walletClient.switchChain!({ id: base.id });
   } catch (switchError: any) {
     if (switchError?.code === 4902) {
-      await walletClient.addChain({ chain: base });
-      await walletClient.switchChain({ id: base.id });
+      await walletClient.addChain!({ chain: base });
+      await walletClient.switchChain!({ id: base.id });
     } else {
       throw new Error(
         `Please switch your wallet to Base network. Chain switch failed: ${switchError.message}`
@@ -372,7 +377,7 @@ export async function delegateViaExternalWallet(
 
   // Send Type 4 transaction via raw JSON-RPC.
   const { numberToHex } = await import("viem");
-  const txHash: `0x${string}` = await walletClient.request({
+  const txHash: `0x${string}` = await walletClient.request!({
     method: "eth_sendTransaction",
     params: [
       {
@@ -445,12 +450,12 @@ export async function revokeSessionKey(address: string, accessToken: string): Pr
  */
 export async function undelegateEoa(
   userAddress: `0x${string}`,
-  walletClient: any,
-  signedAuthorization: any
+  walletClient: WalletClientSigner,
+  signedAuthorization: unknown
 ): Promise<`0x${string}`> {
   console.log("[ZeroDev 7702] Starting on-chain undelegation for:", userAddress);
 
-  const txHash = await walletClient.sendTransaction({
+  const txHash = await walletClient.sendTransaction!({
     to: userAddress,
     data: "0x" as `0x${string}`,
     value: BigInt(0),

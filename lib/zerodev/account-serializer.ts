@@ -9,7 +9,7 @@ import { toAccount } from "viem/accounts";
 import { baseClient } from "@/lib/shared/rpc-client";
 import { ENTRYPOINT_V07 } from "@/lib/zerodev/constants";
 import { buildSessionKeyAndPermissions } from "./permission-builder";
-import type { SignedEip7702Authorization } from "./client-secure-types";
+import type { SignedEip7702Authorization, WalletClientSigner } from "./client-secure-types";
 
 /** Return type for all createAndSerialize* functions */
 export interface SerializedAccountResult {
@@ -36,7 +36,7 @@ export interface SerializedAccountResult {
 export async function createAndSerializeAccount(
   userAddress: `0x${string}`,
   signedEip7702Auth: SignedEip7702Authorization,
-  walletClient: any,
+  walletClient: WalletClientSigner,
   approvedVaults: `0x${string}`[]
 ): Promise<SerializedAccountResult> {
   console.log("[ZeroDev 7702] Creating serialized account client-side...");
@@ -56,11 +56,11 @@ export async function createAndSerializeAccount(
   // Wrap Privy wallet as a LocalAccount (type: "local") for the SDK
   const eoaLocalAccount = toAccount({
     address: userAddress,
-    signMessage: async ({ message }) => walletClient.signMessage({ message }),
+    signMessage: async ({ message }) => walletClient.signMessage!({ message }),
     signTransaction: async () => {
       throw new Error("signTransaction not needed for registration");
     },
-    signTypedData: async (typedData) => walletClient.signTypedData(typedData),
+    signTypedData: async (typedData) => walletClient.signTypedData!(typedData),
   });
 
   // Create kernel account with EOA as sudo + session key as regular
@@ -106,7 +106,7 @@ export async function createAndSerializeAccount(
  */
 export async function createAndSerializeAccountExternal(
   userAddress: `0x${string}`,
-  walletClient: any,
+  walletClient: WalletClientSigner,
   approvedVaults: `0x${string}`[]
 ): Promise<SerializedAccountResult> {
   console.log("[ZeroDev 7702] Creating serialized account for external wallet...");
@@ -126,11 +126,11 @@ export async function createAndSerializeAccountExternal(
   // Wrap external wallet as LocalAccount for the SDK
   const eoaLocalAccount = toAccount({
     address: userAddress,
-    signMessage: async ({ message }) => walletClient.signMessage({ message }),
+    signMessage: async ({ message }) => walletClient.signMessage!({ message }),
     signTransaction: async () => {
       throw new Error("signTransaction not needed for registration");
     },
-    signTypedData: async (typedData) => walletClient.signTypedData(typedData),
+    signTypedData: async (typedData) => walletClient.signTypedData!(typedData),
   });
 
   // Create kernel account — NO eip7702Auth since delegation is already on-chain
@@ -178,7 +178,7 @@ export async function createAndSerializeAccountExternal(
  */
 export async function createAndSerializeAccountErc4337(
   smartWalletAddress: `0x${string}`,
-  walletClient: any,
+  walletClient: WalletClientSigner,
   approvedVaults: `0x${string}`[]
 ): Promise<SerializedAccountResult> {
   console.log("[ZeroDev 4337] Creating serialized account for ERC-4337 smart wallet...");
@@ -202,14 +202,14 @@ export async function createAndSerializeAccountErc4337(
   // eip7702Authorization closure that calls signAuthorization, which toAccount()
   // does not implement (only privateKeyToAccount does). Instead, create a proper
   // ECDSA validator and pass it as plugins.sudo.
-  const signerAddress = walletClient.account?.address ?? walletClient.account;
+  const signerAddress = (walletClient.account?.address ?? walletClient.account) as `0x${string}`;
   const eoaLocalAccount = toAccount({
     address: signerAddress,
-    signMessage: async ({ message }) => walletClient.signMessage({ message }),
+    signMessage: async ({ message }) => walletClient.signMessage!({ message }),
     signTransaction: async () => {
       throw new Error("signTransaction not needed for registration");
     },
-    signTypedData: async (typedData) => walletClient.signTypedData(typedData),
+    signTypedData: async (typedData) => walletClient.signTypedData!(typedData),
   });
 
   // Create ECDSA sudo validator from the embedded wallet signer.
