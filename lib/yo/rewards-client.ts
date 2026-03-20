@@ -3,10 +3,10 @@
  * Fetches claimable Merkl rewards via YO SDK with caching layer.
  */
 
-import { createPublicClient, http, formatUnits, type Address } from "viem";
-import { base } from "viem/chains";
+import { formatUnits, type Address } from "viem";
 import { createYoClient } from "@yo-protocol/core";
 import { CHAIN_CONFIG } from "@/lib/config";
+import { baseClient } from "@/lib/shared/rpc-client";
 import { YO_PARTNER_ID } from "./constants";
 import type { YoClaimableRewards, YoRewardToken } from "./types";
 import { getCachedYoRewards, setCachedYoRewards } from "@/lib/redis/yo-cache";
@@ -29,10 +29,7 @@ export async function fetchClaimableRewards(
   }
 
   // 2. Create read-only YO client
-  const publicClient = createPublicClient({
-    chain: base,
-    transport: http(CHAIN_CONFIG.rpcUrl),
-  });
+  const publicClient = baseClient;
 
   const yoClient = createYoClient({
     chainId: CHAIN_ID as any,

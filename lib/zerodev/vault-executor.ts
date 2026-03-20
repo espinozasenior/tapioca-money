@@ -3,18 +3,15 @@
  * Uses user's session key authorization for gasless execution via ZeroDev
  */
 
-import { createPublicClient, encodeFunctionData, http, parseAbi, type Hex } from "viem";
-import { base } from "viem/chains";
+import { encodeFunctionData, parseAbi, type Hex } from "viem";
 import { createDeserializedKernelClient, createSessionKernelClient } from "./kernel-client";
-import { CHAIN_CONFIG } from "@/lib/config";
 import { withBuilderCode } from "@/lib/builder-code";
+import { baseClient } from "@/lib/shared/rpc-client";
+import { REDEEM_SELECTOR } from "@/lib/constants/selectors";
 
 const VAULT_ABI = parseAbi([
   "function redeem(uint256 shares, address receiver, address owner) returns (uint256 assets)",
 ]);
-
-// Function selector for scoped permissions
-const REDEEM_SELECTOR = "0xba087652" as Hex; // redeem(uint256,address,address)
 
 export interface VaultRedeemParams {
   smartAccountAddress: `0x${string}`;
@@ -80,10 +77,7 @@ export async function executeVaultRedeem(params: VaultRedeemParams): Promise<Vau
     }
 
     // Pre-flight: simulate vault call directly to catch access control failures early
-    const publicClient = createPublicClient({
-      chain: base,
-      transport: http(CHAIN_CONFIG.rpcUrl),
-    });
+    const publicClient = baseClient;
 
     try {
       await publicClient.simulateContract({
