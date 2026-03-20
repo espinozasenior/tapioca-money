@@ -11,31 +11,44 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  validate:
-    name: Type Check / Test / Build
+  typecheck:
+    name: Type Check
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v4
         with:
           version: 10
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm tsc --noEmit
 
-      - name: Type check
-        run: pnpm tsc --noEmit
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
 
       - name: Run tests
         run: >-
@@ -52,6 +65,68 @@ jobs:
           DATABASE_ENCRYPTION_KEY: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
           AGENT_SIMULATION_MODE: "true"
 
-      # Build is validated by Vercel on deploy.
-      # Skipped in CI because Privy SDK validates appId against their API
-      # at static page generation time, requiring a real app ID.
+  security:
+    name: Security Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Audit dependencies
+        run: pnpm audit --audit-level=high || true
+
+      - name: Check for hardcoded secrets
+        run: |
+          # Fail if any .env files are committed
+          if git ls-files --cached | grep -E '\.env$|\.env\.local$|\.env\.production$'; then
+            echo "::error::Environment files found in git history"
+            exit 1
+          fi
+
+      - name: Verify security headers configured
+        run: |
+          if ! grep -q "X-Frame-Options" next.config.ts; then
+            echo "::error::Security headers missing from next.config.ts (H-1)"
+            exit 1
+          fi
+
+      - name: Verify middleware exists
+        run: |
+          if [ ! -f middleware.ts ]; then
+            echo "::error::Origin check middleware missing (M-4)"
+            exit 1
+          fi
+
+      - name: Verify shared db singleton
+        run: |
+          # No API route should import neon directly
+          DIRECT_NEON=$(grep -rl 'from "@neondatabase/serverless"' app/api/ || true)
+          if [ -n "$DIRECT_NEON" ]; then
+            echo "::error::API routes importing neon directly instead of lib/db.ts (H-4):"
+            echo "$DIRECT_NEON"
+            exit 1
+          fi
+
+      - name: Verify no error.stack in responses
+        run: |
+          STACK_LEAKS=$(grep -rn 'error\.stack' app/api/ --include='*.ts' || true)
+          if [ -n "$STACK_LEAKS" ]; then
+            echo "::warning::Potential error.stack exposure in API routes (L-1):"
+            echo "$STACK_LEAKS"
+          fi
+
+  # Build is validated by Vercel on deploy.
+  # Skipped in CI because Privy SDK validates appId against their API
+  # at static page generation time, requiring a real app ID.
