@@ -199,7 +199,8 @@ describe("Fail-Closed Rate Limiter", () => {
 describe("Session Revocation in Cron", () => {
   test("9. Cron checks revocation before processing", async () => {
     const fs = await import("fs");
-    const source = fs.readFileSync("app/api/agent/cron/route.ts", "utf-8");
+    // Business logic extracted to cron-orchestration-service (Phase 4 DDD refactoring)
+    const source = fs.readFileSync("lib/agent/cron-orchestration-service.ts", "utf-8");
 
     // Verify import
     expect(source).toMatch(
@@ -217,7 +218,8 @@ describe("Session Revocation in Cron", () => {
 describe("Distributed Lock in Cron", () => {
   test("10. Cron uses distributed lock per user", async () => {
     const fs = await import("fs");
-    const source = fs.readFileSync("app/api/agent/cron/route.ts", "utf-8");
+    // Business logic extracted to cron-orchestration-service (Phase 4 DDD refactoring)
+    const source = fs.readFileSync("lib/agent/cron-orchestration-service.ts", "utf-8");
 
     // Verify imports
     expect(source).toMatch(
@@ -225,8 +227,8 @@ describe("Distributed Lock in Cron", () => {
     );
 
     // Verify lock usage
-    expect(source).toContain("acquireUserLock(user.wallet_address)");
-    expect(source).toContain("releaseUserLock(user.wallet_address, lock.lockId!)");
+    expect(source).toContain("acquireUserLock(user.wallet_address as string)");
+    expect(source).toContain("releaseUserLock(user.wallet_address as string, lock.lockId!)");
     expect(source).toContain("Rebalance already in progress (locked)");
 
     // Verify finally block for lock release

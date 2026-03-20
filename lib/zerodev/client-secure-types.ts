@@ -6,6 +6,29 @@
  */
 
 /**
+ * Minimal wallet client interface for registration and delegation flows.
+ *
+ * Using a structural type instead of viem's full `WalletClient` because:
+ * - Privy wallet clients don't carry all 40+ WalletClient properties
+ * - Test mocks only need the methods actually consumed
+ * - Different paths use different subsets (signMessage vs request vs sendTransaction)
+ *
+ * All methods use `(...args: any[]) => Promise<any>` signatures so that both
+ * viem WalletClient (strict generics) and lightweight test mocks are assignable.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export interface WalletClientSigner {
+  account?: { address: `0x${string}`; [key: string]: unknown } | undefined;
+  signMessage?: (...args: any[]) => Promise<any>;
+  signTypedData?: (...args: any[]) => Promise<any>;
+  sendTransaction?: (...args: any[]) => Promise<any>;
+  request?: (...args: any[]) => Promise<any>;
+  switchChain?: (...args: any[]) => Promise<any>;
+  addChain?: (...args: any[]) => Promise<any>;
+  [key: string]: unknown;
+}
+
+/**
  * Signed EIP-7702 authorization object from Privy's useSign7702Authorization.
  * Contains the cryptographic signature allowing delegation to a contract address.
  * Compatible with viem's SignAuthorizationReturnType.

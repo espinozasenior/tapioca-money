@@ -9,12 +9,13 @@ import { createDeserializedKernelClient } from "./kernel-client";
 import { withBuilderCode } from "@/lib/builder-code";
 import { MERKL_DISTRIBUTOR_ADDRESS_BASE } from "@/lib/yo/constants";
 import { prepareClaimParams, merklDistributorAbi } from "@yo-protocol/core";
+import type { MerklChainRewards } from "@yo-protocol/core";
 
 export interface YoClaimRewardsParams {
   smartAccountAddress: `0x${string}`;
   serializedAccount: string;
   userAddress: `0x${string}`;
-  chainRewards: any; // MerklChainRewards from SDK
+  chainRewards: unknown; // MerklChainRewards from SDK
 }
 
 export interface YoClaimRewardsResult {
@@ -46,7 +47,10 @@ export async function executeYoRewardsClaim(
     }
 
     // Prepare claim calldata via SDK
-    const claimParams = prepareClaimParams(params.userAddress, params.chainRewards);
+    const claimParams = prepareClaimParams(
+      params.userAddress,
+      params.chainRewards as MerklChainRewards
+    );
 
     const claimCallData = encodeFunctionData({
       abi: merklDistributorAbi,

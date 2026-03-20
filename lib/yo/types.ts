@@ -37,7 +37,7 @@ export interface YoClaimableRewards {
   totalClaimableFormatted: string;
   hasClaimable: boolean;
   totalClaimableUsd: number | null;
-  rawChainRewards?: any; // Original SDK type for claim execution
+  rawChainRewards?: unknown; // Original SDK type for claim execution
 }
 
 export interface YoUserPosition {
