@@ -531,11 +531,16 @@ describe("Client Secure (ZeroDev)", () => {
       const callPolicyArgs = (toCallPolicy as any).mock.calls[0][0];
       const permissions = callPolicyArgs.permissions;
 
-      // Find vault approve permissions (target is the vault address, functionName is "approve")
+      // Find vault approve permissions (target is a vault address, functionName is "approve")
+      // Exclude all supported token approve permissions (USDC, WETH, cbBTC, EURC)
+      const tokenAddresses = new Set([
+        "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913", // USDC
+        "0x4200000000000000000000000000000000000006", // WETH
+        "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf", // cbBTC
+        "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42", // EURC
+      ]);
       const vaultApprovePerms = permissions.filter(
-        (p: any) =>
-          p.functionName === "approve" &&
-          p.target?.toLowerCase() !== "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913" // Not USDC approve
+        (p: any) => p.functionName === "approve" && !tokenAddresses.has(p.target?.toLowerCase())
       );
 
       expect(vaultApprovePerms.length).toBeGreaterThanOrEqual(1);

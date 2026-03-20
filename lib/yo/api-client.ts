@@ -47,9 +47,11 @@ const relaxedHistoryItemSchema = z.object({
 });
 
 // Relax idleBalances validation (SDK bug: expects string for raw, API returns number)
+// Also add merklRewardYield — the API moved reward APY from rewardYield to merklRewardYield
 const relaxedSnapshotSchema = vaultSnapshotSchema.extend({
   stats: vaultSnapshotSchema.shape.stats.extend({
     idleBalances: z.array(z.any()).optional(),
+    merklRewardYield: z.string().nullable().optional(),
   }),
 });
 
@@ -75,8 +77,9 @@ export class YoApiClient {
    * Uses apiClient.fetch() with a relaxed Zod schema to work around SDK bug.
    */
   private async getVaultSnapshotData(
-    vaultAddress: Address
-  ): Promise<{ apy: number; tvlUsd: number }> {
+    vaultAddress: Address,
+    underlyingDecimals: number = 6
+  ): Promise<{ apy: number; nativeApy: number; rewardApy: number; tvlUsd: number }> {
     const response = await this.yoClient.apiClient.fetch(
       `/api/v1/vault/${this.yoClient.network}/${vaultAddress}`
     );
@@ -86,16 +89,19 @@ export class YoApiClient {
 
     // native yield (percentage string, e.g. "5.48") → decimal (0.0548)
     const nativeApy = parseFloat(snapshot.stats.yield["30d"] ?? "0") / 100;
-    // reward yield (percentage string, e.g. "14.0") → decimal (0.14)
-    const rewardApy = parseFloat(snapshot.stats.rewardYield ?? "0") / 100;
+    // reward yield: API moved from rewardYield → merklRewardYield (percentage string, e.g. "10")
+    const rewardApy =
+      parseFloat(snapshot.stats.merklRewardYield ?? snapshot.stats.rewardYield ?? "0") / 100;
     const apy = nativeApy + rewardApy;
 
-    const tvlUsd =
+    // tvl.raw is in token smallest units (e.g. USDC = 6 decimals), convert to USD
+    const tvlRaw =
       typeof snapshot.stats.tvl.raw === "number"
         ? snapshot.stats.tvl.raw
         : parseFloat(snapshot.stats.tvl.raw);
+    const tvlUsd = tvlRaw / 10 ** underlyingDecimals;
 
-    return { apy, tvlUsd };
+    return { apy, nativeApy, rewardApy, tvlUsd };
   }
 
   /**
@@ -127,8 +133,8 @@ export class YoApiClient {
     const vaults = await Promise.all(
       vaultConfigs.map(async (config: VaultConfig) => {
         try {
-          const [{ apy, tvlUsd }, state] = await Promise.all([
-            this.getVaultSnapshotData(config.address),
+          const [{ apy, nativeApy, rewardApy, tvlUsd }, state] = await Promise.all([
+            this.getVaultSnapshotData(config.address, config.underlying.decimals),
             this.yoClient.getVaultState(config.address),
           ]);
 
@@ -145,6 +151,8 @@ export class YoApiClient {
               decimals: config.underlying.decimals,
             },
             apy,
+            nativeApy,
+            rewardApy,
             tvlUsd,
             totalAssets: state.totalAssets,
             totalShares: state.totalSupply,

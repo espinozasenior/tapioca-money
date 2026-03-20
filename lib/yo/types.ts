@@ -15,6 +15,8 @@ export interface YoVault {
     decimals: number;
   };
   apy: number; // Annualized (e.g. 0.05 = 5%)
+  nativeApy?: number; // Base vault yield (e.g. 0.05 = 5%)
+  rewardApy?: number; // Merkl/reward yield (e.g. 0.10 = 10%)
   tvlUsd: number;
   totalAssets: bigint;
   totalShares: bigint;
