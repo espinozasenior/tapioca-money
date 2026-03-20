@@ -9,16 +9,13 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
-import { SessionKey7702Authorization } from "@/lib/security/session-encryption";
 import { authenticateRequest, unauthorizedResponse } from "@/lib/auth/middleware";
 import {
   buildWalletAddresses,
   resolveAndDecryptRegistration,
   verifyVaultApproval,
 } from "@/lib/agent/resolve-registration";
-import { executeGaslessDeposit } from "@/lib/zerodev/deposit-executor";
-import { executeYoGaslessDeposit } from "@/lib/zerodev/yo-deposit-executor";
-import { YO_VAULTS } from "@/lib/yo/constants";
+import { getExecutor, DepositError } from "@/lib/agent/vault-executor";
 
 export async function POST(request: NextRequest) {
   try {
@@ -96,45 +93,27 @@ export async function POST(request: NextRequest) {
     });
 
     const depositStartTime = Date.now();
+
+    const executor = getExecutor(protocol);
     let result;
-
-    if (protocol === "yo") {
-      // Find vault config for underlying token info
-      const vaultConfig = Object.values(YO_VAULTS).find(
-        (v) => v.address.toLowerCase() === vaultAddress.toLowerCase()
+    try {
+      result = await executor.deposit(
+        {
+          smartAccountAddress: accountAddress,
+          serializedAccount: decryptedAuth.serializedAccount,
+          decryptedAuth,
+          approvedVaults: approvedVaults as `0x${string}`[],
+        },
+        {
+          vaultAddress: vaultAddress as `0x${string}`,
+          amount: String(amount),
+        }
       );
-      if (!vaultConfig) {
-        return NextResponse.json({ error: "Unknown YO vault address" }, { status: 400 });
+    } catch (err) {
+      if (err instanceof DepositError) {
+        return NextResponse.json({ error: err.message }, { status: 400 });
       }
-      const underlyingAddress =
-        vaultConfig.underlying.address[8453 as keyof typeof vaultConfig.underlying.address];
-      if (!underlyingAddress) {
-        return NextResponse.json({ error: "YO vault not available on Base" }, { status: 400 });
-      }
-
-      result = await executeYoGaslessDeposit({
-        smartAccountAddress: accountAddress,
-        vaultAddress: vaultAddress as `0x${string}`,
-        amount: String(amount),
-        underlyingAddress: underlyingAddress as `0x${string}`,
-        underlyingDecimals: vaultConfig.underlying.decimals,
-        serializedAccount: decryptedAuth.serializedAccount,
-      });
-    } else {
-      // Legacy fields only exist on 7702 sessions
-      const legacy7702 =
-        decryptedAuth.type === "zerodev-7702-session"
-          ? (decryptedAuth as SessionKey7702Authorization)
-          : undefined;
-      result = await executeGaslessDeposit({
-        smartAccountAddress: accountAddress,
-        vaultAddress: vaultAddress as `0x${string}`,
-        amount: String(amount),
-        serializedAccount: decryptedAuth.serializedAccount,
-        sessionPrivateKey: legacy7702?.sessionPrivateKey as `0x${string}` | undefined,
-        approvedVaults: approvedVaults as `0x${string}`[],
-        eip7702SignedAuth: legacy7702?.eip7702SignedAuth,
-      });
+      throw err;
     }
 
     const depositDuration = Date.now() - depositStartTime;
