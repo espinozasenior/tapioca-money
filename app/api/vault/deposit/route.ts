@@ -15,7 +15,8 @@ import {
   resolveAndDecryptRegistration,
   verifyVaultApproval,
 } from "@/lib/agent/resolve-registration";
-import { getExecutor, DepositError } from "@/lib/agent/vault-executor";
+import { DepositError } from "@/lib/agent/vault-executor";
+import { deposit, VaultOperationError } from "@/lib/agent/vault-operation-service";
 
 export async function POST(request: NextRequest) {
   try {
@@ -82,55 +83,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 6. Execute gasless deposit
-    console.log("[Vault Deposit] Calling deposit with:", {
-      smartAccountAddress: accountAddress,
-      vaultAddress,
+    // 6. Delegate to VaultOperationService
+    const result = await deposit({
+      userWalletAddress: userWalletAddress!,
+      vaultAddress: vaultAddress as `0x${string}`,
       amount: String(amount),
       protocol,
-      hasSerialized: !!decryptedAuth.serializedAccount,
-      approvedVaultsCount: approvedVaults.length,
+      ctx: {
+        smartAccountAddress: accountAddress,
+        serializedAccount: decryptedAuth.serializedAccount,
+        decryptedAuth,
+        approvedVaults: approvedVaults as `0x${string}`[],
+      },
     });
 
-    const depositStartTime = Date.now();
-
-    const executor = getExecutor(protocol);
-    let result;
-    try {
-      result = await executor.deposit(
-        {
-          smartAccountAddress: accountAddress,
-          serializedAccount: decryptedAuth.serializedAccount,
-          decryptedAuth,
-          approvedVaults: approvedVaults as `0x${string}`[],
-        },
-        {
-          vaultAddress: vaultAddress as `0x${string}`,
-          amount: String(amount),
-        }
-      );
-    } catch (err) {
-      if (err instanceof DepositError) {
-        return NextResponse.json({ error: err.message }, { status: 400 });
-      }
-      throw err;
-    }
-
-    const depositDuration = Date.now() - depositStartTime;
-
-    if (!result.success) {
-      console.error("[Vault Deposit] Execution failed after", depositDuration, "ms:", result.error);
-      return NextResponse.json({ error: result.error || "Vault deposit failed" }, { status: 500 });
-    }
-
-    console.log("[Vault Deposit] Success after", depositDuration, "ms:", result.txHash);
-
-    return NextResponse.json({
-      success: true,
-      txHash: result.txHash,
-      userOpHash: result.userOpHash,
-    });
+    return NextResponse.json(result);
   } catch (error: any) {
+    if (error instanceof DepositError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    if (error instanceof VaultOperationError) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
     console.error("[Vault Deposit] Error:", error);
     return NextResponse.json(
       {
