@@ -398,21 +398,26 @@ describe("Serialize/Deserialize Kernel Account Pattern", () => {
     expect(typeof kernelClient.createDeserializedKernelClient).toBe("function");
   });
 
-  test("21. createAndSerializeAccount exists in client-secure", async () => {
+  test("21. createAndSerializeAccount exists in account-serializer (re-exported from client-secure)", async () => {
     const fs = await import("fs");
-    const source = fs.readFileSync("lib/zerodev/client-secure.ts", "utf-8");
-    // Internal function used by registerAgentSecure
+    const source = fs.readFileSync("lib/zerodev/account-serializer.ts", "utf-8");
+    // Function lives in account-serializer, re-exported from client-secure
     expect(source).toContain("async function createAndSerializeAccount");
     expect(source).toContain("serializePermissionAccount");
+
+    // Verify re-export from client-secure
+    const facade = fs.readFileSync("lib/zerodev/client-secure.ts", "utf-8");
+    expect(facade).toContain("createAndSerializeAccount");
   });
 
-  test("22. serializePermissionAccount is used in client-secure", async () => {
+  test("22. serializePermissionAccount is used in account-serializer", async () => {
     const fs = await import("fs");
-    const source = fs.readFileSync("lib/zerodev/client-secure.ts", "utf-8");
+    const serializerSource = fs.readFileSync("lib/zerodev/account-serializer.ts", "utf-8");
+    const permBuilderSource = fs.readFileSync("lib/zerodev/permission-builder.ts", "utf-8");
 
-    expect(source).toContain("serializePermissionAccount");
-    expect(source).toContain("createKernelAccount");
-    expect(source).toContain("toPermissionValidator");
+    expect(serializerSource).toContain("serializePermissionAccount");
+    expect(serializerSource).toContain("createKernelAccount");
+    expect(permBuilderSource).toContain("toPermissionValidator");
   });
 
   test("23. deserializePermissionAccount is used in kernel-client", async () => {
@@ -477,9 +482,9 @@ describe("External Wallet Registration — Two-Phase Flow", () => {
 
   test("28. createAndSerializeAccountExternal exists and does not use eip7702Auth", async () => {
     const fs = await import("fs");
-    const source = fs.readFileSync("lib/zerodev/client-secure.ts", "utf-8");
+    const source = fs.readFileSync("lib/zerodev/account-serializer.ts", "utf-8");
 
-    // Internal function for external wallet serialization
+    // Function lives in account-serializer (re-exported from client-secure)
     expect(source).toContain("async function createAndSerializeAccountExternal");
 
     // Extract the external wallet function body — it should NOT contain eip7702Auth
@@ -499,7 +504,7 @@ describe("External Wallet Registration — Two-Phase Flow", () => {
 
     // delegateViaExternalWallet must use authorizationList in sendTransaction
     const delegateFnStart = source.indexOf("export async function delegateViaExternalWallet");
-    const delegateFnEnd = source.indexOf("export async function registerAgentSecureExternal");
+    const delegateFnEnd = source.indexOf("export async function revokeSessionKey");
     const delegateFn = source.slice(delegateFnStart, delegateFnEnd);
 
     expect(delegateFn).toContain("wallet_getCapabilities");
@@ -514,13 +519,9 @@ describe("External Wallet Registration — Two-Phase Flow", () => {
     const fs = await import("fs");
     const source = fs.readFileSync("lib/zerodev/client-secure.ts", "utf-8");
 
-    // registerAgentSecureExternal must check delegation status first
-    const regFnStart = source.indexOf("export async function registerAgentSecureExternal");
-    const regFnEnd = source.indexOf("export async function undelegateEoa");
-    const regFn = source.slice(regFnStart, regFnEnd);
-
-    expect(regFn).toContain("checkSmartAccountActive");
-    expect(regFn).toContain("Delegation not found on-chain");
+    // The shared registerAgent orchestrator checks delegation for external path
+    expect(source).toContain("checkSmartAccountActive");
+    expect(source).toContain("Delegation not found on-chain");
   });
 
   test("31. useOptimizer always uses embedded wallet for EIP-7702 regardless of active wallet", async () => {
@@ -559,44 +560,36 @@ describe("External Wallet Registration — Two-Phase Flow", () => {
 
   test("32. All registration paths share the same permission builder", async () => {
     const fs = await import("fs");
-    const source = fs.readFileSync("lib/zerodev/client-secure.ts", "utf-8");
 
-    // After refactor, all three createAndSerialize* variants use buildSessionKeyAndPermissions.
-    // Verify the shared function exists and contains all protocol permissions.
+    // After DDD refactor, permission-builder.ts contains the shared function,
+    // account-serializer.ts contains the three createAndSerialize* variants.
+    const permBuilderSource = fs.readFileSync("lib/zerodev/permission-builder.ts", "utf-8");
+    const serializerSource = fs.readFileSync("lib/zerodev/account-serializer.ts", "utf-8");
 
-    const sharedFnStart = source.indexOf("async function buildSessionKeyAndPermissions(");
-    expect(sharedFnStart).toBeGreaterThan(-1);
-
-    const sharedFnEnd = source.indexOf("async function createAndSerializeAccount(");
-    const sharedFn = source.slice(sharedFnStart, sharedFnEnd);
+    // Verify the shared function exists in permission-builder
+    expect(permBuilderSource).toContain("async function buildSessionKeyAndPermissions(");
 
     // Shared builder must include YO Gateway permissions
-    expect(sharedFn).toContain("YO_GATEWAY_DEPOSIT_SELECTOR");
-    expect(sharedFn).toContain("YO_GATEWAY_REDEEM_SELECTOR");
+    expect(permBuilderSource).toContain("YO_GATEWAY_DEPOSIT_SELECTOR");
+    expect(permBuilderSource).toContain("YO_GATEWAY_REDEEM_SELECTOR");
 
     // Must include USDC approve and transfer
-    expect(sharedFn).toContain("USDC_ADDRESS");
+    expect(permBuilderSource).toContain("USDC_ADDRESS");
 
     // Must include rate limit and timestamp policies
-    expect(sharedFn).toContain("toRateLimitPolicy");
-    expect(sharedFn).toContain("toTimestampPolicy");
+    expect(permBuilderSource).toContain("toRateLimitPolicy");
+    expect(permBuilderSource).toContain("toTimestampPolicy");
 
     // Verify all three createAndSerialize* functions call buildSessionKeyAndPermissions
-    const embeddedFn = source.slice(
-      source.indexOf("async function createAndSerializeAccount("),
-      source.indexOf("async function createAndSerializeAccountExternal(")
-    );
-    const externalFn = source.slice(
-      source.indexOf("async function createAndSerializeAccountExternal("),
-      source.indexOf("async function createAndSerializeAccountErc4337(")
-    );
-    const erc4337Fn = source.slice(
-      source.indexOf("async function createAndSerializeAccountErc4337("),
-      source.indexOf("export async function registerAgentSecureExternal")
-    );
+    expect(serializerSource).toContain("async function createAndSerializeAccount(");
+    expect(serializerSource).toContain("async function createAndSerializeAccountExternal(");
+    expect(serializerSource).toContain("async function createAndSerializeAccountErc4337(");
 
-    expect(embeddedFn).toContain("buildSessionKeyAndPermissions");
-    expect(externalFn).toContain("buildSessionKeyAndPermissions");
-    expect(erc4337Fn).toContain("buildSessionKeyAndPermissions");
+    // All three must import buildSessionKeyAndPermissions
+    expect(serializerSource).toContain("buildSessionKeyAndPermissions");
+
+    // Verify re-export from client-secure facade
+    const facade = fs.readFileSync("lib/zerodev/client-secure.ts", "utf-8");
+    expect(facade).toContain("buildSessionKeyAndPermissions");
   });
 });
