@@ -138,9 +138,9 @@ describe("Delegation Target Verification", () => {
 // ─── On-chain Timestamp Policy ───────────────────────────────────────────────
 
 describe("On-chain Timestamp Policy", () => {
-  test("6. toTimestampPolicy is used in client-secure.ts", async () => {
+  test("6. toTimestampPolicy is used in permission-builder.ts (re-exported from client-secure)", async () => {
     const fs = await import("fs");
-    const source = fs.readFileSync("lib/zerodev/client-secure.ts", "utf-8");
+    const source = fs.readFileSync("lib/zerodev/permission-builder.ts", "utf-8");
 
     // Verify timestamp policy import
     expect(source).toContain("toTimestampPolicy");
@@ -160,7 +160,7 @@ describe("On-chain Timestamp Policy", () => {
 describe("Value Limits on CallPolicy", () => {
   test("7. Permissions include valueLimit and ParamCondition", async () => {
     const fs = await import("fs");
-    const source = fs.readFileSync("lib/zerodev/client-secure.ts", "utf-8");
+    const source = fs.readFileSync("lib/zerodev/permission-builder.ts", "utf-8");
 
     // Verify valueLimit is used
     expect(source).toContain("valueLimit: 0n");
