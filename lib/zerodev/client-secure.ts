@@ -9,20 +9,21 @@
  * With EIP-7702, smartAccountAddress === userAddress (single address model).
  */
 
-import { createPublicClient, http, parseAbi, type Hex } from "viem";
+import { http, parseAbi, type Hex } from "viem";
 import { base } from "viem/chains";
 import { toAccount } from "viem/accounts";
-import { CHAIN_CONFIG, USDC_ADDRESS } from "@/lib/config";
+import { USDC_ADDRESS } from "@/lib/config";
+import { baseClient } from "@/lib/shared/rpc-client";
+import {
+  APPROVE_SELECTOR,
+  DEPOSIT_SELECTOR,
+  REDEEM_SELECTOR,
+  WITHDRAW_SELECTOR,
+  TRANSFER_SELECTOR,
+} from "@/lib/constants/selectors";
 
 // Session key expiry: 7 days
 const SESSION_KEY_EXPIRY_DAYS = 7;
-
-// Function selectors for scoped permissions
-const APPROVE_SELECTOR = "0x095ea7b3" as Hex; // approve(address,uint256)
-const DEPOSIT_SELECTOR = "0x6e553f65" as Hex; // deposit(uint256,address)
-const REDEEM_SELECTOR = "0xba087652" as Hex; // redeem(uint256,address,address)
-const WITHDRAW_SELECTOR = "0xb460af94" as Hex; // withdraw(uint256,address,address)
-const TRANSFER_SELECTOR = "0xa9059cbb" as Hex; // transfer(address,uint256)
 
 // Maximum USDC amount per session key call (10,000.000001 USDC with 6 decimals)
 // The +1 forces a new permissionHash to break the re-registration deadlock
@@ -116,11 +117,8 @@ async function buildSessionKeyAndPermissions(approvedVaults: `0x${string}`[]) {
     console.log("[ZeroDev] Session key address:", sessionKeyAccount.address);
   }
 
-  // 2. Create public client
-  const publicClient = createPublicClient({
-    chain: base,
-    transport: http(CHAIN_CONFIG.rpcUrl),
-  });
+  // 2. Public client (shared singleton)
+  const publicClient = baseClient;
 
   // 3. Create session key signer
   const sessionSigner = await toECDSASigner({ signer: sessionKeyAccount });
@@ -516,10 +514,7 @@ export async function delegateViaExternalWallet(
   console.log("[ZeroDev 7702] Delegating external wallet to Kernel V3.3...");
   console.log("[ZeroDev 7702] User:", userAddress, "→ Impl:", implAddress);
 
-  const publicClient = createPublicClient({
-    chain: base,
-    transport: http(CHAIN_CONFIG.rpcUrl),
-  });
+  const publicClient = baseClient;
 
   // Pre-check: query wallet_getCapabilities to see if EIP-7702 is supported.
   // Wallets that don't support Type 4 transactions silently drop the authorizationList

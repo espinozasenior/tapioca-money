@@ -9,17 +9,10 @@
 
 import type { Hex } from "viem";
 import { base } from "viem/chains";
-import {
-  createPublicClient,
-  createWalletClient,
-  custom,
-  http,
-  encodeFunctionData,
-  erc20Abi,
-  parseAbi,
-} from "viem";
+import { createWalletClient, custom, encodeFunctionData, erc20Abi, parseAbi } from "viem";
 import { privateKeyToAccount, generatePrivateKey, toAccount } from "viem/accounts";
-import { CHAIN_CONFIG, USDC_ADDRESS } from "@/lib/config";
+import { USDC_ADDRESS } from "@/lib/config";
+import { baseClient } from "@/lib/shared/rpc-client";
 
 // Maximum USDC amount per transfer session call (500 USDC with 6 decimals)
 const MAX_USDC_PER_TRANSFER = BigInt(500) * BigInt(1e6);
@@ -70,11 +63,8 @@ export async function createTransferSessionKey(
     // 1. Get Privy wallet provider
     const provider = await privyWallet.getEthereumProvider();
 
-    // 2. Create public client for blockchain reads
-    const publicClient = createPublicClient({
-      chain: base,
-      transport: http(CHAIN_CONFIG.rpcUrl),
-    });
+    // 2. Public client for blockchain reads (shared singleton)
+    const publicClient = baseClient;
 
     // 3. Create wallet client from Privy provider
     console.log("[TransferSession] Creating wallet client from Privy wallet...");

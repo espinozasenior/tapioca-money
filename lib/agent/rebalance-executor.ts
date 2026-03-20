@@ -1,12 +1,4 @@
-import {
-  encodeFunctionData,
-  parseAbi,
-  createPublicClient,
-  http,
-  type Hex,
-  type Address,
-} from "viem";
-import { base } from "viem/chains";
+import { encodeFunctionData, parseAbi, type Hex, type Address } from "viem";
 import {
   createDeserializedKernelClient,
   createSessionKernelClient,
@@ -19,7 +11,15 @@ import {
   YO_PARTNER_ID,
   applyYoSlippage,
 } from "@/lib/yo/constants";
-import { CHAIN_CONFIG } from "@/lib/config";
+import { USDC_ADDRESS } from "@/lib/config";
+import { baseClient } from "@/lib/shared/rpc-client";
+import {
+  APPROVE_SELECTOR,
+  DEPOSIT_SELECTOR,
+  REDEEM_SELECTOR,
+  WITHDRAW_SELECTOR,
+  TRANSFER_SELECTOR,
+} from "@/lib/constants/selectors";
 import type { Protocol } from "./decision-engine";
 
 const VAULT_ABI = parseAbi([
@@ -29,17 +29,13 @@ const VAULT_ABI = parseAbi([
 
 const ERC20_ABI = parseAbi(["function approve(address spender, uint256 amount) returns (bool)"]);
 
-import { USDC_ADDRESS } from "@/lib/config";
-
-// Function selectors for scoped permissions
+// Alias selectors to match the FUNCTION_SELECTORS.X pattern used throughout this file
 const FUNCTION_SELECTORS = {
-  // ERC4626 Vault operations
-  REDEEM: "0xba087652" as Hex, // redeem(uint256,address,address)
-  DEPOSIT: "0x6e553f65" as Hex, // deposit(uint256,address)
-  WITHDRAW: "0xb460af94" as Hex, // withdraw(uint256,address,address)
-  // ERC20 operations
-  APPROVE: "0x095ea7b3" as Hex, // approve(address,uint256)
-  TRANSFER: "0xa9059cbb" as Hex, // transfer(address,uint256)
+  REDEEM: REDEEM_SELECTOR,
+  DEPOSIT: DEPOSIT_SELECTOR,
+  WITHDRAW: WITHDRAW_SELECTOR,
+  APPROVE: APPROVE_SELECTOR,
+  TRANSFER: TRANSFER_SELECTOR,
 };
 
 export interface RebalanceParams {
@@ -74,10 +70,7 @@ export interface RebalanceResult {
 export async function buildRebalanceCalls(params: RebalanceParams): Promise<RebalanceCall[]> {
   const fromProtocol = params.fromProtocol ?? "morpho";
   const toProtocol = params.toProtocol ?? "morpho";
-  const publicClient = createPublicClient({
-    chain: base,
-    transport: http(CHAIN_CONFIG.rpcUrl),
-  });
+  const publicClient = baseClient;
 
   const calls: RebalanceCall[] = [];
 
@@ -364,7 +357,7 @@ export async function simulateRebalance(
     const calls = await buildRebalanceCalls(params);
 
     // Simulate each call using eth_call to detect reverts before execution
-    const publicClient = createPublicClient({ chain: base, transport: http() });
+    const publicClient = baseClient;
 
     for (let i = 0; i < calls.length; i++) {
       try {

@@ -6,9 +6,7 @@
  * for the same signer. No deployment happens — createKernelAccount just computes it.
  */
 
-import { createPublicClient, http } from "viem";
-import { base } from "viem/chains";
-import { CHAIN_CONFIG } from "@/lib/config";
+import { baseClient } from "@/lib/shared/rpc-client";
 
 const ENTRYPOINT_V07 = {
   address: "0x0000000071727De22E5E9d8BAf0edAc6f37da032" as `0x${string}`,
@@ -27,10 +25,7 @@ export async function computeKernelAddress(signerAddress: `0x${string}`): Promis
   const { signerToEcdsaValidator } = await import("@zerodev/ecdsa-validator");
   const { toAccount } = await import("viem/accounts");
 
-  const publicClient = createPublicClient({
-    chain: base,
-    transport: http(CHAIN_CONFIG.rpcUrl),
-  });
+  const publicClient = baseClient;
 
   // Create a minimal signer — only address needed for counterfactual computation
   const minimalSigner = toAccount({
