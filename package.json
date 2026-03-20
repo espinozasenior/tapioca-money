@@ -23,7 +23,6 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@crossmint/client-sdk-react-ui": "^2.6.16",
     "@heroicons/react": "2.0.18",
     "@morpho-org/blue-sdk": "^5.16.0",
     "@morpho-org/blue-sdk-viem": "^4.4.0",
@@ -52,7 +51,7 @@
     "ioredis": "^5.9.2",
     "libsodium-wrappers": "^0.7.15",
     "lucide-react": "^0.556.0",
-    "next": "15.2.8",
+    "next": "15.5.14",
     "ox": ">=0.11.3",
     "permissionless": "^0.3.4",
     "react": "^19.0.0",
