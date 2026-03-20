@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { neon } from "@neondatabase/serverless";
+import { sql } from "@/lib/db";
 import {
   executeGaslessTransfer,
   validateTransferParams,
@@ -27,8 +27,6 @@ import {
   forbiddenResponse,
 } from "@/lib/auth/middleware";
 import { validateTransferRecipient } from "@/lib/zerodev/transfer-recipient-validator";
-
-const sql = neon(process.env.DATABASE_URL!);
 
 /**
  * POST /api/transfer/send

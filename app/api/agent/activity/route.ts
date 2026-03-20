@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { neon } from "@neondatabase/serverless";
+import { sql } from "@/lib/db";
 import {
   requireAuthForAddress,
   unauthorizedResponse,
   forbiddenResponse,
 } from "@/lib/auth/middleware";
-
-const sql = neon(process.env.DATABASE_URL!);
 
 /**
  * GET /api/agent/activity?address=0x...&limit=50&offset=0

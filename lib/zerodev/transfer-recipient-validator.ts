@@ -47,14 +47,17 @@ export interface RecipientValidationResult {
  * 2. Not the zero address
  * 3. Not the sender's own address (pointless self-transfer)
  * 4. Not a known protocol/token contract (funds would be lost or exploited)
+ * 5. Not one of the user's approved vault addresses (M-3)
  *
  * @param recipient - Target address for the transfer
  * @param senderAddress - The sender's address (to catch self-transfers)
+ * @param approvedVaults - Optional list of approved vault addresses to also block
  * @returns Validation result with reason on failure
  */
 export function validateTransferRecipient(
   recipient: string,
-  senderAddress: string
+  senderAddress: string,
+  approvedVaults?: string[]
 ): RecipientValidationResult {
   // 1. Format check
   if (!recipient || !isAddress(recipient)) {
@@ -80,6 +83,17 @@ export function validateTransferRecipient(
       valid: false,
       reason: "Recipient is a known contract address — direct transfers would result in lost funds",
     };
+  }
+
+  // 5. Dynamic vault blocklist (M-3: auto-block approved vault addresses)
+  if (approvedVaults && approvedVaults.length > 0) {
+    const vaultSet = new Set(approvedVaults.map((v) => v.toLowerCase()));
+    if (vaultSet.has(normalizedRecipient)) {
+      return {
+        valid: false,
+        reason: "Recipient is a vault contract — use deposit/withdraw instead of direct transfer",
+      };
+    }
   }
 
   return { valid: true };

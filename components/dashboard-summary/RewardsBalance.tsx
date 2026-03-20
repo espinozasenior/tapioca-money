@@ -1,11 +1,10 @@
 import { useYieldPositions } from "../../hooks/useOptimizer";
-import { useWallet } from "@/hooks/useWallet";
+import { useWalletSelection } from "@/hooks/useWalletSelection";
 import { MerklRewards } from "./MerklRewards";
 
 export function RewardsBalance() {
-  const { wallet } = useWallet();
-  // Send wallet address for auth — server resolves agentAddress for position queries
-  const { positions, isLoading } = useYieldPositions(wallet?.address);
+  const { agentAddress } = useWalletSelection();
+  const { positions, isLoading } = useYieldPositions(agentAddress ?? undefined);
 
   // Calculate total rewards across all positions
   const totalRewards = positions.reduce((sum, position) => {

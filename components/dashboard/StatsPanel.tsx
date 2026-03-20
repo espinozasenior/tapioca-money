@@ -1,11 +1,11 @@
 "use client";
 
-import { useWallet } from "@/hooks/useWallet";
 import { useYieldPositions, useYields } from "@/hooks/useOptimizer";
+import { useWalletSelection } from "@/hooks/useWalletSelection";
 
 export function StatsPanel() {
-  const { wallet } = useWallet();
-  const { positions, isLoading: posLoading } = useYieldPositions(wallet?.address);
+  const { agentAddress } = useWalletSelection();
+  const { positions, isLoading: posLoading } = useYieldPositions(agentAddress ?? undefined);
   const { bestApy, isLoading: yieldsLoading } = useYields();
 
   const isLoading = posLoading || yieldsLoading;

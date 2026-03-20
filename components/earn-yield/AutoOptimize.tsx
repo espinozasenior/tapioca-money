@@ -16,7 +16,7 @@ interface AutoOptimizeProps {
 
 export function AutoOptimize({ usdcBalance }: AutoOptimizeProps) {
   const { isSolanaWallet } = useWallet();
-  const { data, isLoading, error } = useOptimizer(usdcBalance);
+  const { data, isLoading, error } = useOptimizer();
   const {
     isRegistered,
     autoOptimizeEnabled,

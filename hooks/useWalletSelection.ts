@@ -167,14 +167,17 @@ export function WalletSelectionProvider({ children }: { children: React.ReactNod
   // EIP-7702 is only available via Privy embedded wallets (they have the signAuthorization hook)
   const supportsEip7702 = activeWalletType === "embedded";
 
-  // Address where the agent operates:
-  // - EIP-7702 users: EOA = smart account (same address)
+  // Address where the agent operates (where funds live):
+  // - EIP-7702 users (embedded or external): EOA = smart account (same address)
   // - ERC-4337 users: null — server resolves via resolveAgentAddress (DB has the Kernel address)
+  // For EIP-7702, the active wallet IS the delegated EOA regardless of wallet type
+  // (embedded or external). External wallet users who delegated their EOA to Kernel
+  // still use their own address as the agent address.
   const agentAddress = useMemo(() => {
     if (!activeWallet) return null;
-    if (supportsEip7702) return activeWallet.address;
+    if (isEvmWallet) return activeWallet.address;
     return null;
-  }, [activeWallet, supportsEip7702]);
+  }, [activeWallet, isEvmWallet]);
 
   const value = useMemo<WalletSelectionContextValue>(
     () => ({

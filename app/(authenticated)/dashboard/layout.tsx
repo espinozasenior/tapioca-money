@@ -55,13 +55,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     onError: (err) => console.error("Failed to sync user to Postgres:", err),
   });
 
+  // Use the Privy-linked wallet address for sync (matches the JWT's owned wallets).
+  // wallet.address may be the embedded wallet, which Privy doesn't list as "linked"
+  // and would fail requireAuthForAddress.
+  const privyWalletAddress = user?.wallet;
   const walletAddress = wallet?.address;
 
   useEffect(() => {
-    if (isLoggedIn && walletAddress) {
-      syncUser({ address: walletAddress, email: user?.email });
+    if (isLoggedIn && privyWalletAddress) {
+      syncUser({ address: privyWalletAddress, email: user?.email });
     }
-  }, [isLoggedIn, walletAddress, user?.email, syncUser]);
+  }, [isLoggedIn, privyWalletAddress, user?.email, syncUser]);
 
   if (isLoading) {
     return (

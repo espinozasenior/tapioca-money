@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { neon } from "@neondatabase/serverless";
+import { sql } from "@/lib/db";
 import { encryptAuthorization } from "@/lib/security/session-encryption";
 import {
   authenticateRequest,
@@ -8,8 +8,6 @@ import {
   forbiddenResponse,
 } from "@/lib/auth/middleware";
 import { buildWalletAddresses, resolveAgentRegistration } from "@/lib/agent/resolve-registration";
-
-const sql = neon(process.env.DATABASE_URL!);
 
 /**
  * POST /api/agent/register
@@ -99,7 +97,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: "Failed to register agent",
-        details: process.env.NODE_ENV === "development" ? error.stack : undefined,
+        details: process.env.NODE_ENV === "development" ? error.message : undefined,
       },
       { status: 500 }
     );

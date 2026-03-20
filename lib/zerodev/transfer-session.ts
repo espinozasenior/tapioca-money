@@ -19,18 +19,12 @@ import {
   parseAbi,
 } from "viem";
 import { privateKeyToAccount, generatePrivateKey, toAccount } from "viem/accounts";
-import { CHAIN_CONFIG } from "@/lib/config";
-
-const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
+import { CHAIN_CONFIG, USDC_ADDRESS } from "@/lib/config";
 
 // Maximum USDC amount per transfer session call (500 USDC with 6 decimals)
 const MAX_USDC_PER_TRANSFER = BigInt(500) * BigInt(1e6);
 
-// EntryPoint V0.7 object (required format for ZeroDev SDK v5)
-const ENTRYPOINT_V07 = {
-  address: "0x0000000071727De22E5E9d8BAf0edAc6f37da032" as `0x${string}`,
-  version: "0.7" as const,
-};
+import { ENTRYPOINT_V07 } from "@/lib/zerodev/constants";
 
 export interface PrivyWalletProvider {
   getEthereumProvider(): Promise<any>;
