@@ -14,44 +14,7 @@ import {
 } from "viem";
 import { base } from "viem/chains";
 import { useMemo, useCallback } from "react";
-
-// USDC on Base
-const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
-
-/**
- * DEBUG: Wrap Privy's Ethereum provider to intercept and log any
- * eth_sendTransaction / eth_sendRawTransaction calls with stack traces.
- * This will reveal exactly which code path triggers the Privy approve modal.
- *
- * TODO: Remove this wrapper once the source is identified.
- */
-function wrapProviderWithTracing(provider: any, label: string): any {
-  const originalRequest = provider.request.bind(provider);
-
-  provider.request = async (args: { method: string; params?: any[] }) => {
-    const trackedMethods = [
-      "eth_sendTransaction",
-      "eth_sendRawTransaction",
-      "eth_signTransaction",
-      "personal_sign",
-      "eth_sign",
-      "eth_signTypedData_v4",
-    ];
-
-    if (trackedMethods.includes(args.method)) {
-      const stack = new Error().stack;
-      console.warn(
-        `[TRACE ${label}] ⚠️ Provider.request("${args.method}") intercepted!\n` +
-          `Params: ${JSON.stringify(args.params, null, 2)}\n` +
-          `Stack trace:\n${stack}`
-      );
-    }
-
-    return originalRequest(args);
-  };
-
-  return provider;
-}
+import { USDC_ADDRESS } from "@/lib/config";
 
 // Minimal ERC-20 ABI for balance and transfer
 const erc20Abi = [
@@ -183,8 +146,7 @@ export function useWallet() {
           });
 
           // Get the Ethereum provider from Privy wallet
-          const rawProvider = await wallet.getEthereumProvider();
-          const provider = wrapProviderWithTracing(rawProvider, "useWallet.send");
+          const provider = await wallet.getEthereumProvider();
 
           // Create wallet client with the provider
           const walletClient = createWalletClient({
@@ -346,8 +308,7 @@ export function useWallet() {
             "Ethereum provider requires an EVM wallet. Please switch to an Ethereum wallet."
           );
         if (!wallet) throw new Error("Wallet not ready");
-        const rawProvider = await wallet.getEthereumProvider();
-        return wrapProviderWithTracing(rawProvider, "useWallet.getEthereumProvider");
+        return await wallet.getEthereumProvider();
       },
 
       /**

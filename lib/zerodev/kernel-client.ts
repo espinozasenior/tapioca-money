@@ -14,11 +14,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { checkSmartAccountActive, type DelegationStatus } from "./client-secure";
 import { CHAIN_CONFIG } from "@/lib/config";
 
-// EntryPoint V0.7 object (required format for ZeroDev SDK v5)
-const ENTRYPOINT_V07 = {
-  address: "0x0000000071727De22E5E9d8BAf0edAc6f37da032" as `0x${string}`,
-  version: "0.7" as const,
-};
+import { ENTRYPOINT_V07 } from "@/lib/zerodev/constants";
 
 /**
  * Create a ZeroDev Kernel client from a serialized permission account.
@@ -191,7 +187,8 @@ function patchSerializedAccount(serializedAccount: string): string {
     params.isPreInstalled = true;
     params.enableSignature = undefined;
     return Buffer.from(JSON.stringify(params)).toString("base64");
-  } catch {
+  } catch (error) {
+    console.error("[KernelClient] Failed to patch serialized account:", error);
     return serializedAccount;
   }
 }

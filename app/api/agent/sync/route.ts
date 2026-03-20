@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { neon } from "@neondatabase/serverless";
+import { sql } from "@/lib/db";
 import {
   requireAuthForAddress,
   unauthorizedResponse,
   forbiddenResponse,
 } from "@/lib/auth/middleware";
-
-const sql = neon(process.env.DATABASE_URL!);
 
 /**
  * POST /api/agent/sync

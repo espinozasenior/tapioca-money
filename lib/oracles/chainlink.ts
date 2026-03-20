@@ -1,6 +1,5 @@
-import { createPublicClient, http, parseAbi } from "viem";
-import { base } from "viem/chains";
-import { CHAIN_CONFIG } from "@/lib/config";
+import { parseAbi } from "viem";
+import { baseClient as publicClient } from "@/lib/shared/rpc-client";
 
 const CHAINLINK_USDC_USD = "0x7e860098F58bBFC8648a4311b374B1D669a2bc6B" as const;
 const BASE_SEQUENCER_UPTIME_FEED = "0xBCF85224fc0756B9Fa45aA7892530B47e10b6433" as const;
@@ -21,11 +20,6 @@ export interface PriceFeedResult {
 const STALENESS_THRESHOLD = 86400; // 24 hours (matches Chainlink USDC/USD heartbeat on Base)
 const DEPEG_THRESHOLD = 0.005; // 0.5% deviation from $1.00
 const SEQUENCER_GRACE_PERIOD = 3600; // 1 hour grace period after sequencer comes back up
-
-const publicClient = createPublicClient({
-  chain: base,
-  transport: http(CHAIN_CONFIG.rpcUrl),
-});
 
 /**
  * Check if the Base L2 sequencer is up and has been up long enough to trust price data.

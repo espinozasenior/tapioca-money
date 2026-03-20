@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { neon } from "@neondatabase/serverless";
+import { sql } from "@/lib/db";
 import { authenticateRequest, unauthorizedResponse } from "@/lib/auth/middleware";
 import {
   buildWalletAddresses,
@@ -22,8 +22,6 @@ import { incrementUserOpCount } from "@/lib/redis/rate-limiter";
 import { acquireUserLock, releaseUserLock } from "@/lib/redis/distributed-lock";
 import { MERKL_DISTRIBUTOR_ADDRESS_BASE } from "@/lib/yo/constants";
 import { CHAIN_CONFIG } from "@/lib/config";
-
-const sql = neon(process.env.DATABASE_URL!);
 
 export async function POST(request: NextRequest) {
   try {

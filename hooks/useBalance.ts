@@ -4,8 +4,7 @@ import { useWalletSelection } from "./useWalletSelection";
 import { createPublicClient, http, formatUnits } from "viem";
 import { base } from "viem/chains";
 import { useMemo } from "react";
-
-const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
+import { USDC_ADDRESS } from "@/lib/config";
 const BALANCE_OF_ABI = [
   {
     inputs: [{ name: "account", type: "address" }],

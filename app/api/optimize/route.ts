@@ -27,7 +27,10 @@ export async function GET(request: NextRequest) {
       (a, b) => b.apy - a.apy
     );
 
-    // If no address, just return opportunities (public vault list)
+    // If no address, return public vault list (no auth required).
+    // INTENTIONAL PUBLIC ACCESS (M-6): This path is called during registration
+    // (client-secure.ts) before the user has a stored session. It only exposes
+    // vault metadata (names, APYs, addresses) which is already public on-chain.
     if (!address) {
       return NextResponse.json({
         decision: null,
@@ -69,13 +72,6 @@ export async function GET(request: NextRequest) {
       const agentAddr = (await resolveAgentAddress(allWallets)) ?? address;
       queryAddress = agentAddr as `0x${string}`;
     }
-
-    // Resolve where funds actually live:
-    // - Path A (email/embedded): agentAddr = wallet address (same)
-    // - Path B (external/4337): agentAddr = smart wallet address (different)
-    const allWallets = authResult.allWalletAddresses ?? [address.toLowerCase()];
-    const agentAddr = (await resolveAgentAddress(allWallets)) ?? address;
-    const queryAddress = agentAddr as `0x${string}`;
 
     // Pass pre-fetched vaults to avoid redundant API calls (P0-1 fix)
     const decision = await yieldDecisionEngine.evaluateRebalancing(queryAddress, null, {

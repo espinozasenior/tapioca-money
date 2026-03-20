@@ -91,9 +91,9 @@ interface PendingRedeemsResponse {
 
 // Main hook - replaces useYields()
 export function useYields() {
-  const { wallet } = useWallet();
   const { getAccessToken } = usePrivy();
-  const address = wallet?.address as `0x${string}` | undefined;
+  const { agentAddress } = useWalletSelection();
+  const address = agentAddress as `0x${string}` | undefined;
 
   const query = useQuery<OptimizerResponse>({
     queryKey: ["optimizer", address],
@@ -157,25 +157,21 @@ export function useYieldPositions(address?: string) {
 }
 
 // Optimizer decision hook
-export function useOptimizer(usdcBalance: bigint = BigInt(0)) {
-  const { wallet } = useWallet();
+export function useOptimizer() {
   const { getAccessToken } = usePrivy();
-  const address = wallet?.address as `0x${string}` | undefined;
+  const { agentAddress } = useWalletSelection();
+  const address = agentAddress as `0x${string}` | undefined;
 
   return useQuery<OptimizerResponse>({
-    // Balance is passed as API param but doesn't need to invalidate cache (P2-2 fix)
     queryKey: ["optimizer", address],
     queryFn: async () => {
       if (!address) throw new Error("No wallet connected");
       const token = await getAccessToken();
-      const res = await fetch(
-        `/api/optimize?address=${address}&balance=${usdcBalance.toString()}`,
-        {
-          headers: {
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        }
-      );
+      const res = await fetch(`/api/optimize?address=${address}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
       if (!res.ok) throw new Error("Failed to fetch optimization");
       return res.json();
     },
@@ -187,13 +183,13 @@ export function useOptimizer(usdcBalance: bigint = BigInt(0)) {
 
 // Rebalance mutation
 export function useRebalance() {
-  const { wallet } = useWallet();
   const { getAccessToken } = usePrivy();
+  const { agentAddress } = useWalletSelection();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ balance }: { balance: bigint }) => {
-      if (!wallet?.address) throw new Error("No wallet connected");
+      if (!agentAddress) throw new Error("No wallet connected");
       const token = await getAccessToken();
       const res = await fetch("/api/optimize", {
         method: "POST",
@@ -202,7 +198,7 @@ export function useRebalance() {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          address: wallet.address,
+          address: agentAddress,
           balance: balance.toString(),
         }),
       });
@@ -492,6 +488,8 @@ export function useAgent() {
     isRegistered: status.data?.isRegistered ?? false,
     autoOptimizeEnabled: status.data?.autoOptimizeEnabled ?? false,
     hasAuthorization: status.data?.hasAuthorization ?? false,
+    /** The wallet_address stored in the DB for this registration (the delegated EOA or smart wallet) */
+    registeredAddress: (status.data?.registeredAddress as string | undefined) ?? null,
     isLoading: status.isLoading,
     register: register.mutate,
     isRegistering: register.isPending,

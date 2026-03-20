@@ -48,7 +48,13 @@ export async function getRedisClient(): Promise<RedisType | null> {
 
   // Return null if Redis is not configured
   if (!redisUrl) {
-    console.warn("[Redis] REDIS_URL not configured, using in-memory fallback");
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "[Redis] REDIS_URL is required in production. " +
+          "In-memory fallback is not safe for multi-instance deployments."
+      );
+    }
+    console.warn("[Redis] REDIS_URL not configured, using in-memory fallback (dev only)");
     return null;
   }
 

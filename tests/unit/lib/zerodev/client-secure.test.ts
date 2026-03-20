@@ -189,7 +189,7 @@ describe("Client Secure (ZeroDev)", () => {
       signMessage: vi.fn(),
       signTypedData: vi.fn(),
     };
-    const mockAuth = { chainId: 1n, nonce: 0n };
+    const mockAuth = { chainId: 1n, nonce: 0n } as any;
 
     it("should register agent successfully", async () => {
       // Mock /api/optimize response
@@ -512,7 +512,12 @@ describe("Client Secure (ZeroDev)", () => {
           json: async () => ({ success: true }),
         });
 
-      await registerAgentSecure(mockAddress, "token", { chainId: 1n, nonce: 0n }, mockWalletClient);
+      await registerAgentSecure(
+        mockAddress,
+        "token",
+        { chainId: 1n, nonce: 0n } as any,
+        mockWalletClient
+      );
 
       // toCallPolicy should have been called with permissions array
       expect(toCallPolicy).toHaveBeenCalledTimes(1);
@@ -565,7 +570,12 @@ describe("Client Secure (ZeroDev)", () => {
           json: async () => ({ success: true }),
         });
 
-      await registerAgentSecure(mockAddress, "token", { chainId: 1n, nonce: 0n }, mockWalletClient);
+      await registerAgentSecure(
+        mockAddress,
+        "token",
+        { chainId: 1n, nonce: 0n } as any,
+        mockWalletClient
+      );
 
       const callPolicyArgs = (toCallPolicy as any).mock.calls[0][0];
       const permissions = callPolicyArgs.permissions;

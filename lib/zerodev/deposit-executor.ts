@@ -6,14 +6,13 @@
 import { encodeFunctionData, parseAbi, parseUnits, type Hex } from "viem";
 import { createDeserializedKernelClient, createSessionKernelClient } from "./kernel-client";
 import { withBuilderCode } from "@/lib/builder-code";
+import { USDC_ADDRESS } from "@/lib/config";
 
 const VAULT_ABI = parseAbi([
   "function deposit(uint256 assets, address receiver) returns (uint256 shares)",
 ]);
 
 const ERC20_ABI = parseAbi(["function approve(address spender, uint256 amount) returns (bool)"]);
-
-const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
 
 // Function selectors for scoped permissions
 const APPROVE_SELECTOR = "0x095ea7b3" as Hex; // approve(address,uint256)

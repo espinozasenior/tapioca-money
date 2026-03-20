@@ -20,7 +20,7 @@ export interface RateLimitConfig {
   maxRequests: number; // Maximum requests in window
   windowMs: number; // Window size in milliseconds
   keyPrefix?: string; // Redis key prefix
-  failClosed?: boolean; // If true, deny requests when Redis is unavailable (default: false)
+  failClosed?: boolean; // If true, deny requests when Redis is unavailable (default: true)
 }
 
 export interface RateLimitResult {
@@ -35,6 +35,7 @@ const DEFAULT_CONFIG: RateLimitConfig = {
   maxRequests: 20,
   windowMs: 24 * 60 * 60 * 1000, // 24 hours
   keyPrefix: "ratelimit",
+  failClosed: true, // Security: deny requests when Redis is unavailable
 };
 
 /**
@@ -147,18 +148,88 @@ export async function recordRequest(
  * @param config - Rate limit configuration
  * @returns Rate limit result (records if allowed)
  */
+/**
+ * Atomic check-and-record rate limiting.
+ *
+ * Attempts a Lua script for true atomicity on Redis.
+ * Falls back to the two-step check+record for in-memory cache.
+ */
 export async function checkAndRecordRateLimit(
   identifier: string,
   config: Partial<RateLimitConfig> = {}
 ): Promise<RateLimitResult> {
-  // Default to fail-closed for financial operations that use the combined check+record path
-  const result = await checkRateLimit(identifier, { failClosed: true, ...config });
+  const cfg = { ...DEFAULT_CONFIG, ...config };
+  const cache = await getCacheInterface();
+  const now = Date.now();
+  const windowStart = now - cfg.windowMs;
+  const key = `${cfg.keyPrefix}:${identifier.toLowerCase()}`;
+  const member = `${now}:${randomUUID()}`;
+  const ttlSeconds = Math.ceil(cfg.windowMs / 1000) + 60;
 
+  try {
+    // Atomic Lua script: clean expired, count, conditionally add
+    const luaScript = `
+      redis.call('ZREMRANGEBYSCORE', KEYS[1], 0, ARGV[1])
+      local count = redis.call('ZCARD', KEYS[1])
+      if count >= tonumber(ARGV[2]) then
+        return count
+      end
+      redis.call('ZADD', KEYS[1], ARGV[3], ARGV[4])
+      redis.call('EXPIRE', KEYS[1], tonumber(ARGV[5]))
+      return count
+    `;
+
+    const result = await cache.eval(
+      luaScript,
+      [key],
+      [String(windowStart), String(cfg.maxRequests), String(now), member, String(ttlSeconds)]
+    );
+
+    // Lua returns null for in-memory fallback — use non-atomic path
+    if (result === null) {
+      return checkAndRecordRateLimitFallback(identifier, config);
+    }
+
+    const count = Number(result);
+    if (count >= cfg.maxRequests) {
+      return {
+        allowed: false,
+        remaining: 0,
+        resetTime: now + cfg.windowMs,
+        retryAfter: Math.ceil(cfg.windowMs / 1000),
+        reason: `Rate limit exceeded. Try again later.`,
+      };
+    }
+
+    return {
+      allowed: true,
+      remaining: cfg.maxRequests - count - 1,
+      resetTime: now + cfg.windowMs,
+    };
+  } catch (error: any) {
+    console.error("[RateLimit] Atomic check-and-record error:", error.message);
+    if (cfg.failClosed) {
+      return {
+        allowed: false,
+        remaining: 0,
+        resetTime: now + 60_000,
+        reason: "Rate limiter unavailable. Request denied for safety.",
+      };
+    }
+    return { allowed: true, remaining: cfg.maxRequests, resetTime: now + cfg.windowMs };
+  }
+}
+
+/** Non-atomic fallback for in-memory cache (single process, no TOCTOU concern) */
+async function checkAndRecordRateLimitFallback(
+  identifier: string,
+  config: Partial<RateLimitConfig> = {}
+): Promise<RateLimitResult> {
+  const result = await checkRateLimit(identifier, { failClosed: true, ...config });
   if (result.allowed) {
     await recordRequest(identifier, config);
     result.remaining--;
   }
-
   return result;
 }
 
@@ -241,7 +312,9 @@ export async function incrementUserOpCount(walletAddress: string): Promise<void>
     const current = await cache.get(key);
     const next = current ? parseInt(current, 10) + 1 : 1;
     await cache.set(key, String(next), 86400);
-  } catch {}
+  } catch (e) {
+    console.error("[RateLimit] Failed to increment UserOp count:", e);
+  }
 }
 
 // ============================================

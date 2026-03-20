@@ -12,7 +12,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { neon } from "@neondatabase/serverless";
+import { sql } from "@/lib/db";
 import { encryptAuthorization } from "@/lib/security/session-encryption";
 import {
   requireAuthForAddress,
@@ -20,8 +20,6 @@ import {
   forbiddenResponse,
 } from "@/lib/auth/middleware";
 import { revokeSession } from "@/lib/security/session-revocation";
-
-const sql = neon(process.env.DATABASE_URL!);
 
 interface StoreSessionRequest {
   address: string;

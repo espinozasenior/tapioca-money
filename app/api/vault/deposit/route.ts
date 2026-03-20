@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { neon } from "@neondatabase/serverless";
+import { sql } from "@/lib/db";
 import { SessionKey7702Authorization } from "@/lib/security/session-encryption";
 import { authenticateRequest, unauthorizedResponse } from "@/lib/auth/middleware";
 import {
@@ -19,8 +19,6 @@ import {
 import { executeGaslessDeposit } from "@/lib/zerodev/deposit-executor";
 import { executeYoGaslessDeposit } from "@/lib/zerodev/yo-deposit-executor";
 import { YO_VAULTS } from "@/lib/yo/constants";
-
-const sql = neon(process.env.DATABASE_URL!);
 
 export async function POST(request: NextRequest) {
   try {

@@ -283,11 +283,15 @@ describe("Signer Consistency — Kernel Version & EntryPoint", () => {
     const fs = await import("fs");
     const ENTRYPOINT_ADDRESS = "0x0000000071727De22E5E9d8BAf0edAc6f37da032";
 
-    const files = ["lib/zerodev/kernel-client.ts", "lib/zerodev/transfer-session.ts"];
+    // ENTRYPOINT_V07 is now defined in the shared constants file and imported by consumers
+    const constantsSource = fs.readFileSync("lib/zerodev/constants.ts", "utf-8");
+    expect(constantsSource).toContain(ENTRYPOINT_ADDRESS);
 
-    for (const file of files) {
+    // Consumers should import from constants (not redefine the address)
+    const consumers = ["lib/zerodev/kernel-client.ts", "lib/zerodev/transfer-session.ts"];
+    for (const file of consumers) {
       const source = fs.readFileSync(file, "utf-8");
-      expect(source).toContain(ENTRYPOINT_ADDRESS);
+      expect(source).toContain("ENTRYPOINT_V07");
     }
   });
 

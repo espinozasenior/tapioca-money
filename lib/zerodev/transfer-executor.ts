@@ -7,8 +7,7 @@ import { encodeFunctionData, erc20Abi, parseUnits } from "viem";
 import { createDeserializedKernelClient, createSessionKernelClient } from "./kernel-client";
 import { withBuilderCode } from "@/lib/builder-code";
 import { validateTransferRecipient } from "./transfer-recipient-validator";
-
-const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
+import { USDC_ADDRESS } from "@/lib/config";
 
 export interface GaslessTransferParams {
   userAddress: `0x${string}`;

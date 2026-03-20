@@ -97,6 +97,7 @@ vi.mock("@/lib/yo/constants", () => ({
 
 vi.mock("@/lib/config", () => ({
   CHAIN_CONFIG: { chainId: 8453, rpcUrl: "http://localhost" },
+  USDC_ADDRESS: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
 }));
 
 describe("Cron API", () => {
@@ -178,7 +179,8 @@ describe("Cron API", () => {
     const body = await res.json();
 
     expect(body.summary.skipped).toBe(1);
-    expect(body.summary.details[0].reason).toContain("locked");
+    // H-3: details are no longer included in the HTTP response (security fix)
+    expect(body.summary.details).toBeUndefined();
   });
 
   it("should handle safety check failure", async () => {

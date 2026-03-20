@@ -84,10 +84,19 @@ describe("Redis Rate Limiter", () => {
       expect(result.reason).toContain("unavailable");
     });
 
-    it("should handle fail open (default)", async () => {
+    it("should handle fail closed (default)", async () => {
       mockCache.zrangebyscore.mockRejectedValue(new Error("Redis down"));
 
       const result = await checkRateLimit("user1", { maxRequests: 10 });
+
+      expect(result.allowed).toBe(false);
+      expect(result.reason).toContain("unavailable");
+    });
+
+    it("should handle fail open when explicitly configured", async () => {
+      mockCache.zrangebyscore.mockRejectedValue(new Error("Redis down"));
+
+      const result = await checkRateLimit("user1", { maxRequests: 10, failClosed: false });
 
       expect(result.allowed).toBe(true);
       expect(result.remaining).toBe(10);
