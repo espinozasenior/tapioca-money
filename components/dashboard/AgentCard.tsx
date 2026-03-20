@@ -1,13 +1,13 @@
 "use client";
 
 import { Zap, Power } from "lucide-react";
-import { useWallet } from "@/hooks/useWallet";
 import { useAgent, useYieldPositions } from "@/hooks/useOptimizer";
+import { useWalletSelection } from "@/hooks/useWalletSelection";
 
 export function AgentCard() {
-  const { wallet } = useWallet();
+  const { agentAddress } = useWalletSelection();
   const { isRegistered, autoOptimizeEnabled, isLoading: agentLoading } = useAgent();
-  const { positions, isLoading: positionsLoading } = useYieldPositions(wallet?.address);
+  const { positions, isLoading: positionsLoading } = useYieldPositions(agentAddress ?? undefined);
 
   const isLoading = agentLoading || positionsLoading;
 

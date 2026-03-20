@@ -4,6 +4,7 @@ import { useReducer } from "react";
 import { Plus, ArrowUpRight, Sparkles } from "lucide-react";
 import { useBalance } from "@/hooks/useBalance";
 import { useWallet } from "@/hooks/useWallet";
+import { useWalletSelection } from "@/hooks/useWalletSelection";
 import { DepositModal } from "@/components/deposit";
 import { SendFundsModal } from "@/components/send-funds";
 import { EarnYieldModal } from "@/components/earn-yield";
@@ -47,8 +48,10 @@ const initialModalState: ModalState = {
 
 export default function DashboardPage() {
   const { wallet } = useWallet();
+  const { agentAddress } = useWalletSelection();
   const { displayableBalance } = useBalance();
-  const walletAddress = wallet?.address ?? "";
+  // Use agentAddress for deposit destination (where funds should go)
+  const walletAddress = agentAddress ?? wallet?.address ?? "";
 
   const [modals, dispatch] = useReducer(modalReducer, initialModalState);
 
