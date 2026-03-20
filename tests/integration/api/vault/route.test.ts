@@ -2,7 +2,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
 // 1. Define mock implementation first
-const { mockSql } = vi.hoisted(() => ({ mockSql: vi.fn() }));
+const { mockSql, mockDeposit, mockRedeem } = vi.hoisted(() => ({
+  mockSql: vi.fn(),
+  mockDeposit: vi.fn(),
+  mockRedeem: vi.fn(),
+}));
 
 // 2. Mock modules
 vi.mock("@neondatabase/serverless", () => ({
@@ -20,12 +24,19 @@ vi.mock("@/lib/security/session-encryption", () => ({
   decryptAuthorization: vi.fn(),
 }));
 
-vi.mock("@/lib/zerodev/deposit-executor", () => ({
-  executeGaslessDeposit: vi.fn(),
-}));
-
-vi.mock("@/lib/zerodev/vault-executor", () => ({
-  executeVaultRedeem: vi.fn(),
+vi.mock("@/lib/agent/vault-executor", () => ({
+  getExecutor: () => ({
+    deposit: mockDeposit,
+    redeem: mockRedeem,
+  }),
+  DepositError: class DepositError extends Error {
+    code: string;
+    constructor(code: string, message: string) {
+      super(message);
+      this.code = code;
+      this.name = "DepositError";
+    }
+  },
 }));
 
 vi.mock("@/lib/redis/rate-limiter", () => ({
@@ -37,8 +48,6 @@ import { POST as depositPOST } from "@/app/api/vault/deposit/route";
 import { POST as redeemPOST } from "@/app/api/vault/redeem/route";
 import { authenticateRequest } from "@/lib/auth/middleware";
 import { decryptAuthorization } from "@/lib/security/session-encryption";
-import { executeGaslessDeposit } from "@/lib/zerodev/deposit-executor";
-import { executeVaultRedeem } from "@/lib/zerodev/vault-executor";
 
 describe("Vault API", () => {
   const mockUserAddress = "0xuser" as `0x${string}`;
@@ -71,13 +80,13 @@ describe("Vault API", () => {
       serializedAccount: "mockSerialized",
     });
 
-    (executeGaslessDeposit as any).mockResolvedValue({
+    mockDeposit.mockResolvedValue({
       success: true,
       txHash: "0xtxhash",
       userOpHash: "0xopHash",
     });
 
-    (executeVaultRedeem as any).mockResolvedValue({
+    mockRedeem.mockResolvedValue({
       success: true,
       txHash: "0xtxhash",
       userOpHash: "0xopHash",
@@ -179,11 +188,11 @@ describe("Vault API", () => {
 
       expect(res.status).toBe(200);
       expect(body.success).toBe(true);
-      expect(executeGaslessDeposit).toHaveBeenCalled();
+      expect(mockDeposit).toHaveBeenCalled();
     });
 
     it("should handle execution failure", async () => {
-      (executeGaslessDeposit as any).mockResolvedValue({
+      mockDeposit.mockResolvedValue({
         success: false,
         error: "Deposit failed",
       });
@@ -217,11 +226,11 @@ describe("Vault API", () => {
 
       expect(res.status).toBe(200);
       expect(body.success).toBe(true);
-      expect(executeVaultRedeem).toHaveBeenCalled();
+      expect(mockRedeem).toHaveBeenCalled();
     });
 
     it("should handle known error codes", async () => {
-      (executeVaultRedeem as any).mockResolvedValue({
+      mockRedeem.mockResolvedValue({
         success: false,
         error: "0xace2a47e",
       });

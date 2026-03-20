@@ -9,15 +9,13 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
-import { SessionKey7702Authorization } from "@/lib/security/session-encryption";
 import { authenticateRequest, unauthorizedResponse } from "@/lib/auth/middleware";
 import {
   buildWalletAddresses,
   resolveAndDecryptRegistration,
   verifyVaultApproval,
 } from "@/lib/agent/resolve-registration";
-import { executeVaultRedeem } from "@/lib/zerodev/vault-executor";
-import { executeYoVaultRedeem } from "@/lib/zerodev/yo-vault-executor";
+import { getExecutor } from "@/lib/agent/vault-executor";
 import { incrementUserOpCount } from "@/lib/redis/rate-limiter";
 
 export async function POST(request: NextRequest) {
@@ -104,31 +102,20 @@ export async function POST(request: NextRequest) {
     }
 
     // 6. Execute vault redeem
-    let result;
-    if (protocol === "yo") {
-      result = await executeYoVaultRedeem({
+    const executor = getExecutor(protocol);
+    const result = await executor.redeem(
+      {
         smartAccountAddress: accountAddress,
-        vaultAddress: vaultAddress as `0x${string}`,
-        shares: BigInt(shares),
-        receiver: accountAddress,
         serializedAccount: decryptedAuth.serializedAccount,
-      });
-    } else {
-      // Legacy fields only exist on 7702 sessions
-      const legacy7702 =
-        decryptedAuth.type === "zerodev-7702-session"
-          ? (decryptedAuth as SessionKey7702Authorization)
-          : undefined;
-      result = await executeVaultRedeem({
-        smartAccountAddress: accountAddress,
-        vaultAddress: vaultAddress as `0x${string}`,
-        shares: BigInt(shares),
-        receiver: accountAddress,
-        serializedAccount: decryptedAuth.serializedAccount,
-        sessionPrivateKey: legacy7702?.sessionPrivateKey as `0x${string}` | undefined,
+        decryptedAuth,
         approvedVaults: approvedVaults as `0x${string}`[],
-      });
-    }
+      },
+      {
+        vaultAddress: vaultAddress as `0x${string}`,
+        shares: BigInt(shares),
+        receiver: accountAddress,
+      }
+    );
 
     if (!result.success) {
       let userMessage = result.error || "Vault redeem failed";
