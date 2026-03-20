@@ -1,11 +1,9 @@
-import React, { useCallback, useState, lazy, Suspense } from "react";
+import React, { useState, useCallback } from "react";
 import { useAuth } from "@/hooks/useWallet";
 import { AmountInput } from "../common/AmountInput";
 import { Dialog, DialogContent, DialogTitle, DialogClose } from "../common/Dialog";
 import { useActivityFeed } from "../../hooks/useActivityFeed";
 import { useBalance } from "@/hooks/useBalance";
-
-const CrossmintWrapper = lazy(() => import("./CrossmintWrapper"));
 
 interface DepositModalProps {
   open: boolean;
@@ -40,10 +38,6 @@ export function DepositModal({ open, onClose, walletAddress }: DepositModalProps
     handleDone();
   }, [refetchActivityFeed]);
 
-  const handleProcessingPayment = useCallback(() => {
-    setStep("processing");
-  }, []);
-
   const showCloseButton = step === "options";
 
   return (
@@ -66,25 +60,26 @@ export function DepositModal({ open, onClose, walletAddress }: DepositModalProps
             )}
           </div>
         )}
-        <div className="flex w-full flex-grow flex-col">
-          <Suspense
-            fallback={
-              <div className="flex items-center justify-center py-8">
-                <div className="border-primary mx-auto h-8 w-8 animate-spin rounded-full border-b-2" />
-              </div>
-            }
-          >
-            <CrossmintWrapper
-              amount={amount}
-              isAmountValid={Number(amount) >= MIN_AMOUNT && Number(amount) <= MAX_AMOUNT}
-              walletAddress={walletAddress}
-              onPaymentCompleted={handlePaymentCompleted}
-              receiptEmail={receiptEmail || ""}
-              onProcessingPayment={handleProcessingPayment}
-              step={step}
-              goBack={restartFlow}
-            />
-          </Suspense>
+        <div className="flex w-full flex-grow flex-col items-center justify-center py-8 text-center">
+          <div className="mb-3 rounded-full bg-gray-100 p-3">
+            <svg
+              className="h-6 w-6 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          </div>
+          <p className="text-gray-600">Fiat on-ramp coming soon</p>
+          <p className="mt-1 text-sm text-gray-400">
+            Deposit USDC directly from your bank account or card
+          </p>
         </div>
       </DialogContent>
     </Dialog>

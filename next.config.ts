@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-const { IgnorePlugin } = require("webpack");
 
 const nextConfig: NextConfig = {
   async headers() {
@@ -44,71 +43,12 @@ const nextConfig: NextConfig = {
       "@heroicons/react",
       "lucide-react",
     ],
-    turbo: {
-      resolveAlias: {
-        "@solana/kit": "./utils/solana-proxy.js",
-        "@solana/web3.js": "./utils/solana-proxy.js",
-        "@solana/accounts": "./utils/solana-proxy.js",
-        "@solana/addresses": "./utils/solana-proxy.js",
-        "@solana/codecs": "./utils/solana-proxy.js",
-        "@solana/programs": "./utils/solana-proxy.js",
-        "@solana/rpc": "./utils/solana-proxy.js",
-        "@solana/rpc-api": "./utils/solana-proxy.js",
-        "@solana/rpc-types": "./utils/solana-proxy.js",
-        "@solana/signers": "./utils/solana-proxy.js",
-        "@solana/transactions": "./utils/solana-proxy.js",
-        "@solana/transaction-messages": "./utils/solana-proxy.js",
-        "@solana-program/token": "./utils/solana-proxy.js",
-        "@solana-program/system": "./utils/solana-proxy.js",
-        "@solana-program/memo": "./utils/solana-proxy.js",
-        "@solana-program/compute-budget": "./utils/solana-proxy.js",
-        "@solana-program/associated-token-account": "./utils/solana-proxy.js",
-        "react-native": "./utils/solana-proxy.js",
-        "@react-native-async-storage/async-storage": "./utils/solana-proxy.js",
-        "react-native-url-polyfill": "./utils/solana-proxy.js",
-      },
-    },
   },
   webpack: (config, { dev }) => {
     // Disable webpack cache in production (useless on Vercel's ephemeral builders)
     if (!dev) {
       config.cache = false;
     }
-    // Exclude React Native transitive dependencies (completely unused in this EVM project)
-    config.plugins.push(
-      new IgnorePlugin({ resourceRegExp: /^react-native$/ }),
-      new IgnorePlugin({ resourceRegExp: /^@react-native/ })
-    );
-
-    // Stub out heavy Solana transitive deps from @crossmint/client-sdk-react-ui
-    // These are resolved to empty modules instead of being ignored, so require() won't throw
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      "@solana/kit": false,
-      "@solana/web3.js": false,
-      "@solana/accounts": false,
-      "@solana/addresses": false,
-      "@solana/codecs": false,
-      "@solana/programs": false,
-      "@solana/rpc": false,
-      "@solana/rpc-api": false,
-      "@solana/rpc-types": false,
-      "@solana/signers": false,
-      "@solana/transactions": false,
-      "@solana/transaction-messages": false,
-      "@solana-program/token": false,
-      "@solana-program/system": false,
-      "@solana-program/memo": false,
-      "@solana-program/compute-budget": false,
-      "@solana-program/associated-token-account": false,
-    };
-
-    config.resolve.fallback = {
-      ...config.resolve.fallback,
-      "@react-native-async-storage/async-storage": false,
-      "react-native": false,
-      "react-native-url-polyfill": false,
-    };
 
     return config;
   },
