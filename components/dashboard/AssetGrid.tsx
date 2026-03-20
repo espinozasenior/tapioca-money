@@ -2,15 +2,15 @@
 
 import Image from "next/image";
 import { SlidersHorizontal } from "lucide-react";
-import { useWallet } from "@/hooks/useWallet";
 import { useBalance } from "@/hooks/useBalance";
 import { useYieldPositions } from "@/hooks/useOptimizer";
+import { useWalletSelection } from "@/hooks/useWalletSelection";
 import { AssetCard } from "./AssetCard";
 
 export function AssetGrid() {
-  const { wallet } = useWallet();
+  const { agentAddress } = useWalletSelection();
   const { displayableBalance, isLoading: balanceLoading } = useBalance();
-  const { positions, isLoading: positionsLoading } = useYieldPositions(wallet?.address);
+  const { positions, isLoading: positionsLoading } = useYieldPositions(agentAddress ?? undefined);
 
   const isLoading = balanceLoading || positionsLoading;
 

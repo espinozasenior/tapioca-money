@@ -8,13 +8,11 @@
  * Results are cached in Redis for 60s to avoid DB hits on polling endpoints.
  */
 
-import { neon } from "@neondatabase/serverless";
+import { sql } from "@/lib/db";
 import { getCacheInterface } from "@/lib/redis/client";
 
 const CACHE_TTL = 60; // seconds
 const CACHE_PREFIX = "agent_addr:";
-
-const sql = neon(process.env.DATABASE_URL!);
 
 /**
  * Resolve the agent address for a set of Privy-linked wallet addresses.

@@ -3,6 +3,7 @@ import type { Address } from "viem";
 import { yoApiClient } from "@/lib/yo/api-client";
 import { YO_VAULTS } from "@/lib/yo/constants";
 import { CHAIN_CONFIG } from "@/lib/config";
+import { checkAndRecordRateLimit } from "@/lib/redis/rate-limiter";
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,6 +15,19 @@ export async function GET(request: NextRequest) {
 
     if (!/^0x[a-fA-F0-9]{40}$/.test(addressParam)) {
       return NextResponse.json({ error: "Invalid address format" }, { status: 400 });
+    }
+
+    // Rate limit: 30 requests per minute per address
+    const rateLimit = await checkAndRecordRateLimit(addressParam, {
+      maxRequests: 30,
+      windowMs: 60_000,
+      keyPrefix: "ratelimit:pending-redeems",
+    });
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: rateLimit.reason || "Rate limit exceeded" },
+        { status: 429, headers: { "Retry-After": String(rateLimit.retryAfter ?? 60) } }
+      );
     }
 
     const userAddress = addressParam as Address;

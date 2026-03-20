@@ -15,6 +15,7 @@ import {
 import { WalletDetails } from "./WalletDetails";
 import { WalletSwitcher } from "../WalletSwitcher";
 import { useWallet, useAuth } from "@/hooks/useWallet";
+import { useWalletSelection } from "@/hooks/useWalletSelection";
 
 interface DashboardSummaryProps {
   onDepositClick: () => void;
@@ -50,6 +51,7 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
     warningModal: false,
   });
   const { wallet } = useWallet();
+  const { agentAddress } = useWalletSelection();
   const { user } = useAuth();
 
   const handleWithdraw = () => {
@@ -58,7 +60,9 @@ export function DashboardSummary({ onDepositClick, onSendClick }: DashboardSumma
     } else {
       window.location.href = `https://pay.coinbase.com/v3/sell/input?${new URLSearchParams({
         appId: process.env.NEXT_PUBLIC_COINBASE_APP_ID!,
-        addresses: JSON.stringify({ [wallet?.address || ""]: [wallet?.chain || ""] }),
+        addresses: JSON.stringify({
+          [agentAddress || wallet?.address || ""]: [wallet?.chain || ""],
+        }),
         redirectUrl: window.location.origin,
         partnerUserId: user?.id!,
         assets: JSON.stringify(["USDC"]),

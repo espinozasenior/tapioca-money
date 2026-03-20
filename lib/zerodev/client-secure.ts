@@ -12,7 +12,7 @@
 import { createPublicClient, http, parseAbi, type Hex } from "viem";
 import { base } from "viem/chains";
 import { toAccount } from "viem/accounts";
-import { CHAIN_CONFIG } from "@/lib/config";
+import { CHAIN_CONFIG, USDC_ADDRESS } from "@/lib/config";
 
 // Session key expiry: 7 days
 const SESSION_KEY_EXPIRY_DAYS = 7;
@@ -23,18 +23,45 @@ const DEPOSIT_SELECTOR = "0x6e553f65" as Hex; // deposit(uint256,address)
 const REDEEM_SELECTOR = "0xba087652" as Hex; // redeem(uint256,address,address)
 const WITHDRAW_SELECTOR = "0xb460af94" as Hex; // withdraw(uint256,address,address)
 const TRANSFER_SELECTOR = "0xa9059cbb" as Hex; // transfer(address,uint256)
-const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as `0x${string}`;
 
 // Maximum USDC amount per session key call (10,000.000001 USDC with 6 decimals)
 // The +1 forces a new permissionHash to break the re-registration deadlock
 // where the old validator blocks new installations with the same hash.
 const MAX_USDC_PER_CALL = BigInt(10_000) * BigInt(1e6) + 1n;
 
-// EntryPoint V0.7 object (required format for ZeroDev SDK v5)
-const ENTRYPOINT_V07 = {
-  address: "0x0000000071727De22E5E9d8BAf0edAc6f37da032" as `0x${string}`,
-  version: "0.7" as const,
-};
+import { ENTRYPOINT_V07 } from "@/lib/zerodev/constants";
+
+/**
+ * Signed EIP-7702 authorization object from Privy's useSign7702Authorization.
+ * Contains the cryptographic signature allowing delegation to a contract address.
+ * Compatible with viem's SignAuthorizationReturnType.
+ */
+export interface SignedEip7702Authorization {
+  address: `0x${string}`;
+  chainId: number;
+  nonce: number;
+  r: `0x${string}`;
+  s: `0x${string}`;
+  v?: bigint;
+  yParity?: number;
+}
+
+/**
+ * Decrypted authorization stored in DB (from session-encryption.ts).
+ * Contains all session key material needed for server-side execution.
+ */
+export interface DecryptedAuthorization {
+  type: "zerodev-7702-session" | "zerodev-erc4337-session";
+  eoaAddress: `0x${string}`;
+  sessionKeyAddress: `0x${string}`;
+  sessionPrivateKey: `0x${string}`;
+  serializedAccount?: string;
+  approvedVaults?: `0x${string}`[];
+  eip7702SignedAuth?: SignedEip7702Authorization;
+  smartWalletAddress?: `0x${string}`;
+  expiry: number;
+  timestamp: number;
+}
 
 export interface SecureSessionKeyResult {
   smartAccountAddress: `0x${string}`;
@@ -47,7 +74,7 @@ export interface SecureSessionKeyResult {
  * Serialize signed EIP-7702 authorization for JSON transport.
  * `bigint` fields (like `v`) are not JSON-serializable — convert to string.
  */
-export function serializeSignedAuth(auth: any) {
+export function serializeSignedAuth(auth: Record<string, any>) {
   // Normalize v/yParity: Privy returns yParity, ZeroDev SDK may expect v (BigInt)
   const yParity = auth.yParity ?? auth.v;
   return {
@@ -85,7 +112,9 @@ async function buildSessionKeyAndPermissions(approvedVaults: `0x${string}`[]) {
   // 1. Generate session key pair (client-side)
   const sessionPrivateKey = generatePrivateKey();
   const sessionKeyAccount = privateKeyToAccount(sessionPrivateKey);
-  console.log("[ZeroDev] Session key address:", sessionKeyAccount.address);
+  if (process.env.NODE_ENV === "development") {
+    console.log("[ZeroDev] Session key address:", sessionKeyAccount.address);
+  }
 
   // 2. Create public client
   const publicClient = createPublicClient({
@@ -234,7 +263,7 @@ async function buildSessionKeyAndPermissions(approvedVaults: `0x${string}`[]) {
  */
 async function createAndSerializeAccount(
   userAddress: `0x${string}`,
-  signedEip7702Auth: any,
+  signedEip7702Auth: SignedEip7702Authorization,
   walletClient: any,
   approvedVaults: `0x${string}`[]
 ): Promise<{ serializedAccount: string; sessionKeyAddress: `0x${string}`; expiry: number }> {
@@ -271,7 +300,7 @@ async function createAndSerializeAccount(
     entryPoint: ENTRYPOINT_V07,
     kernelVersion: KERNEL_V3_3,
     address: userAddress,
-    eip7702Auth: signedEip7702Auth,
+    eip7702Auth: signedEip7702Auth as any,
     eip7702Account: eoaLocalAccount,
   });
 
@@ -283,7 +312,7 @@ async function createAndSerializeAccount(
     kernelAccount,
     sessionPrivateKey,
     undefined, // Auto-generate enable signature (sudo signs)
-    signedEip7702Auth // Embed EIP-7702 auth
+    signedEip7702Auth as any // Embed EIP-7702 auth
   );
 
   console.log("[ZeroDev 7702] Account serialized successfully");
@@ -312,7 +341,7 @@ async function createAndSerializeAccount(
 export async function registerAgentSecure(
   userAddress: `0x${string}`,
   accessToken: string,
-  signedEip7702Auth: any,
+  signedEip7702Auth: SignedEip7702Authorization,
   walletClient: any
 ): Promise<SecureSessionKeyResult> {
   try {
@@ -381,8 +410,10 @@ export async function registerAgentSecure(
       throw new Error(error.error || "Failed to store session data");
     }
 
-    console.log("[ZeroDev 7702] Session key address:", sessionKeyAddress);
-    console.log("[ZeroDev 7702] Expiry:", new Date(expiry * 1000).toISOString());
+    if (process.env.NODE_ENV === "development") {
+      console.log("[ZeroDev 7702] Session key address:", sessionKeyAddress);
+      console.log("[ZeroDev 7702] Expiry:", new Date(expiry * 1000).toISOString());
+    }
     console.log("[ZeroDev 7702] Registration complete");
 
     return {
@@ -408,12 +439,9 @@ export interface DelegationStatus {
  */
 export async function checkSmartAccountActive(address: `0x${string}`): Promise<DelegationStatus> {
   try {
-    const publicClient = createPublicClient({
-      chain: base,
-      transport: http(CHAIN_CONFIG.rpcUrl),
-    });
+    const { baseClient } = await import("@/lib/shared/rpc-client");
 
-    const code = await publicClient.getBytecode({ address });
+    const code = await baseClient.getBytecode({ address });
 
     if (!code || code === "0x") {
       return { active: false, isDelegation: false };
@@ -828,7 +856,9 @@ export async function registerAgentSecureExternal(
     }
 
     console.log("[ZeroDev 7702] External wallet registration complete");
-    console.log("[ZeroDev 7702] Session key:", sessionKeyAddress);
+    if (process.env.NODE_ENV === "development") {
+      console.log("[ZeroDev 7702] Session key:", sessionKeyAddress);
+    }
 
     return {
       smartAccountAddress: userAddress,
@@ -923,7 +953,9 @@ export async function registerAgentErc4337(
     }
 
     console.log("[ZeroDev 4337] ERC-4337 registration complete");
-    console.log("[ZeroDev 4337] Session key:", sessionKeyAddress);
+    if (process.env.NODE_ENV === "development") {
+      console.log("[ZeroDev 4337] Session key:", sessionKeyAddress);
+    }
 
     return {
       smartAccountAddress: smartWalletAddress,

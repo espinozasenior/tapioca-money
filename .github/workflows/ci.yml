@@ -48,6 +48,7 @@ jobs:
           --exclude '**/integration/cron-job.test.ts'
           --exclude '**/integration/edge-cases.test.ts'
         env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
           DATABASE_ENCRYPTION_KEY: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
           AGENT_SIMULATION_MODE: "true"
 

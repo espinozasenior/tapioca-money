@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { neon } from "@neondatabase/serverless";
+import { sql } from "@/lib/db";
 import { ErrorTracker } from "@/lib/monitoring/error-tracker";
 import { authenticateRequest, unauthorizedResponse } from "@/lib/auth/middleware";
 import { verifySecret } from "@/lib/security/verify-secret";
-
-const sql = neon(process.env.DATABASE_URL!);
 
 type HealthStatus = "healthy" | "degraded" | "down";
 type ServiceStatus = "up" | "down";

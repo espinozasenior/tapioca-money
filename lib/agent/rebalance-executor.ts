@@ -29,8 +29,7 @@ const VAULT_ABI = parseAbi([
 
 const ERC20_ABI = parseAbi(["function approve(address spender, uint256 amount) returns (bool)"]);
 
-const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
-const MAX_UINT256 = BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+import { USDC_ADDRESS } from "@/lib/config";
 
 // Function selectors for scoped permissions
 const FUNCTION_SELECTORS = {

@@ -12,36 +12,32 @@ import {
 } from "@/hooks/useOptimizer";
 import { formatUserError } from "@/lib/yo/error-messages";
 
+interface PositionsListProps {
+  positions: YieldPosition[];
+  yields: YieldOpportunity[];
+  isLoading: boolean;
+  onExitSuccess: () => void;
+}
+
 // Format USD amount for display
 const formatUsdAmount = (amountUsd: string | undefined, amount: string | undefined) => {
-  // Prefer amountUsd if available, otherwise use amount
   if (amountUsd) {
     const num = Number(amountUsd);
     if (!isNaN(num)) {
-      return num.toLocaleString("en-US", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      });
+      return num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
   }
   if (amount) {
     const num = Number(amount);
     if (!isNaN(num)) {
-      return num.toLocaleString("en-US", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      });
+      return num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
   }
   return "0.00";
 };
 
-// Format APY for display
-const formatApy = (apy: number) => {
-  return `${(apy * 100).toFixed(2)}%`;
-};
+const formatApy = (apy: number) => `${(apy * 100).toFixed(2)}%`;
 
-// Format earned amount — show 4 decimals for sub-cent amounts, 2 otherwise
 export const formatEarned = (earned: string): string => {
   const num = parseFloat(earned);
   if (isNaN(num) || num === 0) return "0.00";
@@ -65,23 +61,67 @@ const DEFAULT_EXIT_STATE: PositionExitState = {
   redeemStatus: null,
 };
 
-interface PositionsListProps {
-  positions: YieldPosition[];
-  yields: YieldOpportunity[];
-  isLoading: boolean;
-  onExitSuccess: () => void;
-}
-
 // --- Sub-components ---
 
-function WithdrawalConfirm({
+function LoadingState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-8">
+      <div className="border-t-primary mb-3 h-8 w-8 animate-spin rounded-full border-4 border-gray-200" />
+      <p className="text-sm text-gray-500">Loading your positions...</p>
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-8 text-center">
+      <div className="mb-3 rounded-full bg-gray-100 p-3">
+        <svg
+          className="h-6 w-6 text-gray-400"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+      </div>
+      <p className="text-gray-600">No active yield positions</p>
+      <p className="mt-1 text-sm text-gray-400">
+        Deposit USDC into a yield opportunity to start earning
+      </p>
+    </div>
+  );
+}
+
+function DemoModeBanner() {
+  if (process.env.NEXT_PUBLIC_DEMO_MODE !== "true") return null;
+  return (
+    <div className="rounded-xl bg-blue-50 p-4">
+      <div className="flex items-start gap-3">
+        <Info className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-500" />
+        <p className="text-xs text-blue-700">
+          <strong>Demo Mode:</strong> This wallet uses testnet tokens to interact with mainnet yield
+          protocols. Testnet deposits won&apos;t actually earn yield — this is for demonstration
+          purposes only.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function WithdrawalSelector({
   positionState,
   position,
-  onPercentageChange,
+  onSelectPercentage,
 }: {
   positionState: PositionExitState;
   position: YieldPosition;
-  onPercentageChange: (percent: 25 | 50 | 75 | 100) => void;
+  onSelectPercentage: (pct: 25 | 50 | 75 | 100) => void;
 }) {
   return (
     <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-3">
@@ -90,7 +130,7 @@ function WithdrawalConfirm({
         {([25, 50, 75, 100] as const).map((percent) => (
           <button
             key={percent}
-            onClick={() => onPercentageChange(percent)}
+            onClick={() => onSelectPercentage(percent)}
             className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
               positionState.percentage === percent
                 ? "border-primary text-primary bg-primary/10"
@@ -132,16 +172,15 @@ function ExitStatusBanner({ positionState }: { positionState: PositionExitState 
   }
 
   if (positionState.state === "success") {
+    const isQueued = positionState.redeemStatus === "queued";
     return (
       <div
         className={`mt-4 flex items-center gap-2 rounded-lg p-3 text-sm ${
-          positionState.redeemStatus === "queued"
-            ? "bg-amber-50 text-amber-700"
-            : "bg-green-50 text-green-700"
+          isQueued ? "bg-amber-50 text-amber-700" : "bg-green-50 text-green-700"
         }`}
       >
         <CheckCircle2 className="h-4 w-4" />
-        {positionState.redeemStatus === "queued" ? "Withdrawal Queued" : "Withdrawal Confirmed"}
+        {isQueued ? "Withdrawal Queued" : "Withdrawal Confirmed"}
       </div>
     );
   }
@@ -160,19 +199,45 @@ function ExitStatusBanner({ positionState }: { positionState: PositionExitState 
   return null;
 }
 
+function ExitButton({
+  positionState,
+  onAction,
+}: {
+  positionState: PositionExitState;
+  onAction: () => void;
+}) {
+  const labels: Record<ExitState, string> = {
+    idle: "Exit position",
+    confirming: `Confirm withdrawal (${positionState.percentage}%)`,
+    loading: "Processing withdrawal...",
+    success: positionState.redeemStatus === "queued" ? "Withdrawal Queued" : "Withdrawal Confirmed",
+    failed: "Try Again",
+  };
+
+  return (
+    <button
+      onClick={onAction}
+      disabled={positionState.state === "loading" || positionState.state === "success"}
+      className="mt-4 w-full rounded-xl border border-gray-200 py-3 text-center text-sm font-medium text-gray-900 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {labels[positionState.state]}
+    </button>
+  );
+}
+
 function PositionCard({
   position,
   yieldOpp,
-  isPendingWithdrawal,
   positionState,
-  onStateChange,
+  isPendingWithdrawal,
+  onSetState,
   onExit,
 }: {
   position: YieldPosition;
   yieldOpp: YieldOpportunity | undefined;
-  isPendingWithdrawal: boolean;
   positionState: PositionExitState;
-  onStateChange: (state: PositionExitState) => void;
+  isPendingWithdrawal: boolean;
+  onSetState: (state: PositionExitState) => void;
   onExit: () => void;
 }) {
   const apy = position.apy;
@@ -181,31 +246,26 @@ function PositionCard({
   const vaultName = position.vaultName ?? yieldOpp?.metadata?.name ?? protocolInfo.name;
   const vaultDescription = position.vaultDescription ?? yieldOpp?.metadata?.description;
   const rewards = position.rewards;
-
   const estimatedYearlyEarnings = apy
     ? (Number(position.amountUsd || position.amount || 0) * apy).toFixed(2)
     : null;
 
-  const handleButtonClick = () => {
+  const handleButtonAction = () => {
     if (positionState.state === "idle") {
-      onStateChange({ ...positionState, state: "confirming", error: null });
-      return;
-    }
-    if (positionState.state === "confirming") {
+      onSetState({ ...positionState, state: "confirming", error: null });
+    } else if (positionState.state === "confirming") {
       onExit();
-      return;
-    }
-    if (positionState.state === "failed") {
-      onStateChange({ ...positionState, state: "confirming", error: null });
+    } else if (positionState.state === "failed") {
+      onSetState({ ...positionState, state: "confirming", error: null });
     }
   };
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
-      {/* Main content row */}
+      {/* Header row */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Image src={"/usdc.svg"} alt={vaultName} width={40} height={40} unoptimized />
+          <Image src="/usdc.svg" alt={vaultName} width={40} height={40} unoptimized />
           <div>
             <p className="font-semibold text-gray-900">${displayAmount} USDC</p>
             <p className="text-sm text-gray-700">{vaultName}</p>
@@ -225,7 +285,6 @@ function PositionCard({
           </div>
         </div>
 
-        {/* Earnings & APY */}
         <div className="text-right">
           {apy !== undefined && apy > 0 && (
             <p className="font-semibold text-green-500">{formatApy(apy)} APY</p>
@@ -236,7 +295,7 @@ function PositionCard({
         </div>
       </div>
 
-      {/* Rewards & activity info */}
+      {/* Rewards */}
       {rewards && (
         <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
           <p className="text-sm text-green-600">+${formatEarned(rewards.totalEarned)} earned</p>
@@ -248,33 +307,18 @@ function PositionCard({
         </div>
       )}
 
-      {/* Vault description */}
       {vaultDescription && <p className="mt-2 text-xs text-gray-400">{vaultDescription}</p>}
 
       {positionState.state === "confirming" && (
-        <WithdrawalConfirm
+        <WithdrawalSelector
           positionState={positionState}
           position={position}
-          onPercentageChange={(percent) => onStateChange({ ...positionState, percentage: percent })}
+          onSelectPercentage={(pct) => onSetState({ ...positionState, percentage: pct })}
         />
       )}
 
       <ExitStatusBanner positionState={positionState} />
-
-      {/* Exit button */}
-      <button
-        onClick={handleButtonClick}
-        disabled={positionState.state === "loading" || positionState.state === "success"}
-        className="mt-4 w-full rounded-xl border border-gray-200 py-3 text-center text-sm font-medium text-gray-900 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {positionState.state === "idle" && "Exit position"}
-        {positionState.state === "confirming" &&
-          `Confirm withdrawal (${positionState.percentage}%)`}
-        {positionState.state === "loading" && "Processing withdrawal..."}
-        {positionState.state === "success" &&
-          (positionState.redeemStatus === "queued" ? "Withdrawal Queued" : "Withdrawal Confirmed")}
-        {positionState.state === "failed" && "Try Again"}
-      </button>
+      <ExitButton positionState={positionState} onAction={handleButtonAction} />
     </div>
   );
 }
@@ -282,24 +326,20 @@ function PositionCard({
 // --- Main component ---
 
 export function PositionsList({ positions, yields, isLoading, onExitSuccess }: PositionsListProps) {
-  const { wallet, isReady } = useWallet();
+  const { wallet } = useWallet();
   const { agentAddress } = useWalletSelection();
   const [positionStates, setPositionStates] = useState<Record<string, PositionExitState>>({});
   const vaultExit = useVaultExit();
   const pendingQueryAddress = (agentAddress ?? wallet?.address) as `0x${string}` | undefined;
   const pendingRedeems = usePendingRedeems(pendingQueryAddress);
 
-  const getYieldForPosition = (yieldId: string) => {
-    return yields.find((y) => y.id === yieldId);
-  };
+  const getYieldForPosition = (yieldId: string) => yields.find((y) => y.id === yieldId);
 
-  const getPositionState = (positionId: string): PositionExitState => {
-    return positionStates[positionId] || DEFAULT_EXIT_STATE;
-  };
+  const getPositionState = (positionId: string): PositionExitState =>
+    positionStates[positionId] || DEFAULT_EXIT_STATE;
 
-  const setPositionState = (positionId: string, state: PositionExitState) => {
+  const setPositionState = (positionId: string, state: PositionExitState) =>
     setPositionStates((prev) => ({ ...prev, [positionId]: state }));
-  };
 
   const handleExit = async (position: YieldPosition) => {
     if (!wallet?.address) {
@@ -337,7 +377,6 @@ export function PositionsList({ positions, yields, isLoading, onExitSuccess }: P
         shares: sharesToRedeem.toString(),
         protocol: position.protocol,
       });
-
       setPositionState(position.id, {
         ...currentState,
         state: "success",
@@ -359,72 +398,27 @@ export function PositionsList({ positions, yields, isLoading, onExitSuccess }: P
   const pendingVaults = useMemo(() => {
     const set = new Set<string>();
     for (const entry of pendingRedeems.data?.pendingRedeems || []) {
-      const hasPendingAssets = BigInt(entry.pendingAssets) > 0n;
-      const hasPendingShares = BigInt(entry.pendingShares) > 0n;
-      if (hasPendingAssets || hasPendingShares) {
+      if (BigInt(entry.pendingAssets) > 0n || BigInt(entry.pendingShares) > 0n) {
         set.add(entry.vaultAddress.toLowerCase());
       }
     }
     return set;
   }, [pendingRedeems.data?.pendingRedeems]);
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-8">
-        <div className="border-t-primary mb-3 h-8 w-8 animate-spin rounded-full border-4 border-gray-200" />
-        <p className="text-sm text-gray-500">Loading your positions...</p>
-      </div>
-    );
-  }
-
-  if (positions.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-8 text-center">
-        <div className="mb-3 rounded-full bg-gray-100 p-3">
-          <svg
-            className="h-6 w-6 text-gray-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-        </div>
-        <p className="text-gray-600">No active yield positions</p>
-        <p className="mt-1 text-sm text-gray-400">
-          Deposit USDC into a yield opportunity to start earning
-        </p>
-      </div>
-    );
-  }
+  if (isLoading) return <LoadingState />;
+  if (positions.length === 0) return <EmptyState />;
 
   return (
     <div className="flex w-full flex-col gap-4">
-      {/* Testnet disclaimer */}
-      <div className="rounded-xl bg-blue-50 p-4">
-        <div className="flex items-start gap-3">
-          <Info className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-500" />
-          <p className="text-xs text-blue-700">
-            <strong>Demo Mode:</strong> This wallet uses testnet tokens to interact with mainnet
-            yield protocols. Testnet deposits won&apos;t actually earn yield — this is for
-            demonstration purposes only.
-          </p>
-        </div>
-      </div>
-
+      <DemoModeBanner />
       {positions.map((position) => (
         <PositionCard
           key={position.id}
           position={position}
           yieldOpp={getYieldForPosition(position.yieldId)}
-          isPendingWithdrawal={pendingVaults.has(position.vaultAddress.toLowerCase())}
           positionState={getPositionState(position.id)}
-          onStateChange={(state) => setPositionState(position.id, state)}
+          isPendingWithdrawal={pendingVaults.has(position.vaultAddress.toLowerCase())}
+          onSetState={(state) => setPositionState(position.id, state)}
           onExit={() => void handleExit(position)}
         />
       ))}

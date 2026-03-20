@@ -1,5 +1,5 @@
-import { useWallet } from "@/hooks/useWallet";
 import { useYields, useYieldPositions, YieldOpportunity } from "@/hooks/useOptimizer";
+import { useWalletSelection } from "@/hooks/useWalletSelection";
 import { AccountCard } from "./AccountCard";
 
 interface AccountsListProps {
@@ -7,9 +7,9 @@ interface AccountsListProps {
 }
 
 export function AccountsList({ onDepositToVault }: AccountsListProps) {
-  const { wallet } = useWallet();
+  const { agentAddress } = useWalletSelection();
   const { yields } = useYields();
-  const { positions } = useYieldPositions(wallet?.address);
+  const { positions } = useYieldPositions(agentAddress ?? undefined);
 
   // Find best USDC yield opportunity, preferring YO protocol
   const usdcYields = yields.filter((y) => y.asset === "USDC");

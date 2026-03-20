@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { neon } from "@neondatabase/serverless";
+import { sql } from "@/lib/db";
 import { yieldDecisionEngine } from "@/lib/agent/decision-engine";
 import { executeRebalance } from "@/lib/agent/rebalance-executor";
 import { formatUnits } from "viem";
@@ -16,7 +16,22 @@ import { verifyVaultApproval } from "@/lib/agent/resolve-registration";
 import { MERKL_DISTRIBUTOR_ADDRESS_BASE } from "@/lib/yo/constants";
 import { CHAIN_CONFIG } from "@/lib/config";
 
-const sql = neon(process.env.DATABASE_URL!);
+/**
+ * Strip URLs, file paths, and connection strings from error messages
+ * to prevent information leakage in cron summaries.
+ */
+function sanitizeErrorMessage(message: string): string {
+  return (
+    message
+      // Remove URLs (http/https/postgres/redis)
+      .replace(/(?:https?|postgres(?:ql)?|redis(?:s)?|wss?):\/\/[^\s)]+/gi, "[REDACTED_URL]")
+      // Remove file paths (/Users/..., /home/..., /app/..., C:\...)
+      .replace(/(?:\/[\w.-]+){2,}/g, "[REDACTED_PATH]")
+      .replace(/[A-Z]:\\[\w\\.-]+/gi, "[REDACTED_PATH]")
+      // Remove connection strings (user:pass@host patterns)
+      .replace(/\w+:\/\/[^@]+@[^\s]+/g, "[REDACTED_CONNECTION]")
+  );
+}
 
 // Parallel processing configuration
 const BATCH_SIZE = parseInt(process.env.CRON_BATCH_SIZE || "50", 10);
@@ -82,7 +97,7 @@ async function processUsersInParallel(
             summary.details.push({
               address: user.wallet_address,
               action: "error",
-              reason: error.message || "Unknown error during processing",
+              reason: sanitizeErrorMessage(error.message || "Unknown error during processing"),
             });
             console.error(`[Cron] Error processing user ${user.wallet_address}:`, error.message);
           } finally {
@@ -235,17 +250,26 @@ export async function POST(request: NextRequest) {
     );
 
     const duration = Date.now() - startTime;
+    // Log full details server-side only (includes wallet addresses)
     console.log(`[Cron] Cycle complete in ${duration}ms:`, {
       processed: summary.processed,
       rebalanced: summary.rebalanced,
       claimed: summary.claimed,
       skipped: summary.skipped,
       errors: summary.errors,
+      details: summary.details,
     });
 
+    // Return only aggregate counts in the HTTP response — no wallet addresses
     return NextResponse.json({
       success: true,
-      summary,
+      summary: {
+        processed: summary.processed,
+        rebalanced: summary.rebalanced,
+        claimed: summary.claimed,
+        skipped: summary.skipped,
+        errors: summary.errors,
+      },
       duration,
     });
   } catch (error: any) {
@@ -428,7 +452,7 @@ async function processUserRebalance(
 async function executeRebalanceTransaction(
   userId: string,
   userAddress: `0x${string}`,
-  authorization: any,
+  authorization: import("@/lib/zerodev/client-secure").DecryptedAuthorization,
   decision: any
 ): Promise<{ success: boolean; taskId?: string; error?: string }> {
   try {
@@ -449,10 +473,11 @@ async function executeRebalanceTransaction(
     const sessionPrivateKey = authorization.sessionPrivateKey;
     // EIP-7702: eoaAddress IS the smart account address (single address model)
     // ERC-4337: smartWalletAddress is the Privy Kernel smart wallet (separate address)
-    const smartAccountAddress =
+    const smartAccountAddress = (
       authorization.type === "zerodev-erc4337-session"
         ? authorization.smartWalletAddress
-        : authorization.eoaAddress;
+        : authorization.eoaAddress
+    ) as `0x${string}`;
 
     if (!serializedAccount && !sessionPrivateKey) {
       throw new Error(
@@ -705,7 +730,6 @@ async function processUserRewardClaim(user: any, summary: CronSummary): Promise<
   }
 
   // 10. Execute claim
-
   const result = await executeYoRewardsClaim({
     smartAccountAddress,
     serializedAccount: authorization.serializedAccount,

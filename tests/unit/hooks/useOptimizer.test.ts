@@ -191,7 +191,7 @@ describe("useOptimizer Hooks", () => {
         json: async () => mockData,
       });
 
-      const { result } = renderHook(() => useOptimizer(100n), { wrapper });
+      const { result } = renderHook(() => useOptimizer(), { wrapper });
 
       await waitFor(() => expect(result.current.data).toBeDefined());
       expect(result.current.data?.decision.shouldRebalance).toBe(true);

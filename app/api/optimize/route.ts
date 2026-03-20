@@ -27,7 +27,10 @@ export async function GET(request: NextRequest) {
       (a, b) => b.apy - a.apy
     );
 
-    // If no address, just return opportunities (public vault list)
+    // If no address, return public vault list (no auth required).
+    // INTENTIONAL PUBLIC ACCESS (M-6): This path is called during registration
+    // (client-secure.ts) before the user has a stored session. It only exposes
+    // vault metadata (names, APYs, addresses) which is already public on-chain.
     if (!address) {
       return NextResponse.json({
         decision: null,

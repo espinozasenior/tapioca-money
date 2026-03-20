@@ -1,16 +1,16 @@
 "use client";
 
 import { TrendingUp } from "lucide-react";
-import { useWallet } from "@/hooks/useWallet";
 import { useYieldPositions } from "@/hooks/useOptimizer";
+import { useWalletSelection } from "@/hooks/useWalletSelection";
 
 interface BalanceDisplayProps {
   balance: string;
 }
 
 export function BalanceDisplay({ balance }: BalanceDisplayProps) {
-  const { wallet } = useWallet();
-  const { positions } = useYieldPositions(wallet?.address);
+  const { agentAddress } = useWalletSelection();
+  const { positions } = useYieldPositions(agentAddress ?? undefined);
 
   // Sum rewards earned across all positions
   const totalRewards = positions.reduce((sum, p) => {
