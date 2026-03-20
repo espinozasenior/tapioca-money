@@ -1,32 +1,44 @@
 # Tapioca Money
 
-Smart yield optimization on Base. Deposit USDC, earn yield across DeFi protocols, and let an autonomous agent maximize your returns.
+Smart yield optimization on Base. Deposit across multiple assets, earn yield across DeFi protocols, and let an autonomous agent maximize your returns.
 
 ## Features
 
+- **Multi-Asset Support** — USDC, WETH, cbBTC, and EURC with per-token yield opportunities
 - **Privy Authentication** — Login with email or Google, embedded wallets auto-created
-- **USDC on Base** — Deposit, send, and manage USDC on Base mainnet
-- **Earn Yield** — Deposit into Morpho and YO Protocol vaults with real-time APY and risk scoring
+- **Opportunities Dashboard** — Per-asset yield cards with APY, deposited amounts, and one-tap deposit
+- **Earn Yield** — Deposit into Morpho and YO Protocol vaults with APY breakdown (native + reward), risk scoring, and friendly TVL display
 - **Autonomous Yield Agent** — ZeroDev session keys enable hands-free rebalancing across vaults
 - **Gasless Transactions** — All operations sponsored via ZeroDev Bundler + Paymaster
 - **Dual Wallet Support** — EIP-7702 for embedded wallets, ERC-4337 for external wallets (MetaMask, Coinbase, etc.)
 - **Activity Feed** — Full transaction history and agent action timeline
+- **Playful Pearl Design System** — Warm, bubbly UI with milktea/pearl/matcha palette and Quicksand typography
+
+## Supported Assets
+
+| Token         | Symbol | Protocol Coverage   |
+| ------------- | ------ | ------------------- |
+| USD Coin      | USDC   | Morpho, YO Protocol |
+| Wrapped Ether | WETH   | Morpho, Aave        |
+| Coinbase BTC  | cbBTC  | Morpho, Moonwell    |
+| Euro Coin     | EURC   | Morpho, YO Protocol |
 
 ## Autonomous Yield Agent
 
-The agent monitors yield opportunities and rebalances your funds automatically.
+The agent monitors yield opportunities across all supported assets and rebalances funds automatically.
 
 ### How It Works
 
 1. **One-Time Setup**: Register a ZeroDev Kernel V3 smart account and grant a scoped session key
-2. **Daily Monitoring**: Agent evaluates vault APYs across Morpho and YO Protocol
+2. **Daily Monitoring**: Agent evaluates vault APYs across Morpho and YO Protocol for all supported tokens
 3. **Smart Rebalancing**: When APY improvement exceeds threshold, the agent moves funds
 4. **Gasless Execution**: All transactions sponsored — zero gas fees for users
 5. **Full Control**: Disable auto-optimize or revoke session keys anytime
 
 ### Security
 
-- Session keys are scoped to approved Morpho + YO vaults only (7-day expiry)
+- Session keys are scoped to approved vaults only, with per-token amount caps (7-day expiry)
+- Multi-token permissions: each token has its own approve/transfer limits via `SUPPORTED_TOKENS` registry
 - All API endpoints require Privy JWT authentication
 - Authorization revocable at any time
 - All transactions simulated before execution
@@ -128,10 +140,9 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for the full production deployment guide in
 - Next.js 15 (React 19, App Router, Turbopack)
 - Privy (auth + embedded wallets)
 - ZeroDev SDK v5 (Kernel V3.3 smart accounts, session keys, EIP-7702 + ERC-4337)
-- Morpho (vault deposits and yield)
-- YO Protocol (vault deposits and yield)
+- Morpho, YO Protocol, Aave, Moonwell (vault deposits and yield)
 - Viem v2, Base mainnet
-- Tailwind CSS v4, Radix UI
+- Tailwind CSS v4, Radix UI, Quicksand typography
 - Drizzle ORM + Neon Postgres
 - Redis (rate limiting, session blacklisting, distributed locks)
 - Vitest (testing)
