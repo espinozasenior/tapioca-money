@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" fill="none">
+  <circle cx="18" cy="18" r="18" fill="#627EEA"/>
+  <path d="M18 4.5v10.017l8.497 3.798L18 4.5z" fill="#fff" fill-opacity=".6"/>
+  <path d="M18 4.5l-8.498 13.815L18 14.517V4.5z" fill="#fff"/>
+  <path d="M18 24.478v7.017l8.502-11.762L18 24.478z" fill="#fff" fill-opacity=".6"/>
+  <path d="M18 31.495v-7.017l-8.498-4.745L18 31.495z" fill="#fff"/>
+  <path d="M18 23.08l8.497-4.765L18 14.52v8.56z" fill="#fff" fill-opacity=".2"/>
+  <path d="M9.502 18.315L18 23.08v-8.56l-8.498 3.795z" fill="#fff" fill-opacity=".6"/>
+</svg>

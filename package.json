@@ -1,6 +1,6 @@
 {
   "name": "tapioca-money",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Tapioca Money — smart yield optimization on Base with autonomous DeFi agent",
   "license": "proprietary",

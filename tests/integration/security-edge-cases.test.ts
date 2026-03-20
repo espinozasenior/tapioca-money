@@ -169,8 +169,8 @@ describe("Value Limits on CallPolicy", () => {
     expect(source).toContain("ParamCondition");
     expect(source).toContain("ParamCondition.LESS_THAN_OR_EQUAL");
 
-    // Verify MAX_USDC_PER_CALL constant
-    expect(source).toContain("MAX_USDC_PER_CALL");
+    // Verify per-call deposit cap (multi-asset: MAX_DEPOSIT_PER_CALL)
+    expect(source).toContain("MAX_DEPOSIT_PER_CALL");
 
     // Verify ABI-based permissions (not just selector-based)
     expect(source).toContain("functionName:");

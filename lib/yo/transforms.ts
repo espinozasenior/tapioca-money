@@ -12,6 +12,8 @@ export function transformYoVaultToOpportunity(vault: YoVault) {
     name: vault.name,
     asset: vault.underlying.symbol,
     apy: vault.apy,
+    nativeApy: vault.nativeApy,
+    rewardApy: vault.rewardApy,
     address: vault.address as string,
     riskScore: 0,
     tvl: vault.tvlUsd,
@@ -19,6 +21,12 @@ export function transformYoVaultToOpportunity(vault: YoVault) {
       name: vault.name,
       description: `Earn yield on ${vault.underlying.symbol} via YO Protocol`,
       vaultAddress: vault.address as string,
+    },
+    // Underlying token metadata (multi-asset support)
+    underlying: {
+      symbol: vault.underlying.symbol,
+      address: vault.underlying.address,
+      decimals: vault.underlying.decimals,
     },
     // YO-specific fields (no Morpho-style warnings/curators)
     totalAssetsUsd: vault.tvlUsd,
@@ -67,6 +75,7 @@ export function transformYoPosition(
     vaultAddress: pos.vaultAddress as string,
     vaultName: matchedYield?.name ?? pos.vaultName,
     vaultDescription: matchedYield?.metadata?.description,
+    underlyingSymbol: matchedYield?.asset ?? "USDC",
     apy,
     enteredAt: enteredAt ?? now,
     id: `yo-${pos.vaultAddress}`,
