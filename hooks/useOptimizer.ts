@@ -14,6 +14,8 @@ export interface YieldOpportunity {
   name: string;
   asset: string;
   apy: number;
+  nativeApy?: number;
+  rewardApy?: number;
   tvl: number | null;
   address: `0x${string}`;
   riskScore: number;
@@ -22,6 +24,8 @@ export interface YieldOpportunity {
     description?: string;
     vaultAddress?: `0x${string}`;
   };
+  // Underlying token metadata (multi-asset support, available for YO vaults)
+  underlying?: { symbol: string; address: string; decimals: number };
   // Native Morpho vault fields for safety display
   totalAssetsUsd?: number | null;
   warnings?: Array<{ type: string; level: string }>;
@@ -39,6 +43,8 @@ export interface YieldPosition {
   vaultAddress: `0x${string}`;
   vaultName?: string;
   vaultDescription?: string;
+  /** Underlying token symbol (e.g. "USDC", "WETH", "cbBTC", "EURC") */
+  underlyingSymbol?: string;
   shares: string;
   assets: string;
   apy: number;

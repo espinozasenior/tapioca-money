@@ -3,11 +3,11 @@ import { useWallet } from "@/hooks/useWallet";
 import { usePrivy } from "@privy-io/react-auth";
 import { useWalletSelection } from "@/hooks/useWalletSelection";
 import { AmountInput } from "../common/AmountInput";
-import { PrimaryButton } from "../common/PrimaryButton";
+
 import { useBalance } from "@/hooks/useBalance";
 import { YieldOpportunity, useAgent } from "@/hooks/useOptimizer";
 import { cn } from "@/lib/utils";
-import { VaultSafetyDetails } from "./VaultSafetyDetails";
+import { VaultInfoCard } from "./VaultInfoCard";
 import { AlertTriangle } from "lucide-react";
 import { formatUserError } from "@/lib/yo/error-messages";
 
@@ -16,11 +16,6 @@ interface DepositYieldProps {
   onSuccess: () => void;
   onProcessing: () => void;
 }
-
-// Format APY for display
-const formatApy = (apy: number) => {
-  return `${(apy * 100).toFixed(2)}%`;
-};
 
 interface DepositState {
   amount: string;
@@ -69,7 +64,16 @@ function depositReducer(state: DepositState, action: DepositAction): DepositStat
 export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: DepositYieldProps) {
   const { wallet, isSolanaWallet } = useWallet();
   const { getAccessToken } = usePrivy();
-  const { displayableBalance, refetch: refetchBalance } = useBalance();
+  // Pass the vault's underlying token to useBalance for multi-asset support
+  const underlyingToken = yieldOpportunity.underlying;
+  const { displayableBalance, refetch: refetchBalance } = useBalance(
+    underlyingToken
+      ? {
+          tokenAddress: underlyingToken.address as `0x${string}`,
+          tokenDecimals: underlyingToken.decimals,
+        }
+      : undefined
+  );
   const {
     isRegistered,
     hasAuthorization,
@@ -170,10 +174,10 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
   if (isSolanaWallet) {
     return (
       <div className="mt-4 flex w-full flex-col items-center">
-        <div className="w-full rounded-xl bg-yellow-50 p-6 text-center">
-          <AlertTriangle className="mx-auto mb-3 h-8 w-8 text-yellow-500" />
-          <p className="mb-2 text-lg font-semibold text-yellow-800">Requires an Ethereum Wallet</p>
-          <p className="text-sm text-yellow-700">
+        <div className="ios-shadow border-[var(--pearl)]/5 w-full rounded-[20px] border bg-white p-6 text-center">
+          <AlertTriangle className="text-[var(--pearl)]/40 mx-auto mb-3 h-8 w-8" />
+          <p className="mb-2 text-lg font-bold text-[var(--pearl)]">Requires an Ethereum Wallet</p>
+          <p className="text-[var(--pearl)]/50 text-sm font-medium">
             Vault deposits use EVM smart accounts and are only available with Ethereum wallets.
             Please switch to an EVM wallet to deposit.
           </p>
@@ -185,7 +189,8 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
   if (isAgentLoading) {
     return (
       <div className="mt-4 flex w-full flex-col items-center justify-center py-12">
-        <p className="text-sm text-gray-500">Checking agent status...</p>
+        <div className="border-[var(--pearl)]/10 h-8 w-8 animate-spin rounded-full border-4 border-t-[var(--matcha)]" />
+        <p className="text-[var(--pearl)]/40 mt-3 text-xs font-bold">Checking agent status...</p>
       </div>
     );
   }
@@ -193,32 +198,36 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
   if (!isRegistered || !hasAuthorization) {
     return (
       <div className="mt-4 flex w-full flex-col items-center">
-        <div className="mb-6 w-full rounded-xl bg-yellow-50 p-6 text-center">
-          <p className="mb-2 text-lg font-semibold text-yellow-800">Agent Registration Required</p>
-          <p className="mb-4 text-sm text-yellow-700">
+        <div className="ios-shadow border-[var(--pearl)]/5 mb-6 w-full rounded-[20px] border bg-white p-6 text-center">
+          <p className="mb-2 text-lg font-bold text-[var(--pearl)]">Agent Registration Required</p>
+          <p className="text-[var(--pearl)]/50 mb-4 text-sm font-medium">
             {!isRegistered
               ? "You need to register your agent before making deposits. This enables gasless transactions on your behalf."
               : "Your agent session has expired. Please re-register to continue making deposits."}
           </p>
           {isExternalWallet && !canRegister && (
-            <p className="mb-4 text-sm text-yellow-700">
+            <p className="text-[var(--pearl)]/50 mb-4 text-sm font-medium">
               Your wallet doesn&apos;t support agent registration yet. Please switch to your Privy
               embedded wallet or re-login.
             </p>
           )}
           {isExternalWallet && canRegister && !supportsEip7702 && (
-            <p className="mb-4 text-sm text-blue-600">
+            <p className="mb-4 text-sm font-medium text-[var(--matcha)]">
               Your agent will use a smart wallet. After registration, your agent address will be
               shown in the dashboard.
             </p>
           )}
-          <PrimaryButton onClick={() => register()} disabled={isRegistering || !canRegister}>
+          <button
+            onClick={() => register()}
+            disabled={isRegistering || !canRegister}
+            className="mt-2 w-full rounded-full bg-[var(--pearl)] py-3 text-sm font-bold text-[var(--matcha)] transition-all hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+          >
             {isRegistering
               ? "Registering..."
               : !canRegister
                 ? "Wallet Not Supported"
                 : "Register Agent"}
-          </PrimaryButton>
+          </button>
         </div>
       </div>
     );
@@ -226,31 +235,8 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
 
   return (
     <div className="mt-4 flex w-full flex-col">
-      {/* Yield Info Card */}
-      <div className="from-primary/5 to-primary/10 mb-6 rounded-xl bg-gradient-to-br p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-gray-600">Current APY</p>
-            <p className="text-primary text-2xl font-bold">{formatApy(yieldOpportunity.apy)}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-gray-600">Protocol</p>
-            <p className="font-semibold text-gray-900">
-              {yieldOpportunity.protocol.charAt(0).toUpperCase() +
-                yieldOpportunity.protocol.slice(1)}
-            </p>
-          </div>
-        </div>
-
-        {yieldOpportunity.metadata.description && (
-          <p className="mt-3 text-xs text-gray-500">{yieldOpportunity.metadata.description}</p>
-        )}
-
-        {/* Safety Information */}
-        <div className="border-primary/10 mt-4 border-t pt-4">
-          <VaultSafetyDetails vault={yieldOpportunity} />
-        </div>
-      </div>
+      {/* Yield Info Card — dark pearl card (matches Active Agent card) */}
+      <VaultInfoCard yieldOpportunity={yieldOpportunity} />
 
       {/* Amount Input */}
       <div className="mb-4 flex w-full flex-col items-center">
@@ -260,8 +246,10 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
         />
         <div
           className={cn(
-            "mt-1 text-sm",
-            Number(state.amount) > Number(displayableBalance) ? "text-red-600" : "text-gray-400"
+            "mt-1 text-sm font-bold",
+            Number(state.amount) > Number(displayableBalance)
+              ? "text-red-500"
+              : "text-[var(--pearl)]/40"
           )}
         >
           ${displayableBalance} available
@@ -277,7 +265,7 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
               const newAmount = ((Number(displayableBalance) * percent) / 100).toFixed(2);
               dispatch({ type: "SET_AMOUNT", value: newAmount });
             }}
-            className="hover:border-primary hover:text-primary rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 transition"
+            className="border-[var(--pearl)]/10 text-[var(--pearl)]/60 hover:bg-[var(--matcha)]/10 rounded-full border px-4 py-1.5 text-xs font-bold transition-all hover:border-[var(--matcha)] hover:text-[var(--pearl)] active:scale-95"
           >
             {percent}%
           </button>
@@ -286,12 +274,16 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
 
       {/* Estimated Earnings */}
       {isAmountValid && (
-        <div className="mb-6 rounded-lg bg-gray-50 p-4">
+        <div className="ios-shadow border-[var(--pearl)]/5 mb-6 rounded-[20px] border bg-white p-5">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">Estimated yearly earnings</span>
-            <span className="text-primary font-semibold">${estimatedYearlyEarnings} USDC</span>
+            <span className="text-[var(--pearl)]/40 text-xs font-bold uppercase tracking-wider">
+              Est. yearly earnings
+            </span>
+            <span className="font-black text-[var(--matcha)]">
+              ${estimatedYearlyEarnings} {yieldOpportunity.asset}
+            </span>
           </div>
-          <p className="mt-1 text-xs text-gray-400">
+          <p className="text-[var(--pearl)]/30 mt-1 text-[10px] font-medium">
             Based on current APY. Actual earnings may vary.
           </p>
         </div>
@@ -299,8 +291,8 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
 
       {/* Error Display */}
       {state.error && (
-        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
-          <p>{state.error}</p>
+        <div className="mb-4 rounded-[20px] border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+          <p className="font-bold">{state.error}</p>
           {state.isVaultNotApproved && (
             <>
               {!canRegister && (
@@ -308,13 +300,13 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
                   Switch to your Privy embedded wallet or re-login to re-register.
                 </p>
               )}
-              <PrimaryButton
+              <button
                 onClick={() => register()}
                 disabled={isRegistering || !canRegister}
-                className="mt-3 w-full"
+                className="mt-3 w-full rounded-full bg-[var(--pearl)] py-3 text-sm font-bold text-[var(--matcha)] transition-transform hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {isRegistering ? "Registering..." : "Re-Register Agent"}
-              </PrimaryButton>
+              </button>
             </>
           )}
         </div>
@@ -322,29 +314,35 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
 
       {/* Transaction Hash Display */}
       {state.txHash && (
-        <div className="mb-4 rounded-lg bg-blue-50 p-3 text-xs text-blue-600">
-          <p className="font-medium">Deposit confirmed</p>
-          <p className="mt-1 break-all font-mono">
+        <div className="ios-shadow border-[var(--matcha)]/20 bg-[var(--matcha)]/10 mb-4 rounded-[20px] border p-4 text-xs">
+          <p className="font-bold text-[var(--pearl)]">Deposit confirmed</p>
+          <p className="text-[var(--pearl)]/60 mt-1 break-all font-mono">
             Tx: {state.txHash.slice(0, 10)}...{state.txHash.slice(-8)}
           </p>
           <a
             href={`https://basescan.org/tx/${state.txHash}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-2 inline-block text-blue-700 underline hover:text-blue-900"
+            className="mt-2 inline-block font-bold text-[var(--pearl)] underline hover:text-[var(--matcha)]"
           >
             View on Basescan
           </a>
         </div>
       )}
 
-      {/* Deposit Button */}
-      <PrimaryButton onClick={handleDeposit} disabled={!isAmountValid || state.isLoading}>
-        {state.isLoading ? "Processing deposit..." : `Deposit ${state.amount || "0"} USDC`}
-      </PrimaryButton>
+      {/* Deposit Button — pearl pill with matcha text */}
+      <button
+        onClick={handleDeposit}
+        disabled={!isAmountValid || state.isLoading}
+        className="disabled:bg-[var(--pearl)]/20 disabled:text-[var(--pearl)]/30 mt-4 w-full rounded-full bg-[var(--pearl)] py-4 text-base font-bold text-[var(--matcha)] shadow-lg transition-all hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:shadow-none"
+      >
+        {state.isLoading
+          ? "Processing deposit..."
+          : `Deposit ${state.amount || "0"} ${yieldOpportunity.asset}`}
+      </button>
 
       {/* Risk Disclaimer */}
-      <p className="mt-4 text-center text-xs text-gray-400">
+      <p className="text-[var(--pearl)]/25 mt-4 text-center text-[10px] font-bold">
         By depositing, you acknowledge that DeFi protocols carry smart contract risks. Only deposit
         what you can afford to lose.
       </p>

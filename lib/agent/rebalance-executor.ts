@@ -11,7 +11,7 @@ import {
   YO_PARTNER_ID,
   applyYoSlippage,
 } from "@/lib/yo/constants";
-import { USDC_ADDRESS } from "@/lib/config";
+import { USDC_ADDRESS, SUPPORTED_TOKENS } from "@/lib/config";
 import { baseClient } from "@/lib/shared/rpc-client";
 import {
   APPROVE_SELECTOR,
@@ -45,6 +45,8 @@ export interface RebalanceParams {
   userAddress: `0x${string}`;
   fromProtocol?: Protocol;
   toProtocol?: Protocol;
+  /** Underlying token address for approve calls. Defaults to USDC_ADDRESS for backward compat. */
+  underlyingAddress?: `0x${string}`;
 }
 
 export interface RebalanceCall {
@@ -70,6 +72,7 @@ export interface RebalanceResult {
 export async function buildRebalanceCalls(params: RebalanceParams): Promise<RebalanceCall[]> {
   const fromProtocol = params.fromProtocol ?? "morpho";
   const toProtocol = params.toProtocol ?? "morpho";
+  const underlyingAddress = params.underlyingAddress ?? USDC_ADDRESS;
   const publicClient = baseClient;
 
   const calls: RebalanceCall[] = [];
@@ -136,9 +139,9 @@ export async function buildRebalanceCalls(params: RebalanceParams): Promise<Reba
 
   // --- Step 2: Approve + Deposit into destination ---
   if (toProtocol === "morpho") {
-    // Approve USDC to vault, then vault.deposit
+    // Approve underlying to vault, then vault.deposit
     calls.push({
-      to: USDC_ADDRESS,
+      to: underlyingAddress,
       data: encodeFunctionData({
         abi: ERC20_ABI,
         functionName: "approve",
@@ -156,7 +159,7 @@ export async function buildRebalanceCalls(params: RebalanceParams): Promise<Reba
       value: BigInt(0),
     });
   } else {
-    // YO: Approve USDC to Gateway, then gateway.deposit
+    // YO: Approve underlying to Gateway, then gateway.deposit
     const minSharesOut = await publicClient.readContract({
       address: YO_GATEWAY_ADDRESS as Address,
       abi: YO_GATEWAY_ABI,
@@ -166,7 +169,7 @@ export async function buildRebalanceCalls(params: RebalanceParams): Promise<Reba
     const minSharesSlippage = applyYoSlippage(minSharesOut);
 
     calls.push({
-      to: USDC_ADDRESS,
+      to: underlyingAddress,
       data: encodeFunctionData({
         abi: ERC20_ABI,
         functionName: "approve",
@@ -190,6 +193,7 @@ export async function buildRebalanceCalls(params: RebalanceParams): Promise<Reba
 
 /**
  * Build scoped call policy permissions for vault operations
+ * Multi-token: adds approve permission for all supported tokens
  */
 function buildScopedPermissions(approvedVaults: `0x${string}`[]) {
   const permissions: Array<{ target: `0x${string}`; selector: Hex }> = [];
@@ -202,10 +206,17 @@ function buildScopedPermissions(approvedVaults: `0x${string}`[]) {
     );
   }
 
-  permissions.push({
-    target: USDC_ADDRESS,
-    selector: FUNCTION_SELECTORS.APPROVE,
-  });
+  // Add approve + transfer for all supported tokens (multi-asset)
+  for (const token of Object.values(SUPPORTED_TOKENS)) {
+    permissions.push({
+      target: token.address,
+      selector: FUNCTION_SELECTORS.APPROVE,
+    });
+    permissions.push({
+      target: token.address,
+      selector: FUNCTION_SELECTORS.TRANSFER,
+    });
+  }
 
   return permissions;
 }

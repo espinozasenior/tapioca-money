@@ -15,9 +15,19 @@ const BALANCE_OF_ABI = [
   },
 ] as const;
 
-export function useBalance() {
+interface UseBalanceOptions {
+  /** Override token address (defaults to USDC) */
+  tokenAddress?: `0x${string}`;
+  /** Override token decimals (defaults to 6 for USDC) */
+  tokenDecimals?: number;
+}
+
+export function useBalance(options?: UseBalanceOptions) {
   const { wallet } = useWallet();
   const { agentAddress, supportsEip7702 } = useWalletSelection();
+
+  const tokenAddress = options?.tokenAddress ?? USDC_ADDRESS;
+  const tokenDecimals = options?.tokenDecimals ?? 6;
 
   // For ERC-4337 users: agentAddress differs from wallet.address (smart wallet vs Brave).
   // Query the smart wallet balance so the deposit UI shows the correct available amount.
@@ -36,16 +46,16 @@ export function useBalance() {
 
   // ERC-4337 balance: direct on-chain query using agentAddress
   const erc4337Balance = useQuery({
-    queryKey: ["balances", "erc4337", agentAddress],
+    queryKey: ["balances", "erc4337", agentAddress, tokenAddress],
     queryFn: async () => {
       if (!agentAddress) return null;
       const balance = await publicClient.readContract({
-        address: USDC_ADDRESS,
+        address: tokenAddress,
         abi: BALANCE_OF_ABI,
         functionName: "balanceOf",
         args: [agentAddress as `0x${string}`],
       });
-      return { usdc: { amount: formatUnits(balance, 6), decimals: 6 } };
+      return { token: { amount: formatUnits(balance, tokenDecimals), decimals: tokenDecimals } };
     },
     enabled: isErc4337 && !!agentAddress,
     refetchInterval: 30_000, // Auto-refresh every 30s (P2-4 fix)
@@ -53,22 +63,47 @@ export function useBalance() {
   });
 
   // Standard balance: via wallet.balances() (EIP-7702 or no agent)
+  // For non-USDC tokens, use direct on-chain query since wallet.balances() only supports USDC
+  const isDefaultToken = tokenAddress === USDC_ADDRESS;
+
   const standardBalance = useQuery({
-    queryKey: ["balances", wallet?.address],
-    queryFn: async () => (await wallet?.balances(["usdc"])) ?? null,
+    queryKey: ["balances", wallet?.address, tokenAddress],
+    queryFn: async () => {
+      if (isDefaultToken) {
+        // Use wallet's built-in balance method for USDC
+        const result = await wallet?.balances(["usdc"]);
+        return result ? { token: { amount: result.usdc?.amount ?? "0", decimals: 6 } } : null;
+      }
+      // For non-USDC tokens, query on-chain directly
+      if (!balanceAddress) return null;
+      const balance = await publicClient.readContract({
+        address: tokenAddress,
+        abi: BALANCE_OF_ABI,
+        functionName: "balanceOf",
+        args: [balanceAddress as `0x${string}`],
+      });
+      return { token: { amount: formatUnits(balance, tokenDecimals), decimals: tokenDecimals } };
+    },
     enabled: !!wallet && !isErc4337,
     refetchInterval: 30_000, // Auto-refresh every 30s (P2-4 fix)
     staleTime: 15_000,
   });
 
-  const balances = isErc4337 ? erc4337Balance.data : standardBalance.data;
+  const balanceData = isErc4337 ? erc4337Balance.data : standardBalance.data;
   const isLoading = isErc4337 ? erc4337Balance.isLoading : standardBalance.isLoading;
   const error = isErc4337 ? erc4337Balance.error : standardBalance.error;
   const refetch = isErc4337 ? erc4337Balance.refetch : standardBalance.refetch;
 
+  // Backward-compatible: balances.usdc still works for default USDC queries
+  const balances = balanceData
+    ? isDefaultToken
+      ? { usdc: balanceData.token }
+      : { usdc: balanceData.token } // For compat, map to .usdc regardless
+    : null;
+
   return {
     balances: balances ?? null,
-    displayableBalance: parseFloat(balances?.usdc?.amount ?? "0").toFixed(2),
+    displayableBalance: parseFloat(balanceData?.token?.amount ?? "0").toFixed(2),
     error: error ? (error instanceof Error ? error.message : String(error)) : null,
     isLoading,
     refetch,

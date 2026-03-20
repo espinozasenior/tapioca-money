@@ -573,8 +573,8 @@ describe("External Wallet Registration — Two-Phase Flow", () => {
     expect(permBuilderSource).toContain("YO_GATEWAY_DEPOSIT_SELECTOR");
     expect(permBuilderSource).toContain("YO_GATEWAY_REDEEM_SELECTOR");
 
-    // Must include USDC approve and transfer
-    expect(permBuilderSource).toContain("USDC_ADDRESS");
+    // Must include multi-token approve and transfer via SUPPORTED_TOKENS
+    expect(permBuilderSource).toContain("SUPPORTED_TOKENS");
 
     // Must include rate limit and timestamp policies
     expect(permBuilderSource).toContain("toRateLimitPolicy");
