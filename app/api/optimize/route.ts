@@ -9,6 +9,13 @@ import {
   forbiddenResponse,
 } from "@/lib/auth/middleware";
 import { resolveAgentAddress } from "@/lib/agent/resolve-agent-address";
+import { PauseService } from "@/lib/shared/pause-service";
+import { YoPauseChecker } from "@/lib/yo/pause-checker";
+import { MorphoPauseChecker } from "@/lib/morpho/pause-checker";
+
+const pauseService = new PauseService([new YoPauseChecker(), new MorphoPauseChecker()], {
+  ttlMs: 60_000,
+});
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -23,9 +30,18 @@ export async function GET(request: NextRequest) {
 
     const morphoOpportunities = morphoVaults.map(transformVaultToOpportunity);
     const yoOpportunities = yoVaults.map(transformYoVaultToOpportunity);
-    const allOpportunities = [...morphoOpportunities, ...yoOpportunities].sort(
+    const rawOpportunities = [...morphoOpportunities, ...yoOpportunities].sort(
       (a, b) => b.apy - a.apy
     );
+
+    // ADR-001: Enrich opportunities with pause state
+    const pauseStates = await pauseService.checkVaultPauseStates(
+      rawOpportunities.map((o) => ({ address: o.address as `0x${string}`, protocol: o.protocol }))
+    );
+    const allOpportunities = rawOpportunities.map((o) => ({
+      ...o,
+      paused: pauseStates.get(o.address.toLowerCase() as `0x${string}`)?.paused ?? false,
+    }));
 
     // If no address, return public vault list (no auth required).
     // INTENTIONAL PUBLIC ACCESS (M-6): This path is called during registration

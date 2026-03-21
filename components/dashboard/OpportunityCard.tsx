@@ -11,6 +11,7 @@ interface OpportunityCardProps {
   readonly protocol: string;
   readonly deposited?: string;
   readonly featured?: boolean;
+  readonly paused?: boolean;
   readonly onClick?: () => void;
 }
 
@@ -22,6 +23,7 @@ export function OpportunityCard({
   protocol,
   deposited,
   featured,
+  paused,
   onClick,
 }: OpportunityCardProps) {
   return (
@@ -50,8 +52,8 @@ export function OpportunityCard({
           className="rounded-full"
           unoptimized
         />
-        <span className="text-[var(--pearl)]/50 mt-1 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold uppercase">
-          {protocol}
+        <span className="inline-block rounded-full bg-[var(--pearl)] px-3 py-1.5 text-sm font-bold text-[var(--matcha)]">
+          {apy} APY
         </span>
       </div>
 
@@ -64,11 +66,13 @@ export function OpportunityCard({
         {deposited ?? "$0.00"}
       </p>
 
-      {/* APY tag — dark pill */}
+      {/* Paused badge */}
       <div className="mt-3">
-        <span className="inline-block rounded-full bg-[var(--pearl)] px-3 py-1.5 text-xs font-bold text-[var(--matcha)]">
-          {apy} APY
-        </span>
+        {paused && (
+          <span className="inline-block rounded-full bg-red-100 px-3 py-1.5 text-xs font-bold text-red-600">
+            Paused
+          </span>
+        )}
       </div>
     </div>
   );

@@ -171,6 +171,21 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
     onSuccess,
   ]);
 
+  if (yieldOpportunity.paused) {
+    return (
+      <div className="mt-4 flex w-full flex-col items-center">
+        <div className="ios-shadow w-full rounded-[20px] border border-red-200 bg-red-50 p-6 text-center">
+          <AlertTriangle className="mx-auto mb-3 h-8 w-8 text-red-500" />
+          <p className="mb-2 text-lg font-bold text-[var(--pearl)]">Vault Paused</p>
+          <p className="text-[var(--pearl)]/50 text-sm font-medium">
+            This vault has been temporarily paused by the protocol. Deposits are not available right
+            now. Please check back later or choose a different vault.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (isSolanaWallet) {
     return (
       <div className="mt-4 flex w-full flex-col items-center">

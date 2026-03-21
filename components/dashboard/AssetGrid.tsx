@@ -97,6 +97,7 @@ export function AssetGrid({ onSelectYield }: AssetGridProps) {
                 protocol={bestYield?.protocol ?? "—"}
                 deposited={formatUsd(deposited)}
                 featured={idx === 0}
+                paused={bestYield?.paused}
                 onClick={() => {
                   if (bestYield && onSelectYield) {
                     onSelectYield(bestYield);

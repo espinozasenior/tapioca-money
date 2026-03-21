@@ -168,6 +168,36 @@ Rejected — reactive approach gives poor UX and wastes agent compute. Proactive
 - Some vault implementations may use non-standard pause function signatures. Mitigation: try multiple ABIs, fall back to "not paused".
 - RPC rate limits if many vaults are checked simultaneously. Mitigation: `Promise.allSettled` + batch grouping.
 
+## Implementation Order
+
+1. **Domain layer** — `vault-pause-state.ts` + `vault-pause-checker.ts` (types only, no deps)
+2. **YO adapter** — `lib/yo/pause-checker.ts` (uses `@yo-protocol/core` `isPaused`)
+3. **Morpho adapter** — `lib/morpho/pause-checker.ts` (on-chain `paused()` read)
+4. **Pause service** — `lib/shared/pause-service.ts` (aggregator + TTL cache)
+5. **API integration** — enrich `/api/optimize` response with `paused` flag
+6. **Decision engine** — filter paused vaults from rebalance candidates
+7. **UI** — badges, disabled states, warning cards
+
+Steps 1–4 can be built and tested independently of the existing codebase.
+
+## Testing Strategy
+
+**Unit tests:**
+- `pause-service.ts` — mock adapters, verify cache TTL expiry, verify fail-open on adapter error
+- Each adapter — mock `publicClient.readContract`, verify mapping to `VaultPauseState`
+
+**Integration tests:**
+- Fork Base mainnet via Anvil, call real vault `paused()` to validate ABI compatibility
+- Pause a vault on the fork, verify the adapter returns `paused: true`
+
+**ABI reference** for standard OpenZeppelin Pausable:
+
+```json
+[{ "inputs": [], "name": "paused", "outputs": [{ "type": "bool" }], "stateMutability": "view", "type": "function" }]
+```
+
+Some vaults expose granular flags (`depositsPaused()`, `redeemsPaused()`). Adapters should try the granular ABI first, fall back to the binary `paused()`.
+
 ## References
 
 - [OpenZeppelin Pausable](https://docs.openzeppelin.com/contracts/5.x/api/utils#Pausable)
