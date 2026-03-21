@@ -2,6 +2,7 @@ import { MorphoClient, type MorphoVault, type MorphoUserPosition } from "../morp
 import { YoApiClient, yoApiClient } from "../yo/api-client";
 import type { YoVault, YoUserPosition } from "../yo/types";
 import { CHAIN_CONFIG, REBALANCE_THRESHOLDS, USDC_ADDRESS, getTokenByAddress } from "../config";
+import { PauseService } from "../shared/pause-service";
 
 const CHAIN_ID = CHAIN_CONFIG.chainId;
 const MORPHO_ASSET_SYMBOL = "USDC"; // Morpho vaults remain USDC-only on Base
@@ -42,10 +43,12 @@ export interface RebalanceDecision {
 export class YieldDecisionEngine {
   private morphoClient: MorphoClient;
   private yoClient: YoApiClient;
+  private pauseService: PauseService | null;
 
-  constructor(morphoClient?: MorphoClient, yoClient?: YoApiClient) {
+  constructor(morphoClient?: MorphoClient, yoClient?: YoApiClient, pauseService?: PauseService) {
     this.morphoClient = morphoClient || new MorphoClient();
     this.yoClient = yoClient || yoApiClient;
+    this.pauseService = pauseService ?? null;
   }
 
   /**
@@ -202,12 +205,53 @@ export class YieldDecisionEngine {
       ];
 
       // INVARIANT: Same-asset rebalance only — filter to vaults with the same underlying
-      const eligibleVaults = allVaults.filter(
+      let eligibleVaults = allVaults.filter(
         (vault) =>
           vault.liquidityUsd >= REBALANCE_THRESHOLDS.minLiquidityUsd &&
           vault.address.toLowerCase() !== currentPosition.vaultAddress.toLowerCase() &&
           vault.underlyingSymbol.toUpperCase() === currentPosition.underlyingSymbol.toUpperCase()
       );
+
+      // ADR-001: Filter out paused vaults and block redeem from paused source
+      if (this.pauseService) {
+        const allAddresses = [
+          ...eligibleVaults.map((v) => v.address as `0x${string}`),
+          currentPosition.vaultAddress as `0x${string}`,
+        ];
+        const pauseStates = await this.pauseService.checkVaultPauseStates(
+          allAddresses.map((a) => ({ address: a, protocol: "unknown" }))
+        );
+
+        // Block redeem from paused source vault
+        const currentPauseState = pauseStates.get(
+          currentPosition.vaultAddress.toLowerCase() as `0x${string}`
+        );
+        if (currentPauseState?.redeemPaused) {
+          return {
+            shouldRebalance: false,
+            reason: "Current vault has redeems paused",
+            currentVault: {
+              address: currentPosition.vaultAddress as `0x${string}`,
+              name: currentPosition.vaultName,
+              apy: currentApy,
+              shares: currentPosition.shares,
+              assets: currentPosition.assets,
+              protocol: currentPosition.protocol,
+              underlyingAddress: currentPosition.underlyingAddress as `0x${string}`,
+              underlyingSymbol: currentPosition.underlyingSymbol,
+            },
+            targetVault: null,
+            apyImprovement: 0,
+            estimatedAnnualGain: 0,
+            breakEvenDays: 0,
+          };
+        }
+
+        // Filter target vaults with deposits paused
+        eligibleVaults = eligibleVaults.filter(
+          (v) => !pauseStates.get(v.address.toLowerCase() as `0x${string}`)?.depositPaused
+        );
+      }
 
       if (eligibleVaults.length === 0) {
         return {
@@ -380,6 +424,16 @@ export class YieldDecisionEngine {
 }
 
 /**
- * Singleton instance for convenience
+ * Singleton instance for convenience — includes default PauseService (ADR-001)
  */
-export const yieldDecisionEngine = new YieldDecisionEngine();
+import { YoPauseChecker } from "../yo/pause-checker";
+import { MorphoPauseChecker } from "../morpho/pause-checker";
+
+const defaultPauseService = new PauseService([new YoPauseChecker(), new MorphoPauseChecker()], {
+  ttlMs: 60_000,
+});
+export const yieldDecisionEngine = new YieldDecisionEngine(
+  undefined,
+  undefined,
+  defaultPauseService
+);

@@ -89,6 +89,8 @@ export function YieldList({ yields, isLoading, error, onSelectYield }: YieldList
       {/* Yield list */}
       {yields.map((yieldOpp) => {
         const isPending = yieldOpp.id.includes("pending");
+        const isPaused = yieldOpp.paused === true;
+        const isDisabled = isPending || isPaused;
         const riskLevel = getRiskLevel(yieldOpp.riskScore);
         const riskColor = getRiskColor(riskLevel);
 
@@ -97,15 +99,15 @@ export function YieldList({ yields, isLoading, error, onSelectYield }: YieldList
             <div
               className={cn(
                 "rounded-xl border border-gray-200 bg-white transition",
-                !isPending
+                !isDisabled
                   ? "hover:border-primary/30 hover:shadow-md"
                   : "cursor-not-allowed opacity-60"
               )}
             >
               {/* Main button */}
               <button
-                onClick={() => !isPending && onSelectYield(yieldOpp)}
-                disabled={isPending}
+                onClick={() => !isDisabled && onSelectYield(yieldOpp)}
+                disabled={isDisabled}
                 className="w-full p-4 text-left"
               >
                 <div className="flex items-center justify-between">
@@ -132,6 +134,11 @@ export function YieldList({ yields, isLoading, error, onSelectYield }: YieldList
                           <Shield className="h-3 w-3" />
                           <span className="text-xs font-medium capitalize">{riskLevel}</span>
                         </div>
+                        {isPaused && (
+                          <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-600">
+                            Paused
+                          </span>
+                        )}
                       </div>
                       <p className="text-muted-foreground text-sm">{yieldOpp.metadata.name}</p>
                     </div>
@@ -139,7 +146,12 @@ export function YieldList({ yields, isLoading, error, onSelectYield }: YieldList
 
                   {/* APY */}
                   <div className="text-right">
-                    <div className="text-lg font-semibold text-green-500">
+                    <div
+                      className={cn(
+                        "text-lg font-semibold",
+                        isPaused ? "text-gray-400" : "text-green-500"
+                      )}
+                    >
                       {formatApy(yieldOpp.apy)}
                     </div>
                     <div className="text-muted-foreground text-xs">APY</div>

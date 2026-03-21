@@ -34,6 +34,7 @@ export interface YieldOpportunity {
   performanceFee?: number | null;
   managementFee?: number | null;
   liquidityUsd?: number | null;
+  paused?: boolean;
 }
 
 export interface YieldPosition {
