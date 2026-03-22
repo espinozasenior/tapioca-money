@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Info, Shield, ChevronDown } from "lucide-react";
 import Image from "next/image";
-import { YieldOpportunity } from "@/hooks/useOptimizer";
+import { YieldOpportunity, YieldPosition, useYieldPositions } from "@/hooks/useOptimizer";
+import { useWalletSelection } from "@/hooks/useWalletSelection";
 import { cn } from "@/lib/utils";
 import { getRiskLevel, getRiskColor } from "@/lib/morpho/risk-scoring";
 import { getTokenIcon } from "@/lib/config";
@@ -42,6 +43,16 @@ const getMechanicLabel = (type: string) => {
 };
 
 export function YieldList({ yields, isLoading, error, onSelectYield }: YieldListProps) {
+  const { agentAddress } = useWalletSelection();
+  const { positions } = useYieldPositions(agentAddress ?? undefined);
+
+  // Build a set of vault addresses where user has funds, for paused-but-clickable logic
+  const vaultsWithFunds = new Set(
+    positions
+      .filter((p) => parseFloat(p.amountUsd || p.amount || "0") > 0)
+      .map((p) => p.vaultAddress.toLowerCase())
+  );
+
   if (isLoading) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center py-12">
@@ -90,7 +101,9 @@ export function YieldList({ yields, isLoading, error, onSelectYield }: YieldList
       {yields.map((yieldOpp) => {
         const isPending = yieldOpp.id.includes("pending");
         const isPaused = yieldOpp.paused === true;
-        const isDisabled = isPending || isPaused;
+        const hasUserPosition = vaultsWithFunds.has(yieldOpp.address.toLowerCase());
+        // Paused vaults are clickable if user has a position (so they can withdraw)
+        const isDisabled = isPending || (isPaused && !hasUserPosition);
         const riskLevel = getRiskLevel(yieldOpp.riskScore);
         const riskColor = getRiskColor(riskLevel);
 
@@ -136,7 +149,7 @@ export function YieldList({ yields, isLoading, error, onSelectYield }: YieldList
                         </div>
                         {isPaused && (
                           <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-600">
-                            Paused
+                            {hasUserPosition ? "Paused \u00B7 Withdraw Available" : "Paused"}
                           </span>
                         )}
                       </div>

@@ -52,6 +52,8 @@ export interface YieldPosition {
   enteredAt: number;
   amount: string;
   amountUsd: string;
+  /** Whether the vault is currently paused (enriched from PauseService) */
+  paused?: boolean;
   createdAt: string;
   rewards?: {
     totalEarned: string;

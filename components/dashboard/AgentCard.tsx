@@ -1,6 +1,6 @@
 "use client";
 
-import { Zap, Power } from "lucide-react";
+import { Zap, Power, AlertTriangle } from "lucide-react";
 import { useAgent, useYieldPositions } from "@/hooks/useOptimizer";
 import { useWalletSelection } from "@/hooks/useWalletSelection";
 
@@ -20,6 +20,11 @@ export function AgentCard() {
   const apy = activePosition?.apy ? `${(activePosition.apy * 100).toFixed(1)}%` : null;
 
   const isActive = isRegistered && autoOptimizeEnabled;
+
+  // Check if any funded positions are in paused vaults
+  const hasPausedPositions = positions.some(
+    (p) => p.paused === true && parseFloat(p.amountUsd || p.amount || "0") > 0
+  );
 
   if (isLoading) {
     return (
@@ -93,6 +98,17 @@ export function AgentCard() {
           </>
         )}
       </p>
+
+      {/* Paused vault warning */}
+      {hasPausedPositions && (
+        <div className="mt-4 flex items-start gap-2 rounded-lg bg-red-500/10 px-3 py-2.5">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-red-400" />
+          <p className="text-xs font-medium leading-snug text-red-300">
+            Some of your positions are in paused vaults. The agent cannot rebalance these
+            automatically.
+          </p>
+        </div>
+      )}
 
       {/* Footer */}
       {isActive && apy && (
