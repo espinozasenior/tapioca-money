@@ -38,19 +38,25 @@ export function calculateRiskScore(vault: {
   managementFee?: number;
   liquidityUsd?: number | null;
   totalAssetsUsd?: number | null;
+  avgNetApy?: number | null;
+  netApy?: number | null;
 }): number {
   let score = 0;
+
+  // 0. Hard gates — defense-in-depth (catches cached/stale data that bypassed GraphQL filters)
+  if (vault.whitelisted !== true) {
+    return 1.0; // Non-whitelisted vaults are excluded entirely
+  }
+  const effectiveApy = vault.avgNetApy ?? vault.netApy ?? 0;
+  if (effectiveApy > 0.5) {
+    return 1.0; // Unrealistic APY — likely artificial/temporary rewards
+  }
 
   // 1. Warning System (0-0.4)
   if (vault.warnings?.some((w) => w.level === "RED")) {
     return 1.0; // Exclude entirely
   }
   if (vault.warnings?.some((w) => w.level === "YELLOW")) {
-    score += 0.2;
-  }
-
-  // 2. Whitelist Status (0-0.2)
-  if (vault.whitelisted === false) {
     score += 0.2;
   }
 
@@ -116,6 +122,8 @@ export function getRiskBreakdown(vault: {
   managementFee?: number;
   liquidityUsd?: number | null;
   totalAssetsUsd?: number | null;
+  avgNetApy?: number | null;
+  netApy?: number | null;
 }): RiskBreakdown {
   const score = calculateRiskScore(vault);
   const level = getRiskLevel(score);
@@ -129,20 +137,29 @@ export function getRiskBreakdown(vault: {
     size: 0,
   };
 
-  // Analyze each factor
+  // Analyze each factor — hard gates first
+  if (vault.whitelisted !== true) {
+    factors.whitelist = 1.0;
+    reasoning.push("EXCLUDED: Vault is not whitelisted by Morpho");
+    return { score, level, factors, reasoning };
+  }
+  reasoning.push("Vault is whitelisted by Morpho ✓");
+
+  const breakdownApy = vault.avgNetApy ?? vault.netApy ?? 0;
+  if (breakdownApy > 0.5) {
+    factors.warnings = 1.0;
+    reasoning.push(
+      `EXCLUDED: APY ${(breakdownApy * 100).toFixed(0)}% exceeds 50% ceiling — likely artificial`
+    );
+    return { score, level, factors, reasoning };
+  }
+
   if (vault.warnings?.some((w) => w.level === "RED")) {
     factors.warnings = 0.4;
     reasoning.push("Vault has critical warnings from Morpho");
   } else if (vault.warnings?.some((w) => w.level === "YELLOW")) {
     factors.warnings = 0.2;
     reasoning.push("Vault has warnings to review");
-  }
-
-  if (vault.whitelisted === false) {
-    factors.whitelist = 0.2;
-    reasoning.push("Vault is not whitelisted by Morpho");
-  } else if (vault.whitelisted === true) {
-    reasoning.push("Vault is whitelisted by Morpho ✓");
   }
 
   const curatorNames = vault.curators?.items?.map((c) => c.name || "") || [];

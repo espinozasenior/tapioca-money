@@ -182,11 +182,12 @@ describe("MorphoClient", () => {
                 symbol: "vUSDC",
                 asset: { address: "0xusdc", symbol: "USDC", decimals: 6 },
                 totalAssets: "1000000000",
-                totalAssetsUsd: 1000,
+                totalAssetsUsd: 10_000_000,
                 totalSupply: "1000000000",
                 avgNetApy: 0.05,
                 netApy: 0.05,
                 apy: 0.055,
+                whitelisted: true,
               },
               {
                 address: "0xv2",

@@ -7,7 +7,9 @@ export const GET_VAULTS = gql`
       where: {
         chainId_in: [$chainId]
         netApy_gte: 0.025
-        totalAssetsUsd_gte: 1000000
+        netApy_lte: 0.50
+        totalAssetsUsd_gte: 10000000
+        whitelisted: true
         listed: true
       }
       orderBy: NetApy
