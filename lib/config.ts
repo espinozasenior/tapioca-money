@@ -146,6 +146,13 @@ export const ESTIMATED_APYS = {
   moonwell: 0.042, // 4.2% - mainnet estimate
 } as const;
 
+// Vault quality gates — defense-in-depth filtering for opportunity listings
+export const VAULT_QUALITY_GATES = {
+  minTvlUsd: 10_000_000, // $10M minimum TVL — filters out unproven/low-liquidity vaults
+  maxRealisticApy: 0.5, // 50% APY ceiling — anything above is likely artificial/temporary
+  requireWhitelisted: true, // Only show Morpho-whitelisted vaults
+} as const;
+
 // Shared rebalance thresholds — used by both the UI evaluator and agent decision engine
 export const REBALANCE_THRESHOLDS = {
   minApyImprovement: 0.005, // 0.5% minimum APY gain

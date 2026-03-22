@@ -30,6 +30,8 @@ describe("Risk Scoring", () => {
       managementFee: 0,
       liquidityUsd: 500000,
       totalAssetsUsd: 1000000, // 50% liquidity
+      avgNetApy: 0.05,
+      netApy: 0.05,
     };
 
     it("should return 0 for a perfect vault", () => {
@@ -47,9 +49,24 @@ describe("Risk Scoring", () => {
       expect(calculateRiskScore(risky)).toBe(0.2);
     });
 
-    it("should add penalty for non-whitelisted vaults", () => {
+    it("should return 1.0 for non-whitelisted vaults (hard gate)", () => {
       const risky = { ...baseVault, whitelisted: false };
-      expect(calculateRiskScore(risky)).toBe(0.2);
+      expect(calculateRiskScore(risky)).toBe(1.0);
+    });
+
+    it("should return 1.0 for undefined whitelisted (hard gate)", () => {
+      const risky = { ...baseVault, whitelisted: undefined };
+      expect(calculateRiskScore(risky)).toBe(1.0);
+    });
+
+    it("should return 1.0 for APY > 50% (hard gate)", () => {
+      const risky = { ...baseVault, avgNetApy: 10.0 }; // 1000%
+      expect(calculateRiskScore(risky)).toBe(1.0);
+    });
+
+    it("should allow vaults at exactly 50% APY", () => {
+      const vault = { ...baseVault, avgNetApy: 0.5 };
+      expect(calculateRiskScore(vault)).toBeLessThan(1.0);
     });
 
     it("should add penalty for unknown curator", () => {
@@ -75,15 +92,11 @@ describe("Risk Scoring", () => {
     it("should cap score at 1.0", () => {
       const veryRisky = {
         ...baseVault,
-        whitelisted: false, // +0.2
         curators: { items: [] }, // +0.15
-        performanceFee: 0.5, // +0.1
+        performanceFee: 0.5, // +0.4
         liquidityUsd: 0, // +0.15
         totalAssetsUsd: 10000, // +0.1
-        // Total: 0.7
       };
-      // Force it higher manually to check cap logic if logic changes
-      // Current max sum without RED warning is < 1.0, but let's trust the logic
       expect(calculateRiskScore(veryRisky)).toBeLessThanOrEqual(1.0);
     });
   });
@@ -106,9 +119,28 @@ describe("Risk Scoring", () => {
   });
 
   describe("getRiskBreakdown", () => {
-    it("should generate detailed breakdown", () => {
+    it("should generate detailed breakdown for whitelisted vault with warnings", () => {
       const vault = {
         warnings: [{ type: "WARN", level: "YELLOW" }],
+        whitelisted: true,
+        curators: { items: [{ name: "Steakhouse" }] },
+        totalAssetsUsd: 2000000,
+        liquidityUsd: 1000000,
+        avgNetApy: 0.05,
+      };
+
+      const breakdown = getRiskBreakdown(vault);
+
+      expect(breakdown.score).toBeCloseTo(0.2); // 0.2 (warn)
+      expect(breakdown.level).toBe("low");
+      expect(breakdown.factors.warnings).toBe(0.2);
+      expect(breakdown.reasoning).toContain("Vault is whitelisted by Morpho ✓");
+      expect(breakdown.reasoning).toContain("Vault has warnings to review");
+      expect(breakdown.reasoning).toContain("Curated by trusted team: Steakhouse");
+    });
+
+    it("should hard-exclude non-whitelisted vaults in breakdown", () => {
+      const vault = {
         whitelisted: false,
         curators: { items: [{ name: "Steakhouse" }] },
         totalAssetsUsd: 2000000,
@@ -117,13 +149,28 @@ describe("Risk Scoring", () => {
 
       const breakdown = getRiskBreakdown(vault);
 
-      expect(breakdown.score).toBeCloseTo(0.4); // 0.2 (warn) + 0.2 (whitelist)
-      expect(breakdown.level).toBe("medium");
-      expect(breakdown.factors.warnings).toBe(0.2);
-      expect(breakdown.factors.whitelist).toBe(0.2);
-      expect(breakdown.reasoning).toContain("Vault has warnings to review");
-      expect(breakdown.reasoning).toContain("Vault is not whitelisted by Morpho");
-      expect(breakdown.reasoning).toContain("Curated by trusted team: Steakhouse");
+      expect(breakdown.score).toBe(1.0);
+      expect(breakdown.level).toBe("high");
+      expect(breakdown.factors.whitelist).toBe(1.0);
+      expect(breakdown.reasoning).toContain("EXCLUDED: Vault is not whitelisted by Morpho");
+    });
+
+    it("should hard-exclude vaults with unrealistic APY in breakdown", () => {
+      const vault = {
+        whitelisted: true,
+        curators: { items: [{ name: "Steakhouse" }] },
+        totalAssetsUsd: 2000000,
+        liquidityUsd: 1000000,
+        avgNetApy: 15.0, // 1500%
+      };
+
+      const breakdown = getRiskBreakdown(vault);
+
+      expect(breakdown.score).toBe(1.0);
+      expect(breakdown.level).toBe("high");
+      expect(breakdown.reasoning.some((r) => r.includes("EXCLUDED") && r.includes("APY"))).toBe(
+        true
+      );
     });
   });
 });
