@@ -5,7 +5,7 @@ import { useWalletSelection } from "@/hooks/useWalletSelection";
 import { AmountInput } from "../common/AmountInput";
 
 import { useBalance } from "@/hooks/useBalance";
-import { YieldOpportunity, useAgent } from "@/hooks/useOptimizer";
+import { YieldOpportunity, useAgent, useYieldPositions } from "@/hooks/useOptimizer";
 import { cn } from "@/lib/utils";
 import { VaultInfoCard } from "./VaultInfoCard";
 import { AlertTriangle } from "lucide-react";
@@ -83,6 +83,7 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
   } = useAgent();
   const { activeWallet, supportsEip7702, agentAddress, supportsSmartAccount } =
     useWalletSelection();
+  const { positions } = useYieldPositions(agentAddress ?? undefined);
   const isExternalWallet =
     activeWallet?.walletClientType !== "privy" && activeWallet?.chainType === "ethereum";
   // User can register if they have EVM wallet support (7702 or 4337 fallback)
@@ -172,14 +173,22 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
   ]);
 
   if (yieldOpportunity.paused) {
+    const vaultAddr = yieldOpportunity.metadata?.vaultAddress ?? yieldOpportunity.address;
+    const hasPosition = positions.some(
+      (p) =>
+        p.vaultAddress.toLowerCase() === vaultAddr?.toLowerCase() &&
+        parseFloat(p.amountUsd || p.amount || "0") > 0
+    );
+
     return (
       <div className="mt-4 flex w-full flex-col items-center">
         <div className="ios-shadow w-full rounded-[20px] border border-red-200 bg-red-50 p-6 text-center">
           <AlertTriangle className="mx-auto mb-3 h-8 w-8 text-red-500" />
           <p className="mb-2 text-lg font-bold text-[var(--pearl)]">Vault Paused</p>
           <p className="text-[var(--pearl)]/50 text-sm font-medium">
-            This vault has been temporarily paused by the protocol. Deposits are not available right
-            now. Please check back later or choose a different vault.
+            {hasPosition
+              ? "This vault has been temporarily paused by the protocol. New deposits are not available, but you can still withdraw your existing position using the withdraw option below."
+              : "This vault has been temporarily paused by the protocol. Deposits are not available right now. Please check back later or choose a different vault."}
           </p>
         </div>
       </div>

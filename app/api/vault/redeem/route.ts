@@ -16,6 +16,13 @@ import {
   verifyVaultApproval,
 } from "@/lib/agent/resolve-registration";
 import { redeem, VaultOperationError } from "@/lib/agent/vault-operation-service";
+import { PauseService } from "@/lib/shared/pause-service";
+import { YoPauseChecker } from "@/lib/yo/pause-checker";
+import { MorphoPauseChecker } from "@/lib/morpho/pause-checker";
+
+const pauseService = new PauseService([new YoPauseChecker(), new MorphoPauseChecker()], {
+  ttlMs: 60_000,
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -85,7 +92,19 @@ export async function POST(request: NextRequest) {
     }
     const { decryptedAuth, accountAddress, authorizationData } = resolved;
 
-    // 4. Verify vault/gateway is approved
+    // 4a. Check if vault has redeems paused
+    const pauseStates = await pauseService.checkVaultPauseStates([
+      { address: vaultAddress as `0x${string}`, protocol },
+    ]);
+    const vaultPauseState = pauseStates.get(vaultAddress.toLowerCase() as `0x${string}`);
+    if (vaultPauseState?.redeemPaused) {
+      return NextResponse.json(
+        { error: "This vault has redeems paused. Withdrawal is not currently available." },
+        { status: 422 }
+      );
+    }
+
+    // 4b. Verify vault/gateway is approved
     const approvedVaults = authorizationData.approvedVaults || [];
     const approval = verifyVaultApproval(approvedVaults, vaultAddress, protocol);
     if (!approval.approved) {

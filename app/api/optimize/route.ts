@@ -105,7 +105,13 @@ export async function GET(request: NextRequest) {
       transformPosition(p, morphoOpportunities)
     );
     const transformedYoPositions = yoPositions.map((p) => transformYoPosition(p, yoOpportunities));
-    const allPositions = [...transformedMorphoPositions, ...transformedYoPositions];
+    // Enrich positions with pause state from the already-fetched pauseStates map
+    const allPositions = [...transformedMorphoPositions, ...transformedYoPositions]
+      .filter((p): p is NonNullable<typeof p> => p != null)
+      .map((p) => ({
+        ...p,
+        paused: pauseStates.get(p.vaultAddress.toLowerCase() as `0x${string}`)?.paused ?? false,
+      }));
 
     // Transform decision vaults based on protocol
     let decisionFrom = null;
