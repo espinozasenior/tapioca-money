@@ -210,6 +210,10 @@ export function EarnYieldModal({ open, onClose, initialYield }: EarnYieldModalPr
             yieldOpportunity={selectedYield}
             onSuccess={handleDepositSuccess}
             onProcessing={() => dispatch({ type: "setStep", step: "processing" })}
+            onViewPositions={() => {
+              dispatch({ type: "back", hasInitialYield: false });
+              dispatch({ type: "setTab", tab: "positions" });
+            }}
           />
         )}
 
