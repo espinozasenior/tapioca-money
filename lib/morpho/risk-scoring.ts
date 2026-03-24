@@ -72,7 +72,7 @@ export function calculateRiskScore(vault: {
     score += 0.15; // Unknown curator
   }
 
-  // 4. Fee Structure (0-0.15)
+  // 4. Fee Structure (0-0.4)
   if ((vault.performanceFee ?? 0) > 0.05) {
     score += 0.4; // >5% performance fee — hard exclusion
   }

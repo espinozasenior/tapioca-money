@@ -15,6 +15,7 @@ interface DepositYieldProps {
   yieldOpportunity: YieldOpportunity;
   onSuccess: () => void;
   onProcessing: () => void;
+  onViewPositions?: () => void;
 }
 
 interface DepositState {
@@ -61,7 +62,12 @@ function depositReducer(state: DepositState, action: DepositAction): DepositStat
   }
 }
 
-export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: DepositYieldProps) {
+export function DepositYield({
+  yieldOpportunity,
+  onSuccess,
+  onProcessing,
+  onViewPositions,
+}: DepositYieldProps) {
   const { wallet, isSolanaWallet } = useWallet();
   const { getAccessToken } = usePrivy();
   // Pass the vault's underlying token to useBalance for multi-asset support
@@ -187,9 +193,17 @@ export function DepositYield({ yieldOpportunity, onSuccess, onProcessing }: Depo
           <p className="mb-2 text-lg font-bold text-[var(--pearl)]">Vault Paused</p>
           <p className="text-[var(--pearl)]/50 text-sm font-medium">
             {hasPosition
-              ? "This vault has been temporarily paused by the protocol. New deposits are not available, but you can still withdraw your existing position using the withdraw option below."
+              ? "This vault has been temporarily paused by the protocol. New deposits are not available, but you can withdraw your existing position."
               : "This vault has been temporarily paused by the protocol. Deposits are not available right now. Please check back later or choose a different vault."}
           </p>
+          {hasPosition && onViewPositions && (
+            <button
+              onClick={onViewPositions}
+              className="bg-primary hover:bg-primary-hover mt-4 rounded-full px-6 py-2.5 text-sm font-semibold text-white transition"
+            >
+              View Position & Withdraw
+            </button>
+          )}
         </div>
       </div>
     );
