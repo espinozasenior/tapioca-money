@@ -375,13 +375,21 @@ export class YieldDecisionEngine {
     const positions = await this.morphoClient.fetchUserPositions(userAddress, CHAIN_ID);
 
     if (prefetchedMorphoVaults) {
-      // Look up APY from the already-fetched vault list (no N+1 API calls)
-      return positions.map((pos) => {
-        const matched = prefetchedMorphoVaults.find(
-          (v) => v.address.toLowerCase() === pos.vault.address.toLowerCase()
-        );
-        return { ...pos, apy: matched?.avgNetApy ?? matched?.netApy ?? 0 };
-      });
+      // Look up APY from the already-fetched vault list (no N+1 API calls).
+      // Positions in vaults outside the filtered list (e.g. below TVL gate)
+      // fall back to individual fetch so they still show correct APY.
+      return Promise.all(
+        positions.map(async (pos) => {
+          const matched = prefetchedMorphoVaults.find(
+            (v) => v.address.toLowerCase() === pos.vault.address.toLowerCase()
+          );
+          if (matched) {
+            return { ...pos, apy: matched.avgNetApy ?? matched.netApy ?? 0 };
+          }
+          const vaultDetails = await this.morphoClient.fetchVault(pos.vault.address, CHAIN_ID);
+          return { ...pos, apy: vaultDetails?.avgNetApy || 0 };
+        })
+      );
     }
 
     // Fallback: fetch each vault individually (original behavior)

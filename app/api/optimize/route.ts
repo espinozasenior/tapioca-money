@@ -105,13 +105,29 @@ export async function GET(request: NextRequest) {
       transformPosition(p, morphoOpportunities)
     );
     const transformedYoPositions = yoPositions.map((p) => transformYoPosition(p, yoOpportunities));
-    // Enrich positions with pause state from the already-fetched pauseStates map
-    const allPositions = [...transformedMorphoPositions, ...transformedYoPositions]
-      .filter((p): p is NonNullable<typeof p> => p != null)
+    const mergedPositions = [...transformedMorphoPositions, ...transformedYoPositions].filter(
+      (p): p is NonNullable<typeof p> => p != null
+    );
+
+    // Check pause state for positions whose vaults weren't in the opportunity list
+    // (e.g. vaults excluded by quality gates but user still has funds deposited)
+    const uncheckedVaults = mergedPositions
+      .filter((p) => !pauseStates.has(p.vaultAddress.toLowerCase() as `0x${string}`))
       .map((p) => ({
-        ...p,
-        paused: pauseStates.get(p.vaultAddress.toLowerCase() as `0x${string}`)?.paused ?? false,
+        address: p.vaultAddress.toLowerCase() as `0x${string}`,
+        protocol: p.protocol ?? "morpho",
       }));
+    if (uncheckedVaults.length > 0) {
+      const extraPauseStates = await pauseService.checkVaultPauseStates(uncheckedVaults);
+      for (const [addr, state] of extraPauseStates) {
+        pauseStates.set(addr, state);
+      }
+    }
+
+    const allPositions = mergedPositions.map((p) => ({
+      ...p,
+      paused: pauseStates.get(p.vaultAddress.toLowerCase() as `0x${string}`)?.paused ?? false,
+    }));
 
     // Transform decision vaults based on protocol
     let decisionFrom = null;
