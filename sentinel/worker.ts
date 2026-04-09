@@ -16,7 +16,7 @@ import { RulesEngine } from "./rules-engine";
 import { ExitOrchestrator } from "./exit-orchestrator";
 import { getSql } from "./db";
 import { checkPonderFreshness, queryVaultFlows, queryPriceUpdate } from "./signals/ponder";
-import { queryVaultPaused, querySharePrice } from "./signals/onchain";
+import { queryVaultPaused, querySharePrice, queryTotalAssets } from "./signals/onchain";
 import { queryDeFiLlamaPrice } from "./signals/defillama";
 import { sendPagerDutyAlert } from "./notifications/pagerduty";
 import type {
@@ -68,37 +68,34 @@ async function gatherSignals(config: SentinelConfig, ponderFresh: boolean): Prom
       }
     }
 
-    // --- Vault flows (bank run detection) via Ponder ---
-    if (ponderFresh) {
-      try {
-        const flows = await queryVaultFlows(
-          config.ponderGraphqlUrl,
-          vault.address,
-          now - 1800 // last 30 min
-        );
-        if (flows.length > 0) {
-          const deposits = flows
-            .filter((f) => f.type === "deposit")
-            .reduce((sum, f) => sum + parseFloat(f.assets), 0);
-          const withdrawals = flows
-            .filter((f) => f.type === "withdraw")
-            .reduce((sum, f) => sum + parseFloat(f.assets), 0);
-          const netFlow = deposits - withdrawals;
-
-          signals.push({
-            type: "VAULT_FLOW",
-            vault,
-            value: netFlow,
-            timestamp: Date.now(),
-            source: "ponder",
-          });
-        }
-      } catch (error) {
-        console.error(
-          `[Sentinel] Vault flow signal failed for ${vault.address}:`,
-          (error as Error).message
-        );
+    // --- Vault TVL (bank-run detection) via on-chain totalAssets() ---
+    //
+    // The rules engine's evaluateVaultFlow compares the EARLIEST and LATEST
+    // values in a rolling 30-min window and fires EXIT if TVL dropped > 15%.
+    // That only works if the value is a monotonically-tracked TVL snapshot,
+    // NOT a per-poll delta (deposits - withdrawals) — a delta can swing sign
+    // between polls and produce meaningless "dropPct" ratios, causing
+    // constant false-positive BANK_RUN triggers on quiet vaults.
+    //
+    // We use on-chain totalAssets() rather than summing Ponder flows because
+    // (a) it's the canonical TVL including yield accrual and (b) it works
+    // even when there's no indexer activity in the window.
+    try {
+      const totalAssets = await queryTotalAssets(vault.address, config.erpcUrl);
+      if (totalAssets !== null && totalAssets > 0n) {
+        // Convert to a Number scaled to underlying decimals (6 for USDC).
+        // Morpho USDC vaults use 6 decimals — safe for TVL up to ~$9 quadrillion.
+        const tvl = Number(totalAssets) / 1e6;
+        signals.push({
+          type: "VAULT_FLOW",
+          vault,
+          value: tvl,
+          timestamp: Date.now(),
+          source: "rpc",
+        });
       }
+    } catch (error) {
+      console.error(`[Sentinel] TVL signal failed for ${vault.address}:`, (error as Error).message);
     }
 
     // --- DeFiLlama fallback when Ponder is stale ---
@@ -301,8 +298,17 @@ async function pollCycle(config: SentinelConfig): Promise<void> {
       const incident = activeIncidents.get(key);
       if (incident) incident.results = results;
 
-      // Notify
-      await sendPagerDutyAlert(action, results, config.pagerdutyRoutingKey);
+      // Notify ONLY if there were users with exposure to the vault.
+      // An EXIT action with zero affected users (0 success / 0 failed / 0 skipped)
+      // is operational noise — the rule fired but no one has funds at risk.
+      // We still log the trigger locally so vault-level anomalies are observable.
+      if (results.length > 0) {
+        await sendPagerDutyAlert(action, results, config.pagerdutyRoutingKey);
+      } else {
+        console.log(
+          `[Sentinel] EXIT ${action.reason} on ${action.vaultAddress} had zero affected users — skipping PagerDuty`
+        );
+      }
 
       console.log(
         `[Sentinel] Exit complete: ${results.filter((r) => r.status === "SUCCESS").length} success, ` +
