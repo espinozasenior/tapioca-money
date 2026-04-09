@@ -70,7 +70,7 @@ export class YieldDecisionEngine {
       // (b) to look up current vault APY, (c) to find eligible rebalance targets.
       const [morphoPositions, yoPositions, morphoVaults, yoVaults] = await Promise.all([
         this.morphoClient.fetchUserPositions(userAddress, CHAIN_ID),
-        this.yoClient.fetchUserPositions(userAddress, CHAIN_ID),
+        this.yoClient.fetchUserPositions(userAddress, CHAIN_ID, { includeHistory: false }),
         prefetchedVaults?.morpho ??
           this.morphoClient.fetchVaults(CHAIN_ID, MORPHO_ASSET_SYMBOL, 50),
         prefetchedVaults?.yo ?? this.yoClient.fetchVaults(CHAIN_ID),
@@ -410,9 +410,12 @@ export class YieldDecisionEngine {
    */
   async getYoPositionsWithApy(
     userAddress: `0x${string}`,
-    prefetchedYoVaults?: YoVault[]
+    prefetchedYoVaults?: YoVault[],
+    options?: { includeHistory?: boolean }
   ): Promise<(YoUserPosition & { apy: number })[]> {
-    const positions = await this.yoClient.fetchUserPositions(userAddress, CHAIN_ID);
+    const positions = await this.yoClient.fetchUserPositions(userAddress, CHAIN_ID, {
+      includeHistory: options?.includeHistory ?? true,
+    });
     const vaults = prefetchedYoVaults ?? (await this.yoClient.fetchVaults(CHAIN_ID));
     return positions.map((pos) => {
       const vault = vaults.find((v) => v.address.toLowerCase() === pos.vaultAddress.toLowerCase());

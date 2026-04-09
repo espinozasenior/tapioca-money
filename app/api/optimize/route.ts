@@ -9,6 +9,7 @@ import {
   forbiddenResponse,
 } from "@/lib/auth/middleware";
 import { resolveAgentAddress } from "@/lib/agent/resolve-agent-address";
+import { hasActivePositions } from "@/lib/agent/position-check";
 import { PauseService } from "@/lib/shared/pause-service";
 import { YoPauseChecker } from "@/lib/yo/pause-checker";
 import { MorphoPauseChecker } from "@/lib/morpho/pause-checker";
@@ -34,26 +35,33 @@ export async function GET(request: NextRequest) {
       (a, b) => b.apy - a.apy
     );
 
-    // ADR-001: Enrich opportunities with pause state
-    const pauseStates = await pauseService.checkVaultPauseStates(
-      rawOpportunities.map((o) => ({ address: o.address as `0x${string}`, protocol: o.protocol }))
-    );
-    const allOpportunities = rawOpportunities.map((o) => ({
-      ...o,
-      paused: pauseStates.get(o.address.toLowerCase() as `0x${string}`)?.paused ?? false,
-    }));
-
     // If no address, return public vault list (no auth required).
     // INTENTIONAL PUBLIC ACCESS (M-6): This path is called during registration
     // (client-secure.ts) before the user has a stored session. It only exposes
     // vault metadata (names, APYs, addresses) which is already public on-chain.
     if (!address) {
-      return NextResponse.json({
-        decision: null,
-        opportunities: allOpportunities,
-        positions: [],
-        timestamp: Date.now(),
-      });
+      // ADR-001: Enrich opportunities with pause state (public path — opportunities only)
+      const pauseStates = await pauseService.checkVaultPauseStates(
+        rawOpportunities.map((o) => ({ address: o.address as `0x${string}`, protocol: o.protocol }))
+      );
+      const allOpportunities = rawOpportunities.map((o) => ({
+        ...o,
+        paused: pauseStates.get(o.address.toLowerCase() as `0x${string}`)?.paused ?? false,
+      }));
+
+      return NextResponse.json(
+        {
+          decision: null,
+          opportunities: allOpportunities,
+          positions: [],
+          timestamp: Date.now(),
+        },
+        {
+          headers: {
+            "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
+          },
+        }
+      );
     }
 
     // SECURITY: Verify the caller is authenticated and owns the requested address.
@@ -89,6 +97,40 @@ export async function GET(request: NextRequest) {
       queryAddress = agentAddr as `0x${string}`;
     }
 
+    // P3 optimization: Short-circuit when user has zero positions across all vaults.
+    // Saves ~600ms by skipping evaluateRebalancing + position fetches entirely.
+    const allVaultAddresses = [
+      ...morphoVaults.map((v) => v.address as `0x${string}`),
+      ...yoVaults.map((v) => v.address as `0x${string}`),
+    ];
+
+    const hasPositions = await hasActivePositions(queryAddress, allVaultAddresses);
+    if (!hasPositions) {
+      // Enrich opportunities with pause state before returning
+      const pauseStates = await pauseService.checkVaultPauseStates(
+        rawOpportunities.map((o) => ({ address: o.address as `0x${string}`, protocol: o.protocol }))
+      );
+      const allOpportunities = rawOpportunities.map((o) => ({
+        ...o,
+        paused: pauseStates.get(o.address.toLowerCase() as `0x${string}`)?.paused ?? false,
+      }));
+
+      return NextResponse.json({
+        decision: {
+          shouldRebalance: false,
+          estimatedGasCost: "0",
+          estimatedSlippage: 0,
+          netGain: 0,
+          reason: "No active positions",
+          from: null,
+          to: null,
+        },
+        opportunities: allOpportunities,
+        positions: [],
+        timestamp: Date.now(),
+      });
+    }
+
     // Pass pre-fetched vaults to avoid redundant API calls (P0-1 fix)
     const decision = await yieldDecisionEngine.evaluateRebalancing(queryAddress, null, {
       morpho: morphoVaults,
@@ -98,7 +140,9 @@ export async function GET(request: NextRequest) {
     // Pass pre-fetched morpho vaults to avoid N+1 fetchVault calls (P1-3 fix)
     const [morphoPositions, yoPositions] = await Promise.all([
       yieldDecisionEngine.getMorphoPositionsWithApy(queryAddress, morphoVaults),
-      yieldDecisionEngine.getYoPositionsWithApy(queryAddress, yoVaults),
+      yieldDecisionEngine.getYoPositionsWithApy(queryAddress, yoVaults, {
+        includeHistory: false,
+      }),
     ]);
 
     const transformedMorphoPositions = morphoPositions.map((p) =>
@@ -109,20 +153,31 @@ export async function GET(request: NextRequest) {
       (p): p is NonNullable<typeof p> => p != null
     );
 
-    // Check pause state for positions whose vaults weren't in the opportunity list
-    // (e.g. vaults excluded by quality gates but user still has funds deposited)
-    const uncheckedVaults = mergedPositions
-      .filter((p) => !pauseStates.has(p.vaultAddress.toLowerCase() as `0x${string}`))
-      .map((p) => ({
-        address: p.vaultAddress.toLowerCase() as `0x${string}`,
-        protocol: p.protocol ?? "morpho",
-      }));
-    if (uncheckedVaults.length > 0) {
-      const extraPauseStates = await pauseService.checkVaultPauseStates(uncheckedVaults);
-      for (const [addr, state] of extraPauseStates) {
-        pauseStates.set(addr, state);
+    // ADR-001: Single merged pause check for all unique vaults (P2 optimization)
+    // Combines opportunity vaults + position-only vaults (e.g. excluded by quality
+    // gates but user still has funds) into one PauseService call.
+    const allVaultEntries = new Map<string, { address: `0x${string}`; protocol: string }>();
+    for (const o of rawOpportunities) {
+      const key = o.address.toLowerCase();
+      allVaultEntries.set(key, { address: key as `0x${string}`, protocol: o.protocol });
+    }
+    for (const p of mergedPositions) {
+      const key = p.vaultAddress.toLowerCase();
+      if (!allVaultEntries.has(key)) {
+        allVaultEntries.set(key, {
+          address: key as `0x${string}`,
+          protocol: p.protocol ?? "morpho",
+        });
       }
     }
+    const pauseStates = await pauseService.checkVaultPauseStates(
+      Array.from(allVaultEntries.values())
+    );
+
+    const allOpportunities = rawOpportunities.map((o) => ({
+      ...o,
+      paused: pauseStates.get(o.address.toLowerCase() as `0x${string}`)?.paused ?? false,
+    }));
 
     const allPositions = mergedPositions.map((p) => ({
       ...p,

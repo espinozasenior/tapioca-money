@@ -6,6 +6,7 @@ import {
   uuid,
   jsonb,
   decimal,
+  numeric,
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
@@ -78,4 +79,57 @@ export const agentActions = pgTable(
     // Index for filtering by action type and status
     index("idx_agent_actions_type_status").on(table.actionType, table.status),
   ]
+);
+
+// ---------------------------------------------------------------------------
+// Sentinel v0 — Circuit Breaker Tables
+// ---------------------------------------------------------------------------
+
+/**
+ * Incident log: one row per trigger event per user.
+ * Tracks all EXIT and ALERT actions taken by the sentinel worker.
+ */
+export const sentinelIncidents = pgTable(
+  "sentinel_incidents",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userAddress: text("user_address").notNull(),
+    vaultAddress: text("vault_address").notNull(),
+    protocol: text("protocol").notNull(), // 'morpho' | 'yo'
+    signalType: text("signal_type").notNull(), // 'DEX_PRICE' | 'ORACLE_PRICE' | 'VAULT_FLOW' | 'MAX_REDEEM' | 'VAULT_PAUSED' | 'SHARE_PRICE'
+    signalValue: numeric("signal_value"),
+    threshold: numeric("threshold"),
+    actionTaken: text("action_taken").notNull(), // 'exit' | 'alert' | 'exit_failed'
+    txHash: text("tx_hash"),
+    amountRedeemed: numeric("amount_redeemed"),
+    sessionType: text("session_type"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index("idx_incidents_vault").on(table.vaultAddress, table.createdAt),
+    index("idx_incidents_user").on(table.userAddress, table.createdAt),
+  ]
+);
+
+/**
+ * Live vault status: one row per monitored vault, upserted each poll cycle.
+ * Read by the dashboard API to show vault safety indicators.
+ */
+export const sentinelVaultStatus = pgTable(
+  "sentinel_vault_status",
+  {
+    vaultAddress: text("vault_address").primaryKey(),
+    protocol: text("protocol").notNull(),
+    status: text("status").notNull().default("safe"), // 'safe' | 'warning' | 'danger' | 'exiting' | 'exited'
+    lastCheckAt: timestamp("last_check_at", { withTimezone: true }),
+    sharePrice: numeric("share_price"),
+    tvl: numeric("tvl"),
+    depegDelta: numeric("depeg_delta"),
+    maxRedeemZero: boolean("max_redeem_zero").default(false),
+    metadata: jsonb("metadata"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [index("idx_status_last_check").on(table.lastCheckAt)]
 );
