@@ -18,23 +18,11 @@ import type { VaultExposure, VaultConfig, SentinelConfig } from "./types";
  * IMPORTANT: This must be manually maintained. When adding new vaults
  * to the optimizer, also add them here with their exposure data.
  */
+// NOTE: These MUST be real contract addresses deployed on Base mainnet (chainId 8453).
+// Cross-check with `cast code <address> --rpc-url https://mainnet.base.org` before adding.
+// Historical note: earlier revisions had Ethereum mainnet addresses pasted here which
+// have no code on Base and caused "convertToAssets returned no data" errors.
 export const VAULT_EXPOSURE_MAP: Record<string, VaultExposure> = {
-  // Morpho vaults on Base — USR exposure
-  // Usual Boosted USDC (Re7 Labs curated) — has direct USR collateral exposure
-  "0x0dB2b2e3a45E6e9e30B68C4461bBe42Bfa125011": {
-    protocol: "morpho",
-    underlying: "USR",
-    underlyingAddress: "0x35282d87011f87508D457F08252Bc5bFa52E10A0" as `0x${string}`,
-    dexPools: [
-      // Ethereum Curve USR/USDC pool — primary signal source per Resolv replay
-      {
-        address: "0x5D13179C5FA40B87D53ff67Ca26245d3d6B76e01" as `0x${string}`,
-        asset: "USR",
-        chain: "ethereum",
-      },
-    ],
-  },
-
   // Moonwell Flagship USDC (Gauntlet curated) — USDC exposure, low risk
   "0xc1256Ae5FF1cf2719D4937adb3bbCCab2E00A2Ca": {
     protocol: "morpho",
@@ -42,19 +30,20 @@ export const VAULT_EXPOSURE_MAP: Record<string, VaultExposure> = {
     dexPools: [], // USDC: no DEX depeg monitoring needed for major stablecoin
   },
 
-  // Steakhouse USDC
-  "0xbEef047a543E45807105E51A8BBEFCc5950fcfBa": {
+  // Steakhouse USDC on Base
+  "0xbeeF010f9cb27031ad51e3333f9aF9C6B1228183": {
     protocol: "morpho",
     underlying: "USDC",
     dexPools: [],
   },
 
-  // YO Protocol vault — yoUSD
-  "0x4879712c5D1A98C0B88Fb700daFF5c65d12Fd729": {
-    protocol: "yo",
-    underlying: "USDC",
-    dexPools: [],
-  },
+  // TODO: Add remaining Base vaults as they're integrated. Required per vault:
+  //   - protocol: "morpho" | "yo"
+  //   - underlying: asset symbol
+  //   - dexPools: DEX pools to monitor for depeg (empty for USDC/USDT)
+  // Examples to add: Gauntlet USDC Prime, Re7 Boosted USDC (Base variant), YO USD vault.
+  // YO Protocol vaults use a non-ERC4626 interface — on-chain reads are auto-skipped
+  // for protocol:"yo" entries in worker.ts.
 };
 
 // ---------------------------------------------------------------------------
