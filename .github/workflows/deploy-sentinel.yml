@@ -1,0 +1,45 @@
+name: Deploy Sentinel
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "sentinel/**"
+      - "lib/**"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build sentinel worker
+        working-directory: sentinel
+        run: npx tsup worker.ts --format cjs --out-dir dist --external viem --external @zerodev --external @neondatabase
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /opt/tapioca
+            git pull origin main
+            pnpm install --frozen-lockfile
+            cd sentinel && npx tsup worker.ts --format cjs --out-dir dist --external viem --external @zerodev --external @neondatabase
+            sudo systemctl restart sentinel-worker
+            sudo systemctl restart sentinel-ponder
+            echo "Sentinel deployed successfully"

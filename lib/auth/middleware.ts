@@ -16,9 +16,11 @@ let privyClient: PrivyClient | null = null;
 
 // TTL cache with FIFO eviction for Privy user details (P0-3 fix).
 // Avoids 100-300ms Privy API call on every request for the same user.
-// SECURITY NOTE: Cached entries may be up to 15s stale. If a user unlinks
+// SECURITY NOTE: Cached entries may be up to 30s stale. If a user unlinks
 // a wallet in Privy, the old wallet remains "owned" in this cache until expiry.
-const USER_CACHE_TTL_MS = 15_000; // 15 seconds (M-2: reduced from 60s for tighter security)
+// 30s is acceptable: wallet unlinking is rare and the 100-300ms savings per
+// cache miss significantly improves /api/optimize P95 latency.
+const USER_CACHE_TTL_MS = 30_000; // 30 seconds (was 15s — benchmark showed 100-300ms per miss)
 const USER_CACHE_MAX_SIZE = 1000;
 const userDetailsCache = new Map<string, { user: any; expiresAt: number }>();
 
