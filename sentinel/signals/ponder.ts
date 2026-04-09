@@ -54,27 +54,49 @@ async function graphqlQuery<T>(
 /**
  * Check Ponder indexer freshness via _meta query.
  * Returns true if the indexed block is within PONDER_STALE_SECONDS of current time.
+ *
+ * Ponder 0.7+ exposes per-network status under `_meta.status.<networkName>.block`
+ * and a `ready` flag indicating historical sync completion. We treat ready=false
+ * as stale regardless of block timestamp — during initial backfill the latest
+ * indexed block is hours/days in the past.
  */
 export async function checkPonderFreshness(
   ponderUrl: string,
   staleThresholdSeconds: number
 ): Promise<{ fresh: boolean; meta: PonderMeta | null }> {
   try {
-    const data = await graphqlQuery<{ _meta: PonderMeta }>(
-      ponderUrl,
-      `query { _meta { block { number timestamp } } }`
-    );
+    const data = await graphqlQuery<{
+      _meta: {
+        status: Record<string, { ready: boolean; block: { number: number; timestamp: number } }>;
+      };
+    }>(ponderUrl, `query { _meta { status } }`);
 
-    const staleness = Math.floor(Date.now() / 1000) - data._meta.block.timestamp;
+    // Use the first (and for v0, only) configured network.
+    const networkStatuses = Object.values(data._meta.status);
+    const head = networkStatuses[0];
 
+    if (!head?.block) {
+      return { fresh: false, meta: null };
+    }
+
+    const meta: PonderMeta = {
+      block: { number: head.block.number, timestamp: head.block.timestamp },
+    };
+
+    if (!head.ready) {
+      // Historical backfill still in progress — treat as not-fresh.
+      return { fresh: false, meta };
+    }
+
+    const staleness = Math.floor(Date.now() / 1000) - head.block.timestamp;
     if (staleness > staleThresholdSeconds) {
       console.warn(
         `[Sentinel] Ponder head stale by ${staleness}s (threshold: ${staleThresholdSeconds}s)`
       );
-      return { fresh: false, meta: data._meta };
+      return { fresh: false, meta };
     }
 
-    return { fresh: true, meta: data._meta };
+    return { fresh: true, meta };
   } catch (error) {
     console.error("[Sentinel] Ponder unreachable:", (error as Error).message);
     return { fresh: false, meta: null };
