@@ -17,6 +17,7 @@ export interface DexPool {
 export interface VaultExposure {
   protocol: "morpho" | "yo";
   underlying: string;
+  underlyingDecimals: number;
   chainlinkFeed?: `0x${string}`;
   dexPools: DexPool[];
 }
