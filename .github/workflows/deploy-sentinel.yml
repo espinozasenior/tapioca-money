@@ -42,7 +42,11 @@ jobs:
           script: |
             set -e
             cd /opt/tapioca
-            sudo -u tapioca git pull --ff-only origin main
+            # Always deploy from main — earlier manual deploys may have left
+            # the repo on a feature branch, which breaks 'git pull --ff-only'.
+            sudo -u tapioca git fetch origin main
+            sudo -u tapioca git checkout main
+            sudo -u tapioca git reset --hard origin/main
             sudo -u tapioca CI=true pnpm install --frozen-lockfile
             sudo -u tapioca ./node_modules/.bin/tsup sentinel/worker.ts --format cjs --out-dir sentinel/dist --external viem --external "@zerodev/*" --external "@neondatabase/*"
             sudo -u tapioca CI=true pnpm -C sentinel/ponder install --frozen-lockfile
