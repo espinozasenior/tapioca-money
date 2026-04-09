@@ -148,7 +148,11 @@ async function gatherSignals(config: SentinelConfig, ponderFresh: boolean): Prom
 
     // share price
     try {
-      const sharePrice = await querySharePrice(vault.address, undefined, config.erpcUrl);
+      const sharePrice = await querySharePrice(
+        vault.address,
+        vault.exposure.underlyingDecimals,
+        config.erpcUrl
+      );
       if (sharePrice !== null) {
         signals.push({
           type: "SHARE_PRICE",

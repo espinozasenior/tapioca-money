@@ -27,13 +27,15 @@ export const VAULT_EXPOSURE_MAP: Record<string, VaultExposure> = {
   "0xc1256Ae5FF1cf2719D4937adb3bbCCab2E00A2Ca": {
     protocol: "morpho",
     underlying: "USDC",
-    dexPools: [], // USDC: no DEX depeg monitoring needed for major stablecoin
+    underlyingDecimals: 6,
+    dexPools: [],
   },
 
   // Steakhouse USDC on Base
   "0xbeeF010f9cb27031ad51e3333f9aF9C6B1228183": {
     protocol: "morpho",
     underlying: "USDC",
+    underlyingDecimals: 6,
     dexPools: [],
   },
 

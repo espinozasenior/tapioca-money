@@ -131,26 +131,31 @@ export async function queryTotalAssets(
 /**
  * Read vault share price as a normalized ratio (≈1.0 for healthy vaults).
  *
- * Queries on-chain decimals() to determine the correct share unit — USDC
- * vaults use 6 decimals (10^6 = 1 share), not 18. Using the wrong exponent
- * produces nonsense like 0.000000000001086 instead of ~1.086.
+ * MetaMorpho vaults have 18-decimal shares but 6-decimal underlying (USDC).
+ * convertToAssets(10^18) returns assets in underlying decimals (e.g. 1086079
+ * = 1.086 USDC). To normalize: divide by 10^underlyingDecimals, not by the
+ * shares unit.
+ *
+ * @param underlyingDecimals - from VaultExposure config (6 for USDC, 18 for ETH)
  */
 export async function querySharePrice(
   vaultAddress: `0x${string}`,
-  _unused?: bigint,
+  underlyingDecimals: number = 6,
   erpcUrl?: string
 ): Promise<number | null> {
   try {
     const c = getClient(erpcUrl);
 
-    const decimals = await c.readContract({
+    // Read share decimals from the vault (18 for MetaMorpho)
+    const shareDecimals = await c.readContract({
       address: vaultAddress,
       abi: ERC4626_ABI,
       functionName: "decimals",
     });
 
-    const oneShare = 10n ** BigInt(decimals);
+    const oneShare = 10n ** BigInt(shareDecimals);
 
+    // convertToAssets returns in underlying decimals (e.g. 6 for USDC)
     const assets = await c.readContract({
       address: vaultAddress,
       abi: ERC4626_ABI,
@@ -158,8 +163,9 @@ export async function querySharePrice(
       args: [oneShare],
     });
 
-    // assets / oneShare ≈ 1.0 for a healthy vault (1 share → ~1 underlying)
-    return Number(assets) / Number(oneShare);
+    // Normalize to a human-readable ratio:
+    // assets is in underlyingDecimals, so divide by 10^underlyingDecimals.
+    return Number(assets) / 10 ** underlyingDecimals;
   } catch (error) {
     console.error(
       `[Sentinel] share price query failed for ${vaultAddress}:`,
