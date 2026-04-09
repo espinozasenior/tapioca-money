@@ -15,6 +15,7 @@ const ERC4626_ABI = parseAbi([
   "function previewRedeem(uint256 shares) view returns (uint256)",
   "function totalAssets() view returns (uint256)",
   "function convertToAssets(uint256 shares) view returns (uint256)",
+  "function decimals() view returns (uint8)",
 ]);
 
 const PAUSABLE_ABI = parseAbi(["function paused() view returns (bool)"]);
@@ -128,24 +129,37 @@ export async function queryTotalAssets(
 }
 
 /**
- * Read vault share price via convertToAssets(1e18).
- * Returns normalized price as a number.
+ * Read vault share price as a normalized ratio (≈1.0 for healthy vaults).
+ *
+ * Queries on-chain decimals() to determine the correct share unit — USDC
+ * vaults use 6 decimals (10^6 = 1 share), not 18. Using the wrong exponent
+ * produces nonsense like 0.000000000001086 instead of ~1.086.
  */
 export async function querySharePrice(
   vaultAddress: `0x${string}`,
-  sharesUnit: bigint = BigInt(1e18),
+  _unused?: bigint,
   erpcUrl?: string
 ): Promise<number | null> {
   try {
     const c = getClient(erpcUrl);
+
+    const decimals = await c.readContract({
+      address: vaultAddress,
+      abi: ERC4626_ABI,
+      functionName: "decimals",
+    });
+
+    const oneShare = 10n ** BigInt(decimals);
+
     const assets = await c.readContract({
       address: vaultAddress,
       abi: ERC4626_ABI,
       functionName: "convertToAssets",
-      args: [sharesUnit],
+      args: [oneShare],
     });
-    // Normalize: assets per share unit
-    return Number(assets) / Number(sharesUnit);
+
+    // assets / oneShare ≈ 1.0 for a healthy vault (1 share → ~1 underlying)
+    return Number(assets) / Number(oneShare);
   } catch (error) {
     console.error(
       `[Sentinel] share price query failed for ${vaultAddress}:`,
