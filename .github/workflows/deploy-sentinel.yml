@@ -25,9 +25,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Using ./node_modules/.bin/tsup (local devDep) instead of `npx tsup`
+      # because npx creates an isolated cache that can't see the repo's
+      # local `typescript`, causing "Cannot find module 'typescript'".
       - name: Build sentinel worker
-        working-directory: sentinel
-        run: npx tsup worker.ts --format cjs --out-dir dist --external viem --external @zerodev --external @neondatabase
+        run: ./node_modules/.bin/tsup sentinel/worker.ts --format cjs --out-dir sentinel/dist --external viem --external "@zerodev/*" --external "@neondatabase/*"
 
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1
@@ -36,10 +38,12 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
+            set -e
             cd /opt/tapioca
-            git pull origin main
-            pnpm install --frozen-lockfile
-            cd sentinel && npx tsup worker.ts --format cjs --out-dir dist --external viem --external @zerodev --external @neondatabase
+            sudo -u tapioca git pull --ff-only origin main
+            sudo -u tapioca CI=true pnpm install --frozen-lockfile
+            sudo -u tapioca ./node_modules/.bin/tsup sentinel/worker.ts --format cjs --out-dir sentinel/dist --external viem --external "@zerodev/*" --external "@neondatabase/*"
+            sudo -u tapioca CI=true pnpm -C sentinel/ponder install --frozen-lockfile
             sudo systemctl restart sentinel-worker
             sudo systemctl restart sentinel-ponder
             echo "Sentinel deployed successfully"
