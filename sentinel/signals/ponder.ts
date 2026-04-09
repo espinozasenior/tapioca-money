@@ -105,6 +105,9 @@ export async function checkPonderFreshness(
 
 /**
  * Query recent vault flows (deposits/withdrawals) in a time window.
+ *
+ * Ponder 0.7 wraps list queries in a paginated `xxxPage { items { ... } }`
+ * shape instead of returning a flat array.
  */
 export async function queryVaultFlows(
   ponderUrl: string,
@@ -112,7 +115,7 @@ export async function queryVaultFlows(
   sinceTimestamp: number
 ): Promise<PonderVaultFlow[]> {
   try {
-    const data = await graphqlQuery<{ vaultFlows: PonderVaultFlow[] }>(
+    const data = await graphqlQuery<{ vaultFlows: { items: PonderVaultFlow[] } }>(
       ponderUrl,
       `query RecentFlows($vault: String!, $since: Int!) {
         vaultFlows(
@@ -120,14 +123,16 @@ export async function queryVaultFlows(
           orderBy: "timestamp"
           orderDirection: "asc"
         ) {
-          type
-          assets
-          timestamp
+          items {
+            type
+            assets
+            timestamp
+          }
         }
       }`,
       { vault: vaultAddress, since: sinceTimestamp }
     );
-    return data.vaultFlows || [];
+    return data.vaultFlows?.items ?? [];
   } catch (error) {
     console.error(
       `[Sentinel] Ponder vault flow query failed for ${vaultAddress}:`,
@@ -139,6 +144,9 @@ export async function queryVaultFlows(
 
 /**
  * Query latest price update from Ponder-indexed Chainlink feeds.
+ *
+ * Ponder 0.7 paginated shape: `priceUpdates { items { ... } }`. The `limit`
+ * arg also moved onto the query field itself.
  */
 export async function queryPriceUpdate(
   ponderUrl: string,
@@ -146,7 +154,7 @@ export async function queryPriceUpdate(
 ): Promise<PonderPriceUpdate | null> {
   try {
     const data = await graphqlQuery<{
-      priceUpdates: PonderPriceUpdate[];
+      priceUpdates: { items: PonderPriceUpdate[] };
     }>(
       ponderUrl,
       `query LatestPrice($feed: String!) {
@@ -156,13 +164,15 @@ export async function queryPriceUpdate(
           orderDirection: "desc"
           limit: 1
         ) {
-          price
-          timestamp
+          items {
+            price
+            timestamp
+          }
         }
       }`,
       { feed: feedAddress }
     );
-    return data.priceUpdates?.[0] || null;
+    return data.priceUpdates?.items?.[0] || null;
   } catch (error) {
     console.error(
       `[Sentinel] Ponder price query failed for ${feedAddress}:`,
