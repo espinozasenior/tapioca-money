@@ -14,15 +14,20 @@ describe("Integration: Ponder to Worker", () => {
     const { queryVaultFlows } = await import("@/sentinel/signals/ponder");
     const { checkPonderFreshness } = await import("@/sentinel/signals/ponder");
 
-    // Mock Ponder _meta (fresh)
+    // Mock Ponder _meta (Ponder 0.7 shape: status.<network>.block + ready flag)
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         data: {
           _meta: {
-            block: {
-              number: 12345678,
-              timestamp: Math.floor(Date.now() / 1000) - 5, // 5s ago = fresh
+            status: {
+              base: {
+                ready: true,
+                block: {
+                  number: 12345678,
+                  timestamp: Math.floor(Date.now() / 1000) - 5, // 5s ago = fresh
+                },
+              },
             },
           },
         },
@@ -32,16 +37,18 @@ describe("Integration: Ponder to Worker", () => {
     const freshness = await checkPonderFreshness("http://localhost:42069", 60);
     expect(freshness.fresh).toBe(true);
 
-    // Mock vault flows query
+    // Mock vault flows query (Ponder 0.7 paginated shape: vaultFlows.items)
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         data: {
-          vaultFlows: [
-            { type: "withdraw", assets: "1000000000", timestamp: 1711100000 },
-            { type: "withdraw", assets: "500000000", timestamp: 1711100010 },
-            { type: "deposit", assets: "200000000", timestamp: 1711100020 },
-          ],
+          vaultFlows: {
+            items: [
+              { type: "withdraw", assets: "1000000000", timestamp: 1711100000 },
+              { type: "withdraw", assets: "500000000", timestamp: 1711100010 },
+              { type: "deposit", assets: "200000000", timestamp: 1711100020 },
+            ],
+          },
         },
       }),
     });

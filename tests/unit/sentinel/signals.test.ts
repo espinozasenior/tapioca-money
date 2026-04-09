@@ -24,7 +24,7 @@ describe("Ponder signals", () => {
     vi.clearAllMocks();
   });
 
-  // Test #15
+  // Test #15 — Ponder 0.7 paginated shape: priceUpdates.items
   it("ponder-price-signal-parses-graphql", async () => {
     const { queryPriceUpdate } = await import("@/sentinel/signals/ponder");
 
@@ -32,7 +32,9 @@ describe("Ponder signals", () => {
       ok: true,
       json: async () => ({
         data: {
-          priceUpdates: [{ price: 0.985, timestamp: 1711100000 }],
+          priceUpdates: {
+            items: [{ price: 0.985, timestamp: 1711100000 }],
+          },
         },
       }),
     });
@@ -44,7 +46,7 @@ describe("Ponder signals", () => {
     expect(result!.timestamp).toBe(1711100000);
   });
 
-  // Test #16
+  // Test #16 — Ponder 0.7 paginated shape: vaultFlows.items
   it("ponder-flow-signal-aggregates-withdrawals", async () => {
     const { queryVaultFlows } = await import("@/sentinel/signals/ponder");
 
@@ -52,11 +54,13 @@ describe("Ponder signals", () => {
       ok: true,
       json: async () => ({
         data: {
-          vaultFlows: [
-            { type: "withdraw", assets: "500000", timestamp: 1711100000 },
-            { type: "withdraw", assets: "300000", timestamp: 1711100010 },
-            { type: "deposit", assets: "100000", timestamp: 1711100020 },
-          ],
+          vaultFlows: {
+            items: [
+              { type: "withdraw", assets: "500000", timestamp: 1711100000 },
+              { type: "withdraw", assets: "300000", timestamp: 1711100010 },
+              { type: "deposit", assets: "100000", timestamp: 1711100020 },
+            ],
+          },
         },
       }),
     });
@@ -70,28 +74,9 @@ describe("Ponder signals", () => {
     expect(withdrawals).toBe(800000);
   });
 
-  // Test #17
-  it("dex-price-signal-calculates-implied-price", async () => {
-    const { queryDexSwaps } = await import("@/sentinel/signals/ponder");
-
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        data: {
-          dexSwaps: [
-            { impliedPrice: 0.945, timestamp: 1711100050 },
-            { impliedPrice: 0.96, timestamp: 1711100030 },
-          ],
-        },
-      }),
-    });
-
-    const swaps = await queryDexSwaps("http://localhost:42069", "0xPool", 1711099000);
-
-    expect(swaps).toHaveLength(2);
-    // Most recent swap (first in desc order)
-    expect(swaps[0].impliedPrice).toBe(0.945);
-  });
+  // NOTE: Previously had a dex-price-signal-calculates-implied-price test that
+  // exercised queryDexSwaps + the CurveDexPool handler. Both were removed when
+  // USR support was dropped from the sentinel — see refactor commit 24489d0.
 });
 
 describe("On-chain signals", () => {

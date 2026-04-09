@@ -15,14 +15,20 @@ describe("Integration: Stale Indexer Fallback", () => {
     const { queryDeFiLlamaPrice } = await import("@/sentinel/signals/defillama");
 
     // Ponder reports 90s-old block (stale > 60s threshold)
+    // Uses Ponder 0.7 shape: status.<network>.{ready, block}
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         data: {
           _meta: {
-            block: {
-              number: 12345678,
-              timestamp: Math.floor(Date.now() / 1000) - 90,
+            status: {
+              base: {
+                ready: true, // backfill finished, but live head is stale
+                block: {
+                  number: 12345678,
+                  timestamp: Math.floor(Date.now() / 1000) - 90,
+                },
+              },
             },
           },
         },

@@ -213,10 +213,11 @@ describe("RulesEngine", () => {
 describe("RulesEngine.isUnderlyingToxic", () => {
   it("returns true when vault underlying matches depeg asset", () => {
     const engine = new RulesEngine();
-    // The vault at this address has underlying=USR in VAULT_EXPOSURE_MAP
+    // Moonwell Flagship USDC has underlying=USDC in VAULT_EXPOSURE_MAP.
+    // If USDC ever depegs, redeeming this vault hands back the toxic asset.
     const result = engine.isUnderlyingToxic(
-      "0x0DB2B2E3A45e6e9e30B68C4461bBe42BFA125011" as `0x${string}`,
-      "USR"
+      "0xc1256Ae5FF1cf2719D4937adb3bbCCab2E00A2Ca" as `0x${string}`,
+      "USDC"
     );
     expect(result).toBe(true);
   });
@@ -225,7 +226,7 @@ describe("RulesEngine.isUnderlyingToxic", () => {
     const engine = new RulesEngine();
     const result = engine.isUnderlyingToxic(
       "0xc1256Ae5FF1cf2719D4937adb3bbCCab2E00A2Ca" as `0x${string}`, // USDC vault
-      "USR"
+      "EURC" // depegging asset is not the vault's underlying
     );
     expect(result).toBe(false);
   });
