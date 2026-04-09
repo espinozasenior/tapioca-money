@@ -21,14 +21,14 @@ import type { VaultExposure, VaultConfig, SentinelConfig } from "./types";
 export const VAULT_EXPOSURE_MAP: Record<string, VaultExposure> = {
   // Morpho vaults on Base — USR exposure
   // Usual Boosted USDC (Re7 Labs curated) — has direct USR collateral exposure
-  "0x0DB2B2E3A45e6e9e30B68C4461bBe42BFA125011": {
+  "0x0dB2b2e3a45E6e9e30B68C4461bBe42Bfa125011": {
     protocol: "morpho",
     underlying: "USR",
     underlyingAddress: "0x35282d87011f87508D457F08252Bc5bFa52E10A0" as `0x${string}`,
     dexPools: [
       // Ethereum Curve USR/USDC pool — primary signal source per Resolv replay
       {
-        address: "0x5D13179c5fa40b87D53Ff67ca26245D3D6B76E01" as `0x${string}`,
+        address: "0x5D13179C5FA40B87D53ff67Ca26245d3d6B76e01" as `0x${string}`,
         asset: "USR",
         chain: "ethereum",
       },

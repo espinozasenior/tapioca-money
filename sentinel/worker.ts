@@ -21,12 +21,7 @@ import {
   queryPriceUpdate,
   queryDexSwaps,
 } from "./signals/ponder";
-import {
-  queryMaxRedeem,
-  queryVaultPaused,
-  queryTotalAssets,
-  querySharePrice,
-} from "./signals/onchain";
+import { queryVaultPaused, querySharePrice } from "./signals/onchain";
 import { queryDeFiLlamaPrice } from "./signals/defillama";
 import { sendPagerDutyAlert } from "./notifications/pagerduty";
 import type {
@@ -160,26 +155,18 @@ async function gatherSignals(config: SentinelConfig, ponderFresh: boolean): Prom
 
     // --- On-chain reads (always run, independent of Ponder) ---
 
-    // maxRedeem — using zero address as a sentinel check
-    try {
-      const maxRedeemValue = await queryMaxRedeem(
-        vault.address,
-        "0x0000000000000000000000000000000000000000" as `0x${string}`,
-        config.erpcUrl
-      );
-      signals.push({
-        type: "MAX_REDEEM",
-        vault,
-        value: maxRedeemValue === 0n ? 0 : Number(maxRedeemValue),
-        timestamp: Date.now(),
-        source: "rpc",
-      });
-    } catch (error) {
-      console.error(
-        `[Sentinel] maxRedeem signal failed for ${vault.address}:`,
-        (error as Error).message
-      );
-    }
+    // NOTE: Previously emitted a MAX_REDEEM signal using address(0) as the
+    // owner, but that's not a meaningful health check — ERC-4626 vaults
+    // correctly return 0 shares for the zero address (it holds no shares),
+    // which caused false MAX_REDEEM_ZERO exits on compliant vaults like
+    // Moonwell Flagship USDC. The VAULT_PAUSED signal below already covers
+    // the "withdrawals disabled" case that MAX_REDEEM was trying to detect.
+    // To re-enable withdrawal liveness checks, add a known whale holder
+    // per-vault to VAULT_EXPOSURE_MAP and query maxRedeem(whale) instead.
+
+    // ERC-4626 compliance probe: skip for non-standard protocols (e.g. YO)
+    const isErc4626 = vault.exposure.protocol === "morpho";
+    if (!isErc4626) continue;
 
     // vault paused
     try {
