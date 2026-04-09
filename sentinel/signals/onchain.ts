@@ -27,11 +27,16 @@ let client: PublicClient | null = null;
 export function getClient(erpcUrl?: string): PublicClient {
   if (client) return client;
 
-  const rpcUrl = erpcUrl
-    ? `${erpcUrl}/main/evm/8453`
-    : process.env.ERPC_URL
-      ? `${process.env.ERPC_URL}/main/evm/8453`
-      : "https://mainnet.base.org";
+  // eRPC proxies expose chains under /main/evm/<chainId>. Direct RPC providers
+  // (Alchemy, Infura, mainnet.base.org) already include the full path and must
+  // not have the suffix appended. Detect by checking for eRPC's path convention.
+  const withErpcSuffix = (base: string) =>
+    base.includes("/main/evm/") || base.match(/alchemy|infura|quicknode|ankr|publicnode|base\.org/i)
+      ? base
+      : `${base}/main/evm/8453`;
+
+  const rawUrl = erpcUrl ?? process.env.ERPC_URL ?? "https://mainnet.base.org";
+  const rpcUrl = withErpcSuffix(rawUrl);
 
   client = createPublicClient({
     chain: base,

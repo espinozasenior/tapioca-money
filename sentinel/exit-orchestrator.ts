@@ -122,9 +122,16 @@ export class ExitOrchestrator {
     users: UserRecord[],
     vaultAddress: `0x${string}`
   ): Promise<UserPosition[]> {
+    // Support both eRPC-style URLs (need /main/evm/8453 suffix) and direct
+    // provider URLs (Alchemy/Infura/etc, which already include the full path)
+    const needsSuffix =
+      !this.erpcUrl.includes("/main/evm/") &&
+      !/alchemy|infura|quicknode|ankr|publicnode|base\.org/i.test(this.erpcUrl);
+    const rpcUrl = needsSuffix ? `${this.erpcUrl}/main/evm/8453` : this.erpcUrl;
+
     const client = createPublicClient({
       chain: base,
-      transport: http(`${this.erpcUrl}/main/evm/8453`),
+      transport: http(rpcUrl),
     });
 
     const positions: UserPosition[] = [];
