@@ -130,7 +130,8 @@ export async function queryVaultFlows(
           }
         }
       }`,
-      { vault: vaultAddress, since: sinceTimestamp }
+      // Ponder handlers store addresses lowercased, queries must match.
+      { vault: vaultAddress.toLowerCase(), since: sinceTimestamp }
     );
     return data.vaultFlows?.items ?? [];
   } catch (error) {
@@ -170,7 +171,8 @@ export async function queryPriceUpdate(
           }
         }
       }`,
-      { feed: feedAddress }
+      // Ponder handlers store addresses lowercased, queries must match.
+      { feed: feedAddress.toLowerCase() }
     );
     return data.priceUpdates?.items?.[0] || null;
   } catch (error) {
