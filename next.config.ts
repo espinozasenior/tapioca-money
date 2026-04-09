@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  compress: true,
   async headers() {
     return [
       {
@@ -11,8 +12,9 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {
             key: "Strict-Transport-Security",
-            value: "max-age=31536000; includeSubDomains",
+            value: "max-age=63072000; includeSubDomains; preload",
           },
+          { key: "X-XSS-Protection", value: "1; mode=block" },
           { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
         ],
       },

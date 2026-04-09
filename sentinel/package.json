@@ -1,0 +1,19 @@
+{
+  "name": "@tapioca/sentinel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sentinel v0 — Non-custodial circuit breaker for DeFi position safety",
+  "scripts": {
+    "build": "tsup worker.ts --format cjs --dts --out-dir dist --external viem --external @zerodev --external @neondatabase",
+    "start": "node dist/worker.js",
+    "dev": "tsx worker.ts"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
+    "viem": "^2.45.1"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "tsx": "^4.0.0"
+  }
+}

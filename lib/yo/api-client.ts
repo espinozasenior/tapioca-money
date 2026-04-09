@@ -12,7 +12,7 @@
  * Caching: Redis with yo: prefix keys (same TTLs as Morpho).
  */
 
-import { type Address } from "viem";
+import { type Address, erc4626Abi } from "viem";
 import { baseClient } from "@/lib/shared/rpc-client";
 import { z } from "zod";
 import {
@@ -20,7 +20,6 @@ import {
   vaultSnapshotSchema,
   apiResponseSchema,
   type VaultConfig,
-  type VaultState,
 } from "@yo-protocol/core";
 import { CHAIN_CONFIG } from "@/lib/config";
 import { YO_PARTNER_ID } from "./constants";
@@ -129,40 +128,86 @@ export class YoApiClient {
       return true;
     });
 
-    // Fetch APY/TVL (API) + on-chain state in parallel for each vault
-    const vaults = await Promise.all(
-      vaultConfigs.map(async (config: VaultConfig) => {
-        try {
-          const [{ apy, nativeApy, rewardApy, tvlUsd }, state] = await Promise.all([
-            this.getVaultSnapshotData(config.address, config.underlying.decimals),
-            this.yoClient.getVaultState(config.address),
-          ]);
+    // Batch all on-chain reads (totalAssets + totalSupply) into a single multicall3 RPC call.
+    // This replaces N individual getVaultState() calls (each making 6-8 readContract calls)
+    // with one multicall, cutting RPC round trips from ~8N to 1.
+    const multicallContracts = vaultConfigs.flatMap((config: VaultConfig) => [
+      {
+        address: config.address,
+        abi: erc4626Abi,
+        functionName: "totalAssets" as const,
+      },
+      {
+        address: config.address,
+        abi: erc4626Abi,
+        functionName: "totalSupply" as const,
+      },
+    ]);
 
-          const underlyingAddress =
-            config.underlying.address[chainId as keyof typeof config.underlying.address];
+    const [multicallResults, snapshotResults] = await Promise.all([
+      // Single RPC call for all vault on-chain state
+      this.publicClient.multicall({
+        contracts: multicallContracts,
+        allowFailure: true,
+      }),
+      // API calls in parallel (HTTP, not RPC — can't batch these)
+      Promise.all(
+        vaultConfigs.map(async (config: VaultConfig) => {
+          try {
+            return await this.getVaultSnapshotData(config.address, config.underlying.decimals);
+          } catch (error) {
+            console.warn(`[YoApiClient] Snapshot fetch failed for ${config.symbol}:`, error);
+            return null;
+          }
+        })
+      ),
+    ]);
 
-          return {
-            id: config.symbol,
-            address: config.address,
-            name: config.name,
-            underlying: {
-              address: underlyingAddress as Address,
-              symbol: config.underlying.symbol,
-              decimals: config.underlying.decimals,
-            },
-            apy,
-            nativeApy,
-            rewardApy,
-            tvlUsd,
-            totalAssets: state.totalAssets,
-            totalShares: state.totalSupply,
-          } satisfies YoVault;
-        } catch (error) {
-          console.warn(`[YoApiClient] Failed to fetch vault ${config.symbol}:`, error);
+    // Assemble vault objects from multicall + snapshot results
+    const vaults = vaultConfigs.map((config: VaultConfig, i: number) => {
+      try {
+        const snapshot = snapshotResults[i];
+        if (!snapshot) return null;
+
+        // Each vault has 2 multicall entries: [totalAssets, totalSupply]
+        const totalAssetsResult = multicallResults[i * 2];
+        const totalSupplyResult = multicallResults[i * 2 + 1];
+
+        // If either on-chain read failed, skip this vault
+        if (totalAssetsResult.status === "failure" || totalSupplyResult.status === "failure") {
+          console.warn(
+            `[YoApiClient] Multicall failed for ${config.symbol}:`,
+            totalAssetsResult.status === "failure"
+              ? totalAssetsResult.error
+              : totalSupplyResult.error
+          );
           return null;
         }
-      })
-    );
+
+        const underlyingAddress =
+          config.underlying.address[chainId as keyof typeof config.underlying.address];
+
+        return {
+          id: config.symbol,
+          address: config.address,
+          name: config.name,
+          underlying: {
+            address: underlyingAddress as Address,
+            symbol: config.underlying.symbol,
+            decimals: config.underlying.decimals,
+          },
+          apy: snapshot.apy,
+          nativeApy: snapshot.nativeApy,
+          rewardApy: snapshot.rewardApy,
+          tvlUsd: snapshot.tvlUsd,
+          totalAssets: totalAssetsResult.result as bigint,
+          totalShares: totalSupplyResult.result as bigint,
+        } satisfies YoVault;
+      } catch (error) {
+        console.warn(`[YoApiClient] Failed to process vault ${config.symbol}:`, error);
+        return null;
+      }
+    });
 
     const validVaults = vaults
       .filter((v) => v !== null)
@@ -193,8 +238,11 @@ export class YoApiClient {
   async fetchUserPositions(
     userAddress: Address,
     chainId: number,
-    skipCache: boolean = false
+    options?: { skipCache?: boolean; includeHistory?: boolean }
   ): Promise<YoUserPosition[]> {
+    const skipCache = options?.skipCache ?? false;
+    const includeHistory = options?.includeHistory ?? true;
+
     if (!skipCache) {
       const cached = await getCachedYoUserPositions(userAddress, chainId);
       if (cached) return cached;
@@ -215,60 +263,65 @@ export class YoApiClient {
             // Convert directly using underlying decimals — avoids fragile share ratio math
             const assetsUsd = Number(pos.assets) / 10 ** config.underlying.decimals;
 
-            // Fetch history + performance in parallel (both non-critical)
-            // getUserHistory uses direct fetch + relaxed schema to avoid SDK Zod validation failures
-            const [historyResult, perfResult] = await Promise.allSettled([
-              this.yoClient.apiClient
-                .fetch(
-                  `/api/v1/history/user/${this.yoClient.network}/${config.address}/${userAddress}`
-                )
-                .then((res: any) => {
-                  const parsed = apiResponseSchema(z.array(relaxedHistoryItemSchema)).parse(res);
-                  return parsed.data;
-                }),
-              this.yoClient.getUserPerformance(config.address, userAddress),
-            ]);
-
             let enteredAt: number | undefined;
-            if (historyResult.status === "fulfilled") {
-              const firstDeposit = historyResult.value
-                .filter((h: any) => h.type === "deposit" && h.timestamp != null)
-                .sort((a: any, b: any) => a.timestamp - b.timestamp)[0];
-              if (firstDeposit) {
-                // API returns Unix seconds, convert to ms
-                enteredAt = firstDeposit.timestamp * 1000;
-              }
-            } else {
-              console.warn(
-                `[YoApiClient] getUserHistory failed for ${config.symbol}:`,
-                historyResult.reason
-              );
-            }
-
             let unrealizedPnl: number | undefined;
             let realizedPnl: number | undefined;
-            if (perfResult.status === "fulfilled") {
-              const perf = perfResult.value;
-              const decimals = config.underlying.decimals;
-              if (perf.unrealized?.raw != null) {
-                const raw =
-                  typeof perf.unrealized.raw === "number"
-                    ? perf.unrealized.raw
-                    : parseFloat(perf.unrealized.raw);
-                unrealizedPnl = raw / 10 ** decimals;
+
+            // History + performance data is non-critical for the optimizer hot path.
+            // Skip when includeHistory=false to save 60-120ms per position.
+            if (includeHistory) {
+              // Fetch history + performance in parallel (both non-critical)
+              // getUserHistory uses direct fetch + relaxed schema to avoid SDK Zod validation failures
+              const [historyResult, perfResult] = await Promise.allSettled([
+                this.yoClient.apiClient
+                  .fetch(
+                    `/api/v1/history/user/${this.yoClient.network}/${config.address}/${userAddress}`
+                  )
+                  .then((res: any) => {
+                    const parsed = apiResponseSchema(z.array(relaxedHistoryItemSchema)).parse(res);
+                    return parsed.data;
+                  }),
+                this.yoClient.getUserPerformance(config.address, userAddress),
+              ]);
+
+              if (historyResult.status === "fulfilled") {
+                const firstDeposit = historyResult.value
+                  .filter((h: any) => h.type === "deposit" && h.timestamp != null)
+                  .sort((a: any, b: any) => a.timestamp - b.timestamp)[0];
+                if (firstDeposit) {
+                  // API returns Unix seconds, convert to ms
+                  enteredAt = firstDeposit.timestamp * 1000;
+                }
+              } else {
+                console.warn(
+                  `[YoApiClient] getUserHistory failed for ${config.symbol}:`,
+                  historyResult.reason
+                );
               }
-              if (perf.realized?.raw != null) {
-                const raw =
-                  typeof perf.realized.raw === "number"
-                    ? perf.realized.raw
-                    : parseFloat(perf.realized.raw);
-                realizedPnl = raw / 10 ** decimals;
+
+              if (perfResult.status === "fulfilled") {
+                const perf = perfResult.value;
+                const decimals = config.underlying.decimals;
+                if (perf.unrealized?.raw != null) {
+                  const raw =
+                    typeof perf.unrealized.raw === "number"
+                      ? perf.unrealized.raw
+                      : parseFloat(perf.unrealized.raw);
+                  unrealizedPnl = raw / 10 ** decimals;
+                }
+                if (perf.realized?.raw != null) {
+                  const raw =
+                    typeof perf.realized.raw === "number"
+                      ? perf.realized.raw
+                      : parseFloat(perf.realized.raw);
+                  realizedPnl = raw / 10 ** decimals;
+                }
+              } else {
+                console.warn(
+                  `[YoApiClient] getUserPerformance failed for ${config.symbol}:`,
+                  perfResult.reason
+                );
               }
-            } else {
-              console.warn(
-                `[YoApiClient] getUserPerformance failed for ${config.symbol}:`,
-                perfResult.reason
-              );
             }
 
             positions.push({
