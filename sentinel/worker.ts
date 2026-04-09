@@ -15,12 +15,7 @@ import { loadConfig, THRESHOLDS, VAULT_EXPOSURE_MAP } from "./config";
 import { RulesEngine } from "./rules-engine";
 import { ExitOrchestrator } from "./exit-orchestrator";
 import { getSql } from "./db";
-import {
-  checkPonderFreshness,
-  queryVaultFlows,
-  queryPriceUpdate,
-  queryDexSwaps,
-} from "./signals/ponder";
+import { checkPonderFreshness, queryVaultFlows, queryPriceUpdate } from "./signals/ponder";
 import { queryVaultPaused, querySharePrice } from "./signals/onchain";
 import { queryDeFiLlamaPrice } from "./signals/defillama";
 import { sendPagerDutyAlert } from "./notifications/pagerduty";
@@ -53,34 +48,6 @@ async function gatherSignals(config: SentinelConfig, ponderFresh: boolean): Prom
 
   for (const vault of config.vaults) {
     const exposure = vault.exposure;
-
-    // --- DEX pool prices (P0 signal, fastest for depeg detection) ---
-    if (ponderFresh && exposure.dexPools.length > 0) {
-      for (const pool of exposure.dexPools) {
-        try {
-          const swaps = await queryDexSwaps(
-            config.ponderGraphqlUrl,
-            pool.address,
-            now - 1800 // last 30 min
-          );
-          if (swaps.length > 0) {
-            signals.push({
-              type: "DEX_PRICE",
-              vault,
-              asset: pool.asset,
-              value: swaps[0].impliedPrice,
-              timestamp: swaps[0].timestamp * 1000,
-              source: "ponder",
-            });
-          }
-        } catch (error) {
-          console.error(
-            `[Sentinel] DEX price signal failed for ${pool.address}:`,
-            (error as Error).message
-          );
-        }
-      }
-    }
 
     // --- Chainlink oracle price via Ponder ---
     if (ponderFresh && exposure.chainlinkFeed) {

@@ -6,7 +6,6 @@ import { onchainTable, index } from "@ponder/core";
  * VaultState tracks cumulative TVL from Deposit/Withdraw events.
  * VaultFlow tracks individual deposit/withdraw events for flow analysis.
  * PriceUpdate tracks Chainlink price feed updates for depeg detection.
- * DexSwap tracks Curve TokenExchange events for DEX depeg signals.
  */
 
 export const vaultState = onchainTable(
@@ -61,25 +60,5 @@ export const priceUpdate = onchainTable(
   (table) => ({
     assetTimeIdx: index().on(table.asset, table.chainId, table.timestamp),
     feedIdx: index().on(table.feedAddress),
-  })
-);
-
-export const dexSwap = onchainTable(
-  "dex_swap",
-  (t) => ({
-    id: t.text().primaryKey(), // txHash_logIndex
-    poolAddress: t.text().notNull(),
-    chainId: t.integer().notNull(),
-    tokenIn: t.text().notNull(), // sold_id as string
-    tokenOut: t.text().notNull(), // bought_id as string
-    amountIn: t.text().notNull(), // tokens_sold as string
-    amountOut: t.text().notNull(), // tokens_bought as string
-    impliedPrice: t.text().notNull(), // amountOut/amountIn as decimal string
-    timestamp: t.integer().notNull(),
-    blockNumber: t.integer().notNull(),
-  }),
-  (table) => ({
-    poolTimeIdx: index().on(table.poolAddress, table.timestamp),
-    chainTimeIdx: index().on(table.chainId, table.timestamp),
   })
 );

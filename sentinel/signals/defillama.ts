@@ -4,9 +4,10 @@
  * Supplementary stablecoin price polling via DeFiLlama's coins API.
  * Used as fallback when Ponder is stale, and as a secondary confirmation source.
  *
- * Note from Resolv replay: DeFiLlama showed USR at $1.00 throughout the crash.
- * This source is NOT reliable for exotic stablecoin depegs. It serves as a
- * supplement for broad market stablecoins (USDC, USDT, DAI).
+ * Note: DeFiLlama is slow to react to exotic stablecoin depegs (it typically
+ * aggregates from a handful of oracles). Use it only as a sanity check for
+ * broad-market stablecoins (USDC, USDT, DAI). DEX-level signals via Ponder
+ * remain the primary depeg detection source.
  */
 
 const DEFILLAMA_COINS_URL = "https://coins.llama.fi/prices/current";
@@ -14,7 +15,7 @@ const DEFILLAMA_COINS_URL = "https://coins.llama.fi/prices/current";
 // Map token symbols to DeFiLlama coin IDs
 const LLAMA_COIN_IDS: Record<string, string> = {
   USDC: "base:0x833589fCD6eDb6E08f4c7C32d4f71b54bdA02913",
-  USR: "ethereum:0x35282d87011f87508D457F08252Bc5bFa52E10A0",
+  EURC: "base:0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42",
 };
 
 export interface DeFiLlamaPrice {

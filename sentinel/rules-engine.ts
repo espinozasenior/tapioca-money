@@ -288,8 +288,8 @@ export class RulesEngine {
 
   /**
    * Check if the vault's underlying asset IS the depegging asset.
-   * If so, redeeming gives back the toxic asset (e.g., Morpho vault holding USR
-   * during USR depeg). In v0: ALERT instead of unsafe EXIT.
+   * If so, redeeming gives back the toxic asset (e.g., a Morpho vault whose
+   * underlying is the depegging stablecoin). In v0: ALERT instead of unsafe EXIT.
    */
   isUnderlyingToxic(vaultAddress: `0x${string}`, depegAsset?: string): boolean {
     if (!depegAsset) return false;

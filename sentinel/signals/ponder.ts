@@ -18,11 +18,6 @@ export interface PonderVaultFlow {
   timestamp: number;
 }
 
-export interface PonderDexSwap {
-  impliedPrice: number;
-  timestamp: number;
-}
-
 export interface PonderMeta {
   block: {
     number: number;
@@ -152,38 +147,5 @@ export async function queryPriceUpdate(
       (error as Error).message
     );
     return null;
-  }
-}
-
-/**
- * Query recent DEX swaps for implied price calculation.
- */
-export async function queryDexSwaps(
-  ponderUrl: string,
-  poolAddress: string,
-  sinceTimestamp: number
-): Promise<PonderDexSwap[]> {
-  try {
-    const data = await graphqlQuery<{ dexSwaps: PonderDexSwap[] }>(
-      ponderUrl,
-      `query RecentSwaps($pool: String!, $since: Int!) {
-        dexSwaps(
-          where: { poolAddress: $pool, timestamp_gt: $since }
-          orderBy: "timestamp"
-          orderDirection: "desc"
-        ) {
-          impliedPrice
-          timestamp
-        }
-      }`,
-      { pool: poolAddress, since: sinceTimestamp }
-    );
-    return data.dexSwaps || [];
-  } catch (error) {
-    console.error(
-      `[Sentinel] Ponder DEX swap query failed for ${poolAddress}:`,
-      (error as Error).message
-    );
-    return [];
   }
 }

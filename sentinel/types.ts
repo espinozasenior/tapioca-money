@@ -11,13 +11,12 @@
 export interface DexPool {
   address: `0x${string}`;
   asset: string;
-  chain: "base" | "ethereum";
+  chain: "base";
 }
 
 export interface VaultExposure {
   protocol: "morpho" | "yo";
   underlying: string;
-  underlyingAddress?: `0x${string}`;
   chainlinkFeed?: `0x${string}`;
   dexPools: DexPool[];
 }
