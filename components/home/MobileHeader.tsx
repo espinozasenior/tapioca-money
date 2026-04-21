@@ -4,10 +4,17 @@ import { useState, useCallback, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import { m, AnimatePresence } from "framer-motion";
 import { useLoginRedirect } from "@/hooks/useLoginRedirect";
+import { DOCS_LINKS, AUTOMATA_URL } from "@/lib/constants/links";
 
 const navLinks = [
   { label: "Our Menu", href: "#menu" },
   { label: "Daily Toppings", href: "#how-it-works" },
+];
+
+const legalLinks = [
+  { label: "Recipe Book", href: DOCS_LINKS.home },
+  { label: "Terms", href: DOCS_LINKS.terms },
+  { label: "Privacy", href: DOCS_LINKS.privacy },
 ];
 
 export function MobileHeader() {
@@ -160,6 +167,41 @@ export function MobileHeader() {
                 Start Sipping
               </m.button>
             </m.nav>
+
+            {/* Legal strip — pinned near bottom of overlay */}
+            <m.div
+              className="relative z-10 flex flex-col items-center gap-3 pb-10 pt-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1, transition: { delay: 0.3 } }}
+              exit={{ opacity: 0 }}
+            >
+              <div className="text-[var(--milktea)]/40 flex flex-wrap justify-center gap-6 text-xs font-bold uppercase tracking-[0.2em]">
+                {legalLinks.map((link) => (
+                  <a
+                    key={link.label}
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={close}
+                    className="transition-colors hover:text-[var(--matcha)] active:text-[var(--matcha)]"
+                  >
+                    {link.label}
+                  </a>
+                ))}
+              </div>
+              <div className="text-[var(--milktea)]/30 text-[10px] font-bold uppercase tracking-[0.3em]">
+                Powered by{" "}
+                <a
+                  href={AUTOMATA_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={close}
+                  className="transition-colors hover:text-[var(--matcha)]"
+                >
+                  Automata AI
+                </a>
+              </div>
+            </m.div>
 
             {/* Decorative matcha glow */}
             <div className="pointer-events-none absolute -bottom-20 -right-20 h-64 w-64 rounded-full bg-[var(--matcha)] opacity-10 blur-3xl" />
