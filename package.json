@@ -51,7 +51,7 @@
     "ioredis": "^5.9.2",
     "libsodium-wrappers": "^0.7.15",
     "lucide-react": "^0.556.0",
-    "next": "15.5.14",
+    "next": "^15.5.15",
     "ox": ">=0.11.3",
     "permissionless": "^0.3.4",
     "react": "^19.0.0",
@@ -102,7 +102,14 @@
       "@privy-io/react-auth>permissionless": "^0.3.4",
       "viem": "$viem",
       "zod": "$zod",
-      "ox": ">=0.11.3"
+      "ox": ">=0.11.3",
+      "axios": ">=1.13.5",
+      "defu": ">=6.1.5",
+      "h3": ">=1.15.6",
+      "hono": ">=4.12.4",
+      "picomatch": ">=2.3.2",
+      "preact": ">=10.27.3",
+      "socket.io-parser": ">=4.2.6"
     }
   }
 }
