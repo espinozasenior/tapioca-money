@@ -1,3 +1,5 @@
+import { DOCS_LINKS, AUTOMATA_URL } from "@/lib/constants/links";
+
 export function Footer() {
   return (
     <footer className="border-[var(--pearl)]/5 relative z-10 border-t-4 py-20">
@@ -11,11 +13,18 @@ export function Footer() {
             <span className="text-2xl font-black text-[var(--pearl)]">Tapioca</span>
           </div>
 
-          {/* Center — Links (future pages, use buttons until routes exist) */}
+          {/* Center — Primary footer links (mix of future pages + live docs) */}
           <div className="text-[var(--pearl)]/60 flex flex-wrap justify-center gap-10 text-sm font-bold uppercase tracking-widest">
             <button className="transition-colors hover:text-[var(--matcha)]">Flavor Guide</button>
             <button className="transition-colors hover:text-[var(--matcha)]">Lab Tests</button>
-            <button className="transition-colors hover:text-[var(--matcha)]">Recipe Book</button>
+            <a
+              href={DOCS_LINKS.home}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transition-colors hover:text-[var(--matcha)]"
+            >
+              Recipe Book
+            </a>
           </div>
 
           {/* Right — Social icon in dark circle (per Stitch) */}
@@ -34,8 +43,41 @@ export function Footer() {
           </div>
         </div>
 
+        {/* Legal links — smaller, above copyright */}
+        <div className="text-[var(--pearl)]/40 mt-16 flex flex-wrap justify-center gap-8 text-xs font-bold uppercase tracking-[0.2em]">
+          <a
+            href={DOCS_LINKS.terms}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition-colors hover:text-[var(--matcha)]"
+          >
+            Terms
+          </a>
+          <a
+            href={DOCS_LINKS.privacy}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition-colors hover:text-[var(--matcha)]"
+          >
+            Privacy
+          </a>
+        </div>
+
+        {/* Powered by Automata AI */}
+        <div className="text-[var(--pearl)]/40 mt-6 text-center text-[10px] font-bold uppercase tracking-[0.3em]">
+          Powered by{" "}
+          <a
+            href={AUTOMATA_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition-colors hover:text-[var(--matcha)]"
+          >
+            Automata AI
+          </a>
+        </div>
+
         {/* Copyright */}
-        <div className="text-[var(--pearl)]/30 mt-20 text-center text-xs font-black uppercase tracking-[0.4em]">
+        <div className="text-[var(--pearl)]/30 mt-3 text-center text-xs font-black uppercase tracking-[0.4em]">
           &copy; 2026 TAPIOCA FINANCE &bull; BREWED WITH LOVE
         </div>
       </div>

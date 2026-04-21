@@ -7,6 +7,7 @@ import { useAuth, useWallet } from "@/hooks/useWallet";
 import { usePrivy, useConnectWallet } from "@privy-io/react-auth";
 import { useProcessWithdrawal } from "@/hooks/useProcessWithdrawal";
 import { BottomNav } from "@/components/tapioca/BottomNav";
+import { LegalFooter } from "@/components/tapioca/LegalFooter";
 
 /**
  * Custom hook: returns true after `ms` if `active` stays true.
@@ -140,7 +141,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="pearl-motif absolute right-[30%] top-[40%] hidden h-20 w-20 opacity-[0.02] md:block" />
         <div className="pearl-motif absolute left-[15%] top-[85%] hidden h-12 w-12 opacity-[0.03] md:block" />
       </div>
-      <div className="relative z-10 pb-32 md:pb-12">{children}</div>
+      <div className="relative z-10 pb-32 md:pb-12">
+        {children}
+        <LegalFooter />
+      </div>
       {/* BottomNav — mobile only */}
       <div className="md:hidden">
         <BottomNav />

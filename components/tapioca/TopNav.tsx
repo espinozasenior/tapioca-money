@@ -3,6 +3,7 @@
 import { useLoginRedirect } from "@/hooks/useLoginRedirect";
 import { PillButton } from "./PillButton";
 import { cn } from "@/lib/utils";
+import { DOCS_LINKS } from "@/lib/constants/links";
 
 interface TopNavProps {
   className?: string;
@@ -40,6 +41,14 @@ export function TopNav({ className }: TopNavProps) {
             className="text-sm font-bold text-[var(--pearl)] transition-colors hover:text-[var(--matcha)]"
           >
             Daily Toppings
+          </a>
+          <a
+            href={DOCS_LINKS.home}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-bold text-[var(--pearl)] transition-colors hover:text-[var(--matcha)]"
+          >
+            Recipe Book
           </a>
           <PillButton variant="nav" onClick={handleClick}>
             Start Sipping
