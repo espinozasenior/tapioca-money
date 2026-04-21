@@ -89,9 +89,13 @@ jobs:
 
       - name: Check for hardcoded secrets
         run: |
-          # Fail if any .env files are committed
-          if git ls-files --cached | grep -E '\.env$|\.env\.local$|\.env\.production$'; then
-            echo "::error::Environment files found in git history"
+          # Fail if any .env files are tracked. Exclude .example/.template/.sample.
+          # Prior regex missed .env.dev and .env.prod — both were tracked in the
+          # history (see CSO report 2026-04-21). Now catches any .env variant.
+          TRACKED_ENV=$(git ls-files --cached | grep -E '^\.env($|\.)' | grep -vE '\.(example|template|sample)$' || true)
+          if [ -n "$TRACKED_ENV" ]; then
+            echo "::error::Environment files tracked in git:"
+            echo "$TRACKED_ENV"
             exit 1
           fi
 
