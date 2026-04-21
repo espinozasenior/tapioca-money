@@ -17,13 +17,13 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with:
           version: 10
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 20
           cache: pnpm
@@ -37,13 +37,13 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with:
           version: 10
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 20
           cache: pnpm
@@ -71,27 +71,39 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with:
           version: 10
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 20
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Audit dependencies
+      # Block only on critical-severity CVEs in production runtime deps.
+      # As of 2026-04-21, `pnpm audit --prod` reports 10 high CVEs (transitive
+      # via @privy-io/react-auth > @walletconnect/*). Those need triage before
+      # we can raise this gate to `--audit-level=high`. Tracked as security
+      # P1 follow-up.
+      - name: Audit production dependencies (critical gate)
+        run: pnpm audit --prod --audit-level=critical
+
+      - name: Audit all dependencies (informational, non-blocking)
         run: pnpm audit --audit-level=high || true
 
       - name: Check for hardcoded secrets
         run: |
-          # Fail if any .env files are committed
-          if git ls-files --cached | grep -E '\.env$|\.env\.local$|\.env\.production$'; then
-            echo "::error::Environment files found in git history"
+          # Fail if any .env files are tracked. Exclude .example/.template/.sample.
+          # Prior regex missed .env.dev and .env.prod — both were tracked in the
+          # history (see CSO report 2026-04-21). Now catches any .env variant.
+          TRACKED_ENV=$(git ls-files --cached | grep -E '^\.env($|\.)' | grep -vE '\.(example|template|sample)$' || true)
+          if [ -n "$TRACKED_ENV" ]; then
+            echo "::error::Environment files tracked in git:"
+            echo "$TRACKED_ENV"
             exit 1
           fi
 

@@ -55,3 +55,7 @@ tasks/
 slides/
 .mux
 certificates
+
+# gstack local state (security reports, session timelines). Must stay local —
+# reports contain concrete vulnerability locations and exploit scenarios.
+.gstack/
