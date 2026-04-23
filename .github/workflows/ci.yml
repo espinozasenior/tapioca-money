@@ -227,3 +227,39 @@ jobs:
             exit 1
           fi
           pnpm db:migrate
+
+  # Trigger Vercel deploy via Deploy Hook — fires only after migrate has
+  # succeeded, guaranteeing the new schema is live before the new app code
+  # ships. Vercel's automatic git-push deploy for main is disabled in
+  # vercel.json ("deploymentEnabled.main": false), so this hook is the
+  # only way production gets built.
+  #
+  # If migrate was skipped (meta-only change), we still trigger deploy —
+  # application code changes must ship even when schema didn't move.
+  deploy:
+    name: Vercel Deploy (production)
+    needs: [migrate]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    concurrency:
+      group: vercel-deploy-production
+      cancel-in-progress: false
+    environment: production
+
+    steps:
+      - name: Trigger Vercel Deploy Hook
+        env:
+          DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "${DEPLOY_HOOK_URL}" ]; then
+            echo "::error::VERCEL_DEPLOY_HOOK_URL secret is not set"
+            exit 1
+          fi
+          # Use -f so a non-2xx response from Vercel fails the job.
+          # --retry-all-errors covers transient 5xx on Vercel's side.
+          curl -fsS --retry 3 --retry-all-errors --retry-delay 5 \
+            -X POST "${DEPLOY_HOOK_URL}" -o /tmp/deploy-response.json
+          echo "Deploy hook response:"
+          cat /tmp/deploy-response.json
+          echo "" # trailing newline for log readability
