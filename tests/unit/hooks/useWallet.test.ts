@@ -118,14 +118,15 @@ describe("useWallet", () => {
   });
 
   it("should send sponsored tokens via API", async () => {
-    // Mock status check
+    // Session already on v2 → no inline setup needed.
     (global.fetch as any)
       .mockResolvedValueOnce({
-        json: async () => ({ isEnabled: true }),
+        ok: true,
+        json: async () => ({ isEnabled: true, permissionsVersion: 2 }),
       })
-      // Mock transfer execution
       .mockResolvedValueOnce({
-        json: async () => ({ success: true, hash: "0xtxhash" }),
+        ok: true,
+        json: async () => ({ success: true, hash: "0xtxhash", feePaid: "0.03" }),
       });
 
     const { result } = renderHook(() => useWallet());

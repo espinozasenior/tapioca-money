@@ -17,6 +17,21 @@ import { baseClient } from "@/lib/shared/rpc-client";
 import { ENTRYPOINT_V07 } from "@/lib/zerodev/constants";
 
 /**
+ * Optional paymaster object compatible with `createKernelAccountClient({ paymaster })`.
+ * Send path passes `createUsdcPaymaster()`. Agent path passes nothing (sponsored).
+ */
+export type KernelPaymaster = {
+  getPaymasterData: (userOperation: any) => Promise<any>;
+};
+
+export interface CreateDeserializedOptions {
+  /** When set, the kernel client uses ERC-20 paymaster mode (customer-paid). */
+  paymaster?: KernelPaymaster;
+  /** Skip the enable signature (permission already installed on-chain). */
+  preInstalled?: boolean;
+}
+
+/**
  * Create a ZeroDev Kernel client from a serialized permission account.
  *
  * This is the RECOMMENDED path for server-side execution. The serialized account
@@ -34,24 +49,27 @@ import { ENTRYPOINT_V07 } from "@/lib/zerodev/constants";
  */
 export async function createDeserializedKernelClient(
   serializedAccount: string,
-  options?: { preInstalled?: boolean }
+  options?: CreateDeserializedOptions
 ) {
   console.log("[KernelClient] Creating kernel client from serialized account...");
 
   const shouldPatch = options?.preInstalled ?? false;
+  const paymaster = options?.paymaster;
 
   // NOTE: EIP-7702 authorization nonce replay protection is handled by the protocol.
   // The authorization nonce is the EOA's transaction nonce at signing time.
   // Once the delegation tx is mined, that nonce is consumed and cannot be replayed.
   // The EntryPoint contract also manages UserOp nonces independently via 2D nonces.
 
-  const kernelClient = await _buildKernelClient(serializedAccount, shouldPatch);
+  const kernelClient = await _buildKernelClient(serializedAccount, shouldPatch, paymaster);
 
   // Wrap sendUserOperation with automatic retry for "duplicate permissionHash".
   // After re-registration with a new permissionHash, the first UserOp installs the validator
   // (enable signature included). On subsequent calls, the enable signature causes "duplicate
   // permissionHash" — we catch this and retry with preInstalled=true (skipping enable sig).
-  // This is transparent to all callers — no executor changes needed.
+  //
+  // IMPORTANT: the retry path MUST re-pass `paymaster` or the retried UserOp silently
+  // drops sponsorship. See tasks/architecture-usdc-send.md §6.2.
   if (!shouldPatch) {
     const originalSendUserOp = kernelClient.sendUserOperation.bind(kernelClient);
     kernelClient.sendUserOperation = async (args: any) => {
@@ -64,7 +82,7 @@ export async function createDeserializedKernelClient(
         if (!isDuplicate) throw error;
 
         console.log("[KernelClient] duplicate permissionHash — retrying with preInstalled=true");
-        const patchedClient = await _buildKernelClient(serializedAccount, true);
+        const patchedClient = await _buildKernelClient(serializedAccount, true, paymaster);
         return await patchedClient.sendUserOperation(args);
       }
     };
@@ -74,7 +92,11 @@ export async function createDeserializedKernelClient(
 }
 
 /** Internal: build a kernel client with or without enable signature */
-async function _buildKernelClient(serializedAccount: string, preInstalled: boolean) {
+async function _buildKernelClient(
+  serializedAccount: string,
+  preInstalled: boolean,
+  paymaster?: KernelPaymaster
+) {
   const publicClient = baseClient;
 
   const { createKernelAccountClient } = await import("@zerodev/sdk");
@@ -127,9 +149,12 @@ async function _buildKernelClient(serializedAccount: string, preInstalled: boole
     account: kernelAccount,
     chain: base,
     bundlerTransport: http(bundlerUrl),
+    ...(paymaster ? { paymaster } : {}),
   });
 
-  console.log("[KernelClient] Kernel client created from deserialized account");
+  console.log(
+    `[KernelClient] Kernel client created from deserialized account (paymaster=${paymaster ? "on" : "off"})`
+  );
   return kernelClient;
 }
 

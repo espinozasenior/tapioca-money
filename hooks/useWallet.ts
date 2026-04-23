@@ -16,6 +16,58 @@ import { base } from "viem/chains";
 import { useMemo, useCallback } from "react";
 import { USDC_ADDRESS } from "@/lib/config";
 
+/**
+ * Phase events emitted by the new paymaster-backed USDC send flow.
+ * See tasks/architecture-usdc-send.md §8 for the full state machine.
+ */
+export type SendPhase =
+  | "submitting"
+  | "signing_session"
+  | "registering"
+  | "confirming"
+  | "success"
+  | "error";
+
+export interface SendPhaseContext {
+  phase: SendPhase;
+  userOpHash?: string;
+  txHash?: string;
+  feePaid?: string;
+  errorCode?: string;
+  errorMessage?: string;
+}
+
+export interface SendUsdcArgs {
+  to: string;
+  amount: string;
+  /** Optional ENS/Basename label for history row (cosmetic only). */
+  label?: string;
+  /** Optional client-provided idempotency key; generated when absent. */
+  idempotencyKey?: string;
+}
+
+export interface SendUsdcResult {
+  hash: string;
+  userOpHash?: string;
+  feePaid?: string;
+}
+
+function randomIdempotencyKey(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+export class SendError extends Error {
+  readonly code: string;
+  constructor(code: string, message: string) {
+    super(message);
+    this.name = "SendError";
+    this.code = code;
+  }
+}
+
 // Minimal ERC-20 ABI for balance and transfer
 const erc20Abi = [
   {
@@ -168,48 +220,116 @@ export function useWallet() {
       },
 
       /**
-       * Send tokens gaslessly (ZeroDev sponsored)
-       * Uses transfer-only session key for USDC transfers
-       * No gas fees required from user
+       * Send USDC via the ERC-20 paymaster (customer-paid).
+       *
+       * Inline-handles the session lifecycle: if no session exists or the
+       * stored `permissionsVersion < 2`, the hook triggers registration
+       * transparently (FR-25) before submitting. The caller sees a single
+       * continuous stream of `SendPhase` events — no modal, no retry loop.
+       *
+       * @throws SendError with a `code` field from the error catalog.
        */
-      async sendSponsored(to: string, asset: string, amount: string) {
-        if (!address) throw new Error("Wallet address not yet available");
+      async sendUsdc(args: SendUsdcArgs, onPhase?: (ctx: SendPhaseContext) => void): Promise<SendUsdcResult> {
+        if (!address) throw new SendError("NO_WALLET", "Wallet address not yet available");
+        if (!wallet) throw new SendError("NO_WALLET", "Wallet not ready");
 
-        if (asset !== "USDC") {
-          throw new Error("Only USDC gasless transfers supported");
-        }
-
-        // Get access token for authenticated request
         const accessToken = await getAccessToken();
-        if (!accessToken) {
-          throw new Error("Authentication required for gasless transfers");
+        if (!accessToken) throw new SendError("UNAUTHENTICATED", "Authentication required");
+
+        const idempotencyKey = args.idempotencyKey ?? randomIdempotencyKey();
+        const emit = (ctx: SendPhaseContext) => {
+          try {
+            onPhase?.(ctx);
+          } catch (err) {
+            console.error("[useWallet] onPhase callback threw:", err);
+          }
+        };
+
+        emit({ phase: "submitting" });
+
+        // 1. Check session status — inline-upgrade if needed.
+        const statusRes = await fetch(`/api/transfer/register?address=${address}`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const status = await statusRes.json();
+
+        // Missing `permissionsVersion` means legacy v1 — treat as needing setup.
+        // Matches server-side gating in /api/transfer/send.
+        const storedVersion =
+          typeof status?.permissionsVersion === "number" ? status.permissionsVersion : 1;
+        const needsSetup = !status?.isEnabled || storedVersion < 2;
+
+        if (needsSetup) {
+          emit({ phase: "signing_session" });
+          const regRes = await fetch("/api/transfer/register", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+              address,
+              privyWallet: {
+                address: wallet.address,
+                getEthereumProvider: wallet.getEthereumProvider.bind(wallet),
+              },
+            }),
+          });
+          const regBody = await regRes.json();
+          emit({ phase: "registering" });
+          if (!regBody?.success) {
+            const code = "SESSION_SETUP_FAILED";
+            const message = regBody?.error || "Could not set up sending";
+            emit({ phase: "error", errorCode: code, errorMessage: message });
+            throw new SendError(code, message);
+          }
         }
 
-        // Check if user has transfer session key
-        const statusResponse = await fetch(`/api/transfer/register?address=${address}`);
-        const status = await statusResponse.json();
+        emit({ phase: "submitting" });
 
-        if (!status.isEnabled) {
-          throw new Error("Gasless transfers not enabled. Please enable in settings first.");
-        }
-
-        // Execute gasless transfer with authentication
-        const response = await fetch("/api/transfer/send", {
+        // 2. Submit the send (receipt waited server-side, synchronous response).
+        const sendRes = await fetch("/api/transfer/send", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${accessToken}`,
+            "Idempotency-Key": idempotencyKey,
           },
-          body: JSON.stringify({ address, recipient: to, amount }),
+          body: JSON.stringify({ address, recipient: args.to, amount: args.amount, label: args.label }),
         });
+        const body = await sendRes.json();
 
-        const result = await response.json();
+        if (!sendRes.ok || !body?.success) {
+          const code = body?.code || "TRANSFER_FAILED";
+          const message = body?.error || "Transfer failed";
 
-        if (!result.success) {
-          throw new Error(result.error || "Gasless transfer failed");
+          // Defensive: if server flagged upgrade-required after we already
+          // ran setup, fall through to error (retry is a user-driven action).
+          emit({ phase: "error", errorCode: code, errorMessage: message });
+          throw new SendError(code, message);
         }
 
-        return result.hash;
+        if (body.userOpHash) {
+          emit({ phase: "confirming", userOpHash: body.userOpHash });
+        }
+
+        emit({
+          phase: "success",
+          txHash: body.hash,
+          userOpHash: body.userOpHash,
+          feePaid: body.feePaid,
+        });
+
+        return { hash: body.hash, userOpHash: body.userOpHash, feePaid: body.feePaid };
+      },
+
+      /**
+       * @deprecated Use `sendUsdc`. Left for tests/migration window.
+       * Routes through the new paymaster-backed flow, discarding phase events.
+       */
+      async sendSponsored(to: string, _asset: string, amount: string) {
+        const { hash } = await (this as any).sendUsdc({ to, amount });
+        return hash;
       },
 
       /**

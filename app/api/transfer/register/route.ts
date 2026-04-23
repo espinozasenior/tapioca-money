@@ -21,6 +21,35 @@ import {
   unauthorizedResponse,
   forbiddenResponse,
 } from "@/lib/auth/middleware";
+import { checkRateLimit } from "@/lib/redis/rate-limiter";
+
+const DAILY_TRANSFER_LIMIT = 20;
+const DAILY_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+async function readTransferRateLimitInfo(address: string) {
+  try {
+    const r = await checkRateLimit(address, {
+      maxRequests: DAILY_TRANSFER_LIMIT,
+      windowMs: DAILY_WINDOW_MS,
+      keyPrefix: "transfer",
+      failClosed: false, // read-only probe, don't error on Redis down
+    });
+    const used = Math.max(0, DAILY_TRANSFER_LIMIT - r.remaining);
+    return {
+      used,
+      limit: DAILY_TRANSFER_LIMIT,
+      remaining: r.remaining,
+      resetAt: r.resetTime ?? Date.now() + DAILY_WINDOW_MS,
+    };
+  } catch {
+    return {
+      used: 0,
+      limit: DAILY_TRANSFER_LIMIT,
+      remaining: DAILY_TRANSFER_LIMIT,
+      resetAt: Date.now() + DAILY_WINDOW_MS,
+    };
+  }
+}
 
 /**
  * GET /api/transfer/register?address=0x...
@@ -51,10 +80,13 @@ export async function GET(request: NextRequest) {
       WHERE LOWER(wallet_address) = LOWER(${address})
     `;
 
+    const rateLimitInfo = await readTransferRateLimitInfo(address);
+
     if (users.length === 0) {
       return NextResponse.json({
         isEnabled: false,
         message: "User not found",
+        rateLimitInfo,
       });
     }
 
@@ -63,18 +95,21 @@ export async function GET(request: NextRequest) {
     if (!transferAuth) {
       return NextResponse.json({
         isEnabled: false,
+        rateLimitInfo,
       });
     }
 
-    // Validate session
     const validation = validateTransferSession(transferAuth);
-
     if (!validation.valid) {
       return NextResponse.json({
         isEnabled: false,
         reason: validation.reason,
+        rateLimitInfo,
       });
     }
+
+    // Missing field defaults to v1 — clients treat < 2 as upgrade required.
+    const permissionsVersion = transferAuth.permissionsVersion ?? 1;
 
     return NextResponse.json({
       isEnabled: true,
@@ -82,6 +117,8 @@ export async function GET(request: NextRequest) {
       sessionKeyAddress: transferAuth.sessionKeyAddress,
       expiry: transferAuth.expiry,
       createdAt: transferAuth.createdAt,
+      permissionsVersion,
+      rateLimitInfo,
     });
   } catch (error: any) {
     console.error("[API] Transfer status check failed:", error);
@@ -138,15 +175,18 @@ export async function POST(request: NextRequest) {
 
     const existingAuth = users[0].transfer_authorization as TransferSessionAuthorization | null;
 
-    // Check if valid session already exists
+    // Accept an existing session only if it's valid AND on the current CallPolicy version.
+    // Legacy v1 sessions must be re-created to include paymaster-approve permission.
     if (existingAuth) {
       const validation = validateTransferSession(existingAuth);
-      if (validation.valid) {
+      const version = existingAuth.permissionsVersion ?? 1;
+      if (validation.valid && version >= 2) {
         console.log("[API] Valid transfer session already exists");
         return NextResponse.json({
           success: true,
           smartAccountAddress: existingAuth.smartAccountAddress,
           expiry: existingAuth.expiry,
+          permissionsVersion: version,
           message: "Transfer session already active",
         });
       }
@@ -176,6 +216,7 @@ export async function POST(request: NextRequest) {
       smartAccountAddress: authorization.smartAccountAddress,
       sessionKeyAddress: authorization.sessionKeyAddress,
       expiry: authorization.expiry,
+      permissionsVersion: authorization.permissionsVersion,
     });
   } catch (error: any) {
     console.error("[API] Transfer session creation failed:", error);

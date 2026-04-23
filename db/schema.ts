@@ -133,3 +133,36 @@ export const sentinelVaultStatus = pgTable(
   },
   (table) => [index("idx_status_last_check").on(table.lastCheckAt)]
 );
+
+/**
+ * Transfer history: one row per successful customer-paid USDC send.
+ * Populated by /api/transfer/send after receipt parsing (fire-and-forget).
+ * Read by /api/transfer/history for recent recipients + send log.
+ * See tasks/spec-usdc-send.md §14.4.
+ */
+export const transferHistory = pgTable(
+  "transfer_history",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    txHash: text("tx_hash").notNull(),
+    userOpHash: text("user_op_hash"),
+    recipientAddr: text("recipient_addr").notNull(), // checksummed 0x
+    recipientLabel: text("recipient_label"), // ENS/Basename if user typed one (cosmetic only)
+    amount: numeric("amount", { precision: 20, scale: 6 }).notNull(),
+    feePaid: numeric("fee_paid", { precision: 20, scale: 6 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("idx_transfer_history_user_created").on(table.userId, table.createdAt),
+    index("idx_transfer_history_user_recipient_created").on(
+      table.userId,
+      table.recipientAddr,
+      table.createdAt
+    ),
+  ]
+);

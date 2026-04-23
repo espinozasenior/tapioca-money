@@ -11,11 +11,14 @@ import type { Hex } from "viem";
 import { base } from "viem/chains";
 import { createWalletClient, custom, encodeFunctionData, erc20Abi, parseAbi } from "viem";
 import { privateKeyToAccount, generatePrivateKey, toAccount } from "viem/accounts";
-import { USDC_ADDRESS } from "@/lib/config";
+import { FEE_CAP_USDC, USDC_ADDRESS, USDC_PAYMASTER_ADDRESS } from "@/lib/config";
 import { baseClient } from "@/lib/shared/rpc-client";
 
 // Maximum USDC amount per transfer session call (500 USDC with 6 decimals)
 const MAX_USDC_PER_TRANSFER = BigInt(500) * BigInt(1e6);
+
+/** CallPolicy version stamped into every new transfer session. */
+export const TRANSFER_PERMISSIONS_VERSION = 2;
 
 import { ENTRYPOINT_V07 } from "@/lib/zerodev/constants";
 
@@ -31,6 +34,12 @@ export interface TransferSessionAuthorization {
   serializedAccount?: string; // Serialized kernel account (encrypted at rest). Optional for backward compat.
   expiry: number;
   createdAt: number;
+  /**
+   * CallPolicy schema version. Missing field = v1 (legacy transfer-only).
+   * v2 = transfer + paymaster approve (customer-paid sends).
+   * Server gates on `permissionsVersion >= 2` for /transfer/send.
+   */
+  permissionsVersion?: number;
   // Legacy field — kept for backward compatibility with old sessions.
   // New sessions do NOT populate this field.
   sessionPrivateKey?: `0x${string}`;
@@ -102,7 +111,9 @@ export async function createTransferSessionKey(
     // Convert session key account to a ModularSigner
     const sessionSigner = await toECDSASigner({ signer: sessionKeyAccount });
 
-    // Create call policy restricted to USDC.transfer() with amount cap
+    // CallPolicy v2 — transfer + paymaster approve (customer-paid sends).
+    // Per CLAUDE.md Session Key Checklist, the paymaster target must be added
+    // to the permissions array; otherwise UserOps hit AA23 at gas estimation.
     const callPolicy = toCallPolicy({
       policyVersion: CallPolicyVersion.V0_0_5,
       permissions: [
@@ -113,6 +124,18 @@ export async function createTransferSessionKey(
           args: [
             null, // any recipient
             { condition: ParamCondition.LESS_THAN_OR_EQUAL, value: MAX_USDC_PER_TRANSFER },
+          ],
+          valueLimit: 0n,
+        },
+        {
+          // Spender pinned via ParamCondition.EQUAL so a leaked session key
+          // cannot approve arbitrary contracts.
+          target: USDC_ADDRESS,
+          abi: parseAbi(["function approve(address spender, uint256 amount) returns (bool)"]),
+          functionName: "approve",
+          args: [
+            { condition: ParamCondition.EQUAL, value: USDC_PAYMASTER_ADDRESS },
+            { condition: ParamCondition.LESS_THAN_OR_EQUAL, value: FEE_CAP_USDC },
           ],
           valueLimit: 0n,
         },
@@ -191,6 +214,7 @@ export async function createTransferSessionKey(
       serializedAccount,
       expiry,
       createdAt: Date.now(),
+      permissionsVersion: TRANSFER_PERMISSIONS_VERSION,
     };
   } catch (error: any) {
     console.error("[TransferSession] Session creation failed:", error);

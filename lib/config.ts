@@ -1,7 +1,35 @@
 // Yield Optimizer Configuration
 // Protocol addresses for Base Mainnet (Production)
 
-import { getAddress } from "viem";
+import { getAddress, parseUnits } from "viem";
+import { ZERODEV_USDC_PAYMASTER_BASE } from "@/lib/zerodev/constants";
+
+/**
+ * Customer-paid USDC send via ZeroDev ERC-20 paymaster.
+ * See tasks/spec-usdc-send.md §14 for rationale.
+ */
+export const USDC_PAYMASTER_ADDRESS = ZERODEV_USDC_PAYMASTER_BASE;
+
+/** Display-only fee shown in the send preview ("~$0.05 USDC"). */
+export const FEE_DISPLAY_USDC = "0.05";
+
+/** Hard ceiling on the per-send `USDC.approve(paymaster, …)` call. */
+export const FEE_CAP_USDC = parseUnits("0.20", 6); // 200_000n
+
+/** Per-transfer USDC ceiling; mirrors transfer-session CallPolicy. */
+export const MAX_USDC_PER_TRANSFER = parseUnits("500", 6);
+
+/** Client-side feature flag helper. Reads NEXT_PUBLIC_ENABLE_USDC_PAYMASTER, defaults ON. */
+export function isUsdcPaymasterEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_ENABLE_USDC_PAYMASTER !== "false";
+}
+
+/** Server-side feature flag helper. Reads ENABLE_USDC_PAYMASTER OR the public flag, defaults ON. */
+export function isUsdcPaymasterEnabledServer(): boolean {
+  const server = process.env.ENABLE_USDC_PAYMASTER;
+  if (server != null) return server !== "false";
+  return process.env.NEXT_PUBLIC_ENABLE_USDC_PAYMASTER !== "false";
+}
 
 // Note: Custom address registration not needed - SDK uses market params directly
 // The Morpho Blue SDK will use the explicit market params we provide
