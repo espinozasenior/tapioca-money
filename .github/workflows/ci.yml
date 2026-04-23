@@ -141,3 +141,89 @@ jobs:
   # Build is validated by Vercel on deploy.
   # Skipped in CI because Privy SDK validates appId against their API
   # at static page generation time, requiring a real app ID.
+
+  # Run Drizzle migrations against production DB before Vercel deploys main.
+  # Gating rules:
+  #   - push to main only (never on PRs — prevents feature branches from
+  #     mutating prod schema)
+  #   - requires typecheck + test + security to pass first
+  #   - fails the overall workflow if `pnpm db:migrate` fails, so an
+  #     operator sees the red X in GitHub before Vercel's deploy finishes.
+  #     Note: Vercel deploys run in parallel on push, so this is a
+  #     best-effort gate, not a strict pre-deploy barrier. See deliverable
+  #     notes in PR body for the Vercel-side follow-up (Deploy Hooks or
+  #     Ignored Build Step) if strict ordering is needed.
+  #   - idempotent: drizzle-kit migrate tracks applied files in
+  #     __drizzle_migrations and no-ops on reruns
+  #   - concurrency group pins to the workflow+ref so two migrate jobs
+  #     can't race (cancel-in-progress is already set at workflow level;
+  #     we use a dedicated group here that does NOT cancel, so an
+  #     in-flight migration finishes cleanly even if a new push lands).
+  migrate:
+    name: DB Migrate (production)
+    needs: [typecheck, test, security]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency:
+      group: db-migrate-production
+      cancel-in-progress: false
+    environment: production
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 2 # need HEAD~1 for the meta-only diff check
+
+      # Safety rail: if the push only touches drizzle/meta/** (snapshot or
+      # _journal churn) without a new SQL file under drizzle/*.sql, there's
+      # nothing to apply. Skip to avoid spurious "already applied" logs and
+      # shave a minute off the deploy. Any other file outside drizzle/
+      # still runs migrate because drizzle tracks applied files itself and
+      # re-running is a safe no-op.
+      - name: Check for migration changes
+        id: diff
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD -- drizzle/ || true)
+          echo "changed files under drizzle/:"
+          echo "$CHANGED"
+
+          SQL_CHANGED=$(echo "$CHANGED" | grep -E '^drizzle/[0-9]+_.*\.sql$' || true)
+          NON_META=$(echo "$CHANGED" | grep -vE '^drizzle/meta/' | grep -v '^$' || true)
+
+          if [ -z "$CHANGED" ]; then
+            echo "No drizzle/ changes — running migrate anyway (safe no-op)."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          elif [ -z "$SQL_CHANGED" ] && [ -z "$NON_META" ]; then
+            echo "Only drizzle/meta/** changed and no new SQL file — skipping migrate."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "SQL or non-meta drizzle changes detected — running migrate."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        if: steps.diff.outputs.skip != 'true'
+        with:
+          version: 10
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        if: steps.diff.outputs.skip != 'true'
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        if: steps.diff.outputs.skip != 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Drizzle migrations
+        if: steps.diff.outputs.skip != 'true'
+        env:
+          DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+        run: |
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "::error::PRODUCTION_DATABASE_URL secret is not set"
+            exit 1
+          fi
+          pnpm db:migrate
