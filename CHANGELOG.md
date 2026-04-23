@@ -19,6 +19,8 @@ reserved for post-release hotfixes).
 - Redis-backed idempotency wrapper (`lib/redis/idempotency.ts`) for `/api/transfer/send`; fail-closed in production, DID-scoped keys, 60-second TTL.
 - Feature flag `NEXT_PUBLIC_ENABLE_USDC_PAYMASTER` (client) and `ENABLE_USDC_PAYMASTER` (server) for instant rollback without redeploy.
 - Migrations `0005_paymaster_version` (backfills legacy session rows with `permissionsVersion=1`) and `0006_transfer_history` (new table powering the Sent! card and recent-recipients strip).
+- **CI runs Drizzle migrations automatically on push to `main`**, gated behind typecheck/test/security. Uses the new `production` GitHub environment with a scoped `PRODUCTION_DATABASE_URL` secret. Safety rail skips the job when only `drizzle/meta/**` churns without a new SQL file.
+- **Vercel production deploy is now chained behind migrate via a Deploy Hook.** `vercel.json` disables main auto-deploy (`deploymentEnabled.main: false`); CI's `deploy` job POSTs to `VERCEL_DEPLOY_HOOK_URL` only after migrate succeeds. Production never ships against an un-migrated schema.
 - Sentinel v0 circuit breaker with vault-flow signals, PagerDuty alerting, and CI/CD auto-deploy to VPS.
 - Harder Morpho vault filtering: $10M TVL floor, whitelisted-only, 50% APY cap to screen out speculative pools.
 - Paused-vault visibility on the dashboard when a user has funds in a paused vault.
