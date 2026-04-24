@@ -29,6 +29,27 @@
       "when": 1771463939997,
       "tag": "0003_wise_shadow_king",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1772121600000,
+      "tag": "0004_sentinel_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1774594800000,
+      "tag": "0005_paymaster_version",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1774602000000,
+      "tag": "0006_transfer_history",
+      "breakpoints": true
     }
   ]
 }
