@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { ClipboardPaste } from "lucide-react";
 import { isAddress } from "viem";
-import { shortenAddress } from "@/utils/shortenAddress";
 
 interface PasteChipProps {
   visible: boolean;
@@ -20,90 +19,58 @@ function isCandidate(input: string): boolean {
 }
 
 /**
- * Offers a one-tap paste when the clipboard contains a valid recipient
- * (0x address, ENS name, or Basename). Respects browser permission rules:
- * - Chromium/Firefox desktop: auto-reads on visible=true.
- * - Safari / iOS: clipboard read requires a direct user gesture, so we
- *   render a generic "Paste from clipboard" button that reads on tap.
+ * Renders a visible "Paste from clipboard" button when the recipient input
+ * is focused and empty. The click handler reads the clipboard (user gesture
+ * satisfies browser permission policy), validates the content, and calls
+ * onPaste only if it looks like a 0x / ENS / Basename.
+ *
+ * We deliberately do NOT auto-read on focus — that path requires transient
+ * user activation which focus alone doesn't grant in Chromium, and a strict
+ * CSP / Permissions-Policy on the host page can silently block it. A
+ * visible button that reads on click is the one path that works everywhere.
  */
 export function PasteChip({ visible, onPaste }: PasteChipProps) {
-  const [suggestion, setSuggestion] = useState<string | null>(null);
-  const [needsGesture, setNeedsGesture] = useState(false);
+  const [status, setStatus] = useState<"idle" | "reading" | "blocked" | "empty">("idle");
 
-  useEffect(() => {
-    let cancelled = false;
+  if (!visible) return null;
 
-    if (!visible) {
-      setSuggestion(null);
-      setNeedsGesture(false);
+  const handleClick = async () => {
+    if (typeof navigator === "undefined" || !navigator.clipboard?.readText) {
+      setStatus("blocked");
       return;
     }
-
-    (async () => {
-      try {
-        if (typeof navigator === "undefined" || !navigator.clipboard?.readText) {
-          setNeedsGesture(true);
-          return;
-        }
-        const text = await navigator.clipboard.readText();
-        if (cancelled) return;
-        if (isCandidate(text)) {
-          setSuggestion(text.trim());
-          setNeedsGesture(false);
-        } else {
-          setSuggestion(null);
-          setNeedsGesture(false);
-        }
-      } catch {
-        // Permission denied / needs gesture.
-        if (!cancelled) setNeedsGesture(true);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [visible]);
-
-  const handleTapWithGesture = async () => {
+    setStatus("reading");
     try {
       const text = await navigator.clipboard.readText();
       if (isCandidate(text)) {
         onPaste(text.trim());
+        setStatus("idle");
+      } else {
+        setStatus("empty");
       }
     } catch {
-      // User declined; no-op.
+      setStatus("blocked");
     }
   };
 
-  if (!visible) return null;
+  const label =
+    status === "reading"
+      ? "Reading clipboard…"
+      : status === "blocked"
+        ? "Paste denied by browser"
+        : status === "empty"
+          ? "Clipboard has no address or name"
+          : "Paste from clipboard";
 
-  if (suggestion) {
-    const short = isAddress(suggestion) ? shortenAddress(suggestion) : suggestion;
-    return (
-      <button
-        type="button"
-        onClick={() => onPaste(suggestion)}
-        className="mb-2 inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
-      >
-        <ClipboardPaste className="h-3.5 w-3.5" />
-        Paste {short}
-      </button>
-    );
-  }
-
-  if (needsGesture) {
-    return (
-      <button
-        type="button"
-        onClick={handleTapWithGesture}
-        className="mb-2 inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-      >
-        <ClipboardPaste className="h-3.5 w-3.5" />
-        Paste from clipboard
-      </button>
-    );
-  }
-
-  return null;
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={status === "reading"}
+      className="mb-2 inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+    >
+      <ClipboardPaste className="h-3.5 w-3.5" />
+      {label}
+    </button>
+  );
 }
