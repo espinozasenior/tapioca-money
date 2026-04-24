@@ -118,14 +118,15 @@ describe("useWallet", () => {
   });
 
   it("should send sponsored tokens via API", async () => {
-    // Mock status check
+    // Session already on v2 → no inline setup needed.
     (global.fetch as any)
       .mockResolvedValueOnce({
-        json: async () => ({ isEnabled: true }),
+        ok: true,
+        json: async () => ({ isEnabled: true, permissionsVersion: 2 }),
       })
-      // Mock transfer execution
       .mockResolvedValueOnce({
-        json: async () => ({ success: true, hash: "0xtxhash" }),
+        ok: true,
+        json: async () => ({ success: true, hash: "0xtxhash", feePaid: "0.03" }),
       });
 
     const { result } = renderHook(() => useWallet());
@@ -157,5 +158,231 @@ describe("useWallet", () => {
         expect.objectContaining({ method: "POST" })
       );
     }
+  });
+
+  describe("sendUsdc phase emission", () => {
+    const validAddress = "0x1234567890123456789012345678901234567890";
+
+    it("emits submitting → confirming → success when session is v2", async () => {
+      (global.fetch as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ isEnabled: true, permissionsVersion: 2 }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            success: true,
+            hash: "0xtx",
+            userOpHash: "0xuo",
+            feePaid: "0.02",
+          }),
+        });
+
+      const { result } = renderHook(() => useWallet());
+      const phases: string[] = [];
+      const ctxs: any[] = [];
+      const out = await result.current.wallet!.sendUsdc(
+        { to: validAddress, amount: "10" },
+        (ctx) => {
+          phases.push(ctx.phase);
+          ctxs.push(ctx);
+        }
+      );
+
+      expect(phases).toEqual(["submitting", "submitting", "confirming", "success"]);
+      expect(ctxs[2]).toMatchObject({ phase: "confirming", userOpHash: "0xuo" });
+      expect(ctxs[3]).toMatchObject({
+        phase: "success",
+        txHash: "0xtx",
+        feePaid: "0.02",
+      });
+      expect(out).toEqual({ hash: "0xtx", userOpHash: "0xuo", feePaid: "0.02" });
+    });
+
+    it("runs inline session setup for a brand-new user (isEnabled=false)", async () => {
+      (global.fetch as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ isEnabled: false }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ success: true, smartAccountAddress: "0xsmart" }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ success: true, hash: "0xtx", feePaid: "0.02" }),
+        });
+
+      const { result } = renderHook(() => useWallet());
+      const phases: string[] = [];
+
+      await result.current.wallet!.sendUsdc({ to: validAddress, amount: "5" }, (ctx) =>
+        phases.push(ctx.phase)
+      );
+
+      // FR-25: signing_session + registering fire on the inline setup path
+      expect(phases).toContain("signing_session");
+      expect(phases).toContain("registering");
+      expect(phases).toContain("success");
+
+      // Register endpoint was called with Bearer token
+      expect(global.fetch).toHaveBeenNthCalledWith(
+        2,
+        "/api/transfer/register",
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({
+            Authorization: "Bearer mock-token",
+          }),
+        })
+      );
+    });
+
+    it("runs inline upgrade when stored permissionsVersion < 2", async () => {
+      (global.fetch as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ isEnabled: true, permissionsVersion: 1 }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ success: true }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ success: true, hash: "0xtx" }),
+        });
+
+      const { result } = renderHook(() => useWallet());
+      const phases: string[] = [];
+      await result.current.wallet!.sendUsdc({ to: validAddress, amount: "5" }, (ctx) =>
+        phases.push(ctx.phase)
+      );
+
+      expect(phases).toContain("signing_session");
+    });
+
+    it("treats missing permissionsVersion as v1 and runs setup", async () => {
+      (global.fetch as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ isEnabled: true }), // no version field
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ success: true }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ success: true, hash: "0xtx" }),
+        });
+
+      const { result } = renderHook(() => useWallet());
+      const phases: string[] = [];
+      await result.current.wallet!.sendUsdc({ to: validAddress, amount: "5" }, (ctx) =>
+        phases.push(ctx.phase)
+      );
+      expect(phases).toContain("signing_session");
+    });
+
+    it("sends Idempotency-Key header to /api/transfer/send", async () => {
+      (global.fetch as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ isEnabled: true, permissionsVersion: 2 }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ success: true, hash: "0xtx" }),
+        });
+
+      const { result } = renderHook(() => useWallet());
+      await result.current.wallet!.sendUsdc({
+        to: validAddress,
+        amount: "5",
+        idempotencyKey: "fixed-key-xyz",
+      });
+
+      expect(global.fetch).toHaveBeenLastCalledWith(
+        "/api/transfer/send",
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            "Idempotency-Key": "fixed-key-xyz",
+          }),
+        })
+      );
+    });
+
+    it("throws SendError with code from server on failure and emits error phase", async () => {
+      (global.fetch as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ isEnabled: true, permissionsVersion: 2 }),
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          json: async () => ({
+            success: false,
+            error: "Gas too high",
+            code: "PAYMASTER_UNAVAILABLE",
+          }),
+        });
+
+      const { result } = renderHook(() => useWallet());
+      const phases: string[] = [];
+      await expect(
+        result.current.wallet!.sendUsdc(
+          { to: validAddress, amount: "5" },
+          (ctx) => phases.push(ctx.phase)
+        )
+      ).rejects.toMatchObject({ code: "PAYMASTER_UNAVAILABLE" });
+
+      expect(phases).toContain("error");
+    });
+
+    it("surfaces SESSION_SETUP_FAILED when registration fails", async () => {
+      (global.fetch as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ isEnabled: false }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ success: false, error: "bad signature" }),
+        });
+
+      const { result } = renderHook(() => useWallet());
+      await expect(
+        result.current.wallet!.sendUsdc({ to: validAddress, amount: "5" })
+      ).rejects.toMatchObject({ code: "SESSION_SETUP_FAILED" });
+    });
+
+    it("passes `label` through to /api/transfer/send body", async () => {
+      (global.fetch as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ isEnabled: true, permissionsVersion: 2 }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ success: true, hash: "0xtx" }),
+        });
+
+      const { result } = renderHook(() => useWallet());
+      await result.current.wallet!.sendUsdc({
+        to: validAddress,
+        amount: "5",
+        label: "vitalik.eth",
+      });
+
+      const sendCall = (global.fetch as any).mock.calls.find(
+        ([url]: [string]) => url === "/api/transfer/send"
+      );
+      expect(sendCall).toBeDefined();
+      const body = JSON.parse(sendCall[1].body);
+      expect(body.label).toBe("vitalik.eth");
+    });
   });
 });

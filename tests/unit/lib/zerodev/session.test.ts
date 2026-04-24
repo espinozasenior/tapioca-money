@@ -40,6 +40,8 @@ vi.mock("@/lib/redis/client", () => ({
 vi.mock("@/lib/config", () => ({
   CHAIN_CONFIG: { rpcUrl: "http://localhost:8545" },
   USDC_ADDRESS: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+  USDC_PAYMASTER_ADDRESS: "0x7EE87982c03463DbAfe27A50b3D8e4FfAf1435F7",
+  FEE_CAP_USDC: 200_000n,
 }));
 
 vi.mock("viem", async (importOriginal) => {
@@ -92,7 +94,10 @@ vi.mock("@zerodev/permissions/policies", () => ({
   toGasPolicy: vi.fn(),
   toRateLimitPolicy: vi.fn(),
   toTimestampPolicy: vi.fn(),
-  ParamCondition: { LESS_THAN_OR_EQUAL: "LESS_THAN_OR_EQUAL" },
+  ParamCondition: {
+    LESS_THAN_OR_EQUAL: "LESS_THAN_OR_EQUAL",
+    EQUAL: "EQUAL",
+  },
 }));
 
 vi.mock("@zerodev/permissions/signers", () => ({
@@ -202,6 +207,92 @@ describe("ZeroDev Session Management", () => {
         await expect(createTransferSessionKey(mockWallet, "0xUser")).rejects.toThrow(
           "Transfer session setup failed"
         );
+      });
+    });
+
+    // CT-2 regression guard: the CallPolicy v2 contract with the paymaster
+    // is the load-bearing security boundary. If a future refactor drops
+    // either permission OR un-pins the spender, a leaked session key could
+    // approve arbitrary contracts. These tests FAIL LOUDLY on regression.
+    describe("CallPolicy v2 shape (paymaster-approve + transfer)", () => {
+      const USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+      const PAYMASTER = "0x7EE87982c03463DbAfe27A50b3D8e4FfAf1435F7";
+
+      let permissions: any[];
+
+      beforeEach(async () => {
+        const mockWallet = {
+          getEthereumProvider: vi.fn().mockResolvedValue({}),
+          address: "0xUser",
+        };
+        mockGeneratePrivateKey.mockReturnValue("0xSessionPriv");
+        mockPrivateKeyToAccount.mockReturnValue({ address: "0xSessionKey" });
+        mockCreateKernelAccount.mockResolvedValue({ address: "0xSmartAccount" });
+        mockSerializePermissionAccount.mockResolvedValue("base64");
+
+        await createTransferSessionKey(mockWallet, "0xUser" as `0x${string}`);
+
+        // toCallPolicy is called with { policyVersion, permissions: [...] }
+        expect(mockToCallPolicy).toHaveBeenCalled();
+        const call = mockToCallPolicy.mock.calls[0][0];
+        permissions = call.permissions;
+      });
+
+      it("stamps permissionsVersion: 2 on the returned session", async () => {
+        const mockWallet = {
+          getEthereumProvider: vi.fn().mockResolvedValue({}),
+          address: "0xUser",
+        };
+        mockGeneratePrivateKey.mockReturnValue("0xSessionPriv");
+        mockPrivateKeyToAccount.mockReturnValue({ address: "0xSessionKey" });
+        mockCreateKernelAccount.mockResolvedValue({ address: "0xSmartAccount" });
+        mockSerializePermissionAccount.mockResolvedValue("base64");
+
+        const out = await createTransferSessionKey(mockWallet, "0xUser" as `0x${string}`);
+        expect(out.permissionsVersion).toBe(2);
+      });
+
+      it("contains exactly two permissions: transfer and approve", () => {
+        expect(permissions).toHaveLength(2);
+        const fns = permissions.map((p) => p.functionName);
+        expect(fns).toContain("transfer");
+        expect(fns).toContain("approve");
+      });
+
+      it("transfer permission targets USDC with a ≤ $500 cap", () => {
+        const transfer = permissions.find((p) => p.functionName === "transfer");
+        expect(transfer).toBeDefined();
+        expect(transfer.target.toLowerCase()).toBe(USDC.toLowerCase());
+        expect(transfer.valueLimit).toBe(0n);
+        const [recipientArg, amountArg] = transfer.args;
+        expect(recipientArg).toBeNull(); // any recipient allowed
+        expect(amountArg.condition).toBe("LESS_THAN_OR_EQUAL");
+        expect(amountArg.value).toBe(500n * 10n ** 6n);
+      });
+
+      it("approve permission pins spender to paymaster with ParamCondition.EQUAL", () => {
+        const approve = permissions.find((p) => p.functionName === "approve");
+        expect(approve).toBeDefined();
+        expect(approve.target.toLowerCase()).toBe(USDC.toLowerCase());
+        expect(approve.valueLimit).toBe(0n);
+
+        const [spenderArg, amountArg] = approve.args;
+        // LOAD-BEARING INVARIANT: spender pinned via EQUAL to the paymaster.
+        // If this drifts to LESS_THAN_OR_EQUAL or null, a leaked session key
+        // can approve any spender.
+        expect(spenderArg.condition).toBe("EQUAL");
+        expect(String(spenderArg.value).toLowerCase()).toBe(PAYMASTER.toLowerCase());
+
+        // Amount capped at FEE_CAP_USDC (0.20 USDC).
+        expect(amountArg.condition).toBe("LESS_THAN_OR_EQUAL");
+        expect(amountArg.value).toBe(200_000n);
+      });
+
+      it("does NOT contain any permission that lets the session key approve arbitrary contracts", () => {
+        const approve = permissions.find((p) => p.functionName === "approve");
+        // Sanity: any approve permission MUST have the spender pinned.
+        expect(approve.args[0].condition).not.toBe("LESS_THAN_OR_EQUAL");
+        expect(approve.args[0].value).toBeTruthy();
       });
     });
   });

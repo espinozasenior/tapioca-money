@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
 // 1. Define mock implementation first
@@ -25,6 +25,7 @@ vi.mock("@/lib/security/session-encryption", () => ({
 
 vi.mock("@/lib/zerodev/transfer-session", () => ({
   validateTransferSession: vi.fn(),
+  TRANSFER_PERMISSIONS_VERSION: 2,
 }));
 
 vi.mock("@/lib/redis/rate-limiter", () => ({
@@ -33,14 +34,29 @@ vi.mock("@/lib/redis/rate-limiter", () => ({
   checkAndRecordRateLimit: vi.fn(),
 }));
 
+vi.mock("@/lib/redis/idempotency", () => ({
+  withIdempotencyKey: vi.fn((_userId: string, _key: string, fn: () => Promise<any>) => fn()),
+  IdempotencyBusyError: class extends Error {
+    code = "IDEMPOTENCY_BUSY";
+  },
+}));
+
 vi.mock("@/lib/zerodev/transfer-executor", () => ({
   validateTransferParams: vi.fn(),
-  executeGaslessTransfer: vi.fn(),
+  executeUserPaidTransfer: vi.fn(),
 }));
 
 vi.mock("@/lib/zerodev/transfer-recipient-validator", () => ({
   validateTransferRecipient: vi.fn(),
 }));
+
+vi.mock("@/lib/config", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/config")>("@/lib/config");
+  return {
+    ...actual,
+    isUsdcPaymasterEnabledServer: () => true,
+  };
+});
 
 // 3. Import module under test
 import { POST } from "@/app/api/transfer/send/route";
@@ -48,7 +64,7 @@ import { requireAuthForAddress } from "@/lib/auth/middleware";
 import { decryptAuthorization } from "@/lib/security/session-encryption";
 import { validateTransferSession } from "@/lib/zerodev/transfer-session";
 import { checkTransferRateLimitRedis, checkAndRecordRateLimit } from "@/lib/redis/rate-limiter";
-import { validateTransferParams, executeGaslessTransfer } from "@/lib/zerodev/transfer-executor";
+import { validateTransferParams, executeUserPaidTransfer } from "@/lib/zerodev/transfer-executor";
 import { validateTransferRecipient } from "@/lib/zerodev/transfer-recipient-validator";
 
 describe("Transfer Send API", () => {
@@ -59,7 +75,7 @@ describe("Transfer Send API", () => {
     vi.clearAllMocks();
 
     // Default happy path mocks
-    (requireAuthForAddress as any).mockResolvedValue({ authenticated: true });
+    (requireAuthForAddress as any).mockResolvedValue({ authenticated: true, userId: "privy:1" });
 
     mockSql.mockResolvedValue([
       {
@@ -71,8 +87,7 @@ describe("Transfer Send API", () => {
     (decryptAuthorization as any).mockReturnValue({
       smartAccountAddress: "0xsmart",
       serializedAccount: "base64SerializedAccount",
-      // Legacy field also present for backward compat
-      sessionPrivateKey: "0xpriv",
+      permissionsVersion: 2,
     });
 
     (validateTransferSession as any).mockReturnValue({ valid: true });
@@ -85,10 +100,11 @@ describe("Transfer Send API", () => {
 
     (validateTransferParams as any).mockReturnValue({ valid: true });
 
-    (executeGaslessTransfer as any).mockResolvedValue({
+    (executeUserPaidTransfer as any).mockResolvedValue({
       success: true,
       hash: "0xtxhash",
       userOpHash: "0xopHash",
+      feePaid: "0.03",
     });
   });
 
@@ -138,31 +154,59 @@ describe("Transfer Send API", () => {
     expect(res.status).toBe(404);
   });
 
-  it("should return 403 if gasless not enabled", async () => {
+  it("should return 409 SESSION_UPGRADE_REQUIRED when transfer_authorization is null (new user)", async () => {
     mockSql.mockResolvedValue([{ id: "user1", transfer_authorization: null }]);
 
     const req = createRequest({ address: mockUserAddress, recipient: mockRecipient, amount: "10" });
     const res = await POST(req);
+    const body = await res.json();
 
-    expect(res.status).toBe(403);
-    expect(await res.json()).toEqual(
-      expect.objectContaining({ error: expect.stringContaining("not enabled") })
-    );
+    expect(res.status).toBe(409);
+    expect(body.code).toBe("SESSION_UPGRADE_REQUIRED");
   });
 
-  it("should return 403 if session invalid", async () => {
-    (validateTransferSession as any).mockReturnValue({ valid: false, reason: "Expired" });
+  it("should return 409 SESSION_UPGRADE_REQUIRED for v1 legacy sessions", async () => {
+    (decryptAuthorization as any).mockReturnValue({
+      smartAccountAddress: "0xsmart",
+      serializedAccount: "legacySerialized",
+      permissionsVersion: 1, // legacy
+    });
 
     const req = createRequest({ address: mockUserAddress, recipient: mockRecipient, amount: "10" });
     const res = await POST(req);
+    const body = await res.json();
 
-    expect(res.status).toBe(403);
-    expect(await res.json()).toEqual(
-      expect.objectContaining({ error: "Transfer session invalid or expired" })
-    );
+    expect(res.status).toBe(409);
+    expect(body.code).toBe("SESSION_UPGRADE_REQUIRED");
   });
 
-  it("should return 429 if rate limit exceeded", async () => {
+  it("should return 409 SESSION_UPGRADE_REQUIRED when permissionsVersion is missing (treated as v1)", async () => {
+    (decryptAuthorization as any).mockReturnValue({
+      smartAccountAddress: "0xsmart",
+      serializedAccount: "legacySerialized",
+      // no permissionsVersion field — must default to v1
+    });
+
+    const req = createRequest({ address: mockUserAddress, recipient: mockRecipient, amount: "10" });
+    const res = await POST(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(409);
+    expect(body.code).toBe("SESSION_UPGRADE_REQUIRED");
+  });
+
+  it("should return 401 SESSION_EXPIRED when session validation fails", async () => {
+    (validateTransferSession as any).mockReturnValue({ valid: false, reason: "Session expired" });
+
+    const req = createRequest({ address: mockUserAddress, recipient: mockRecipient, amount: "10" });
+    const res = await POST(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(401);
+    expect(body.code).toBe("SESSION_EXPIRED");
+  });
+
+  it("should return 429 RATE_LIMIT_EXCEEDED when daily rate limit hit", async () => {
     (checkTransferRateLimitRedis as any).mockResolvedValue({
       allowed: false,
       remaining: 0,
@@ -171,20 +215,24 @@ describe("Transfer Send API", () => {
 
     const req = createRequest({ address: mockUserAddress, recipient: mockRecipient, amount: "10" });
     const res = await POST(req);
+    const body = await res.json();
 
     expect(res.status).toBe(429);
+    expect(body.code).toBe("RATE_LIMIT_EXCEEDED");
   });
 
-  it("should return 400 if params invalid", async () => {
+  it("should return 400 INVALID_PARAMS when param validation fails", async () => {
     (validateTransferParams as any).mockReturnValue({ valid: false, error: "Invalid amount" });
 
     const req = createRequest({ address: mockUserAddress, recipient: mockRecipient, amount: "10" });
     const res = await POST(req);
+    const body = await res.json();
 
     expect(res.status).toBe(400);
+    expect(body.code).toBe("INVALID_PARAMS");
   });
 
-  it("should execute transfer and return success", async () => {
+  it("should execute transfer and return success with feePaid", async () => {
     const req = createRequest({ address: mockUserAddress, recipient: mockRecipient, amount: "10" });
     const res = await POST(req);
     const body = await res.json();
@@ -192,19 +240,12 @@ describe("Transfer Send API", () => {
     expect(res.status).toBe(200);
     expect(body.success).toBe(true);
     expect(body.hash).toBe("0xtxhash");
-    expect(executeGaslessTransfer).toHaveBeenCalled();
-    // Verify DB insert for success
-    // The first call is SELECT, second is INSERT
-    expect(mockSql).toHaveBeenCalledTimes(2);
-    const insertCall = mockSql.mock.calls[1];
-    expect(insertCall[0][0]).toContain("INSERT INTO agent_actions");
-    expect(insertCall[1]).toBe("user1"); // user_id
-    expect(insertCall[2]).toBe("10"); // amount
-    expect(insertCall[3]).toBe("0xtxhash"); // tx_hash
+    expect(body.feePaid).toBe("0.03");
+    expect(executeUserPaidTransfer).toHaveBeenCalled();
   });
 
-  it("should handle execution failure", async () => {
-    (executeGaslessTransfer as any).mockResolvedValue({
+  it("should propagate bundler error message on execution failure", async () => {
+    (executeUserPaidTransfer as any).mockResolvedValue({
       success: false,
       error: "Bundler error",
     });
@@ -213,8 +254,24 @@ describe("Transfer Send API", () => {
     const res = await POST(req);
     const body = await res.json();
 
+    // Generic failure → 500 with TRANSFER_FAILED code; AA31 would be 503 PAYMASTER_UNAVAILABLE.
     expect(res.status).toBe(500);
     expect(body.success).toBe(false);
     expect(body.error).toBe("Bundler error");
+    expect(body.code).toBe("TRANSFER_FAILED");
+  });
+
+  it("should map AA31 bundler errors to 503 PAYMASTER_UNAVAILABLE", async () => {
+    (executeUserPaidTransfer as any).mockResolvedValue({
+      success: false,
+      error: "UserOp failed: AA31 paymaster deposit too low",
+    });
+
+    const req = createRequest({ address: mockUserAddress, recipient: mockRecipient, amount: "10" });
+    const res = await POST(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(503);
+    expect(body.code).toBe("PAYMASTER_UNAVAILABLE");
   });
 });

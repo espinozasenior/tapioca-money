@@ -1,109 +1,161 @@
 /**
- * Gasless Transfer Executor with ZeroDev
- * Executes USDC transfers using transfer-only session keys
+ * Transfer Executor with ZeroDev.
+ *
+ * Customer-paid mode: user approves the ZeroDev ERC-20 paymaster for a capped
+ * amount of USDC and the paymaster pulls the fee post-execution. No Tapioca
+ * subsidy. See tasks/architecture-usdc-send.md §7 (executor state diagram).
+ *
+ * Legacy sponsored path (`executeGaslessTransfer`) is kept as a no-op shim that
+ * throws — the UI no longer calls it but tests may reference the symbol.
  */
 
-import { encodeFunctionData, erc20Abi, parseUnits } from "viem";
-import { createDeserializedKernelClient, createSessionKernelClient } from "./kernel-client";
+import { encodeFunctionData, erc20Abi, formatUnits, parseUnits } from "viem";
+import { createDeserializedKernelClient } from "./kernel-client";
 import { withBuilderCode } from "@/lib/builder-code";
 import { validateTransferRecipient } from "./transfer-recipient-validator";
-import { USDC_ADDRESS } from "@/lib/config";
+import { FEE_CAP_USDC, USDC_ADDRESS, USDC_PAYMASTER_ADDRESS } from "@/lib/config";
+import { baseClient } from "@/lib/shared/rpc-client";
+import {
+  createUsdcPaymaster,
+  getPaymasterTreasury,
+  parsePaymasterFeeFromReceipt,
+} from "./paymaster-client";
 
-export interface GaslessTransferParams {
+export interface UserPaidTransferParams {
   userAddress: `0x${string}`;
   smartAccountAddress: `0x${string}`;
   recipient: `0x${string}`;
   amount: string; // Amount in USDC (e.g., "10.50")
-  serializedAccount?: string; // Serialized kernel account (new pattern)
-  // Legacy fields
-  sessionPrivateKey?: `0x${string}`;
-  eip7702SignedAuth?: any;
+  serializedAccount: string; // Serialized kernel account (v2 session)
 }
 
-export interface GaslessTransferResult {
+export interface UserPaidTransferResult {
   hash: string;
   success: boolean;
   error?: string;
   userOpHash?: string;
+  /** Actual USDC fee charged by the paymaster (decimal string, 6 dp). */
+  feePaid?: string;
 }
 
+// Legacy alias kept for external callers/tests — prefer the new names.
+export type GaslessTransferParams = UserPaidTransferParams & {
+  sessionPrivateKey?: `0x${string}`;
+  eip7702SignedAuth?: any;
+};
+export type GaslessTransferResult = UserPaidTransferResult;
+
 /**
- * Execute gasless USDC transfer via ZeroDev bundler
+ * Execute a customer-paid USDC transfer via the ZeroDev ERC-20 paymaster.
+ *
+ * Flow:
+ *   1. Pre-read `USDC.allowance(smartAccount, paymaster)` (cheap RPC read).
+ *   2. If allowance < FEE_CAP_USDC, prepend a `USDC.approve(paymaster, FEE_CAP_USDC)` call.
+ *   3. Always append `USDC.transfer(recipient, amount)`.
+ *   4. Submit as ONE batched UserOp with the paymaster-enabled kernel client.
+ *   5. Parse `ERC20.Transfer(smartAccount → paymasterTreasury)` from the
+ *      receipt logs to surface the actual fee.
  */
-export async function executeGaslessTransfer(
-  params: GaslessTransferParams
-): Promise<GaslessTransferResult> {
+export async function executeUserPaidTransfer(
+  params: UserPaidTransferParams
+): Promise<UserPaidTransferResult> {
   try {
-    console.log("[GaslessTransfer] Starting transfer execution...");
-    console.log("[GaslessTransfer] From:", params.smartAccountAddress);
-    console.log("[GaslessTransfer] To:", params.recipient);
-    console.log("[GaslessTransfer] Amount:", params.amount, "USDC");
+    console.log("[UserPaidTransfer] Starting transfer execution...");
+    console.log("[UserPaidTransfer] From:", params.smartAccountAddress);
+    console.log("[UserPaidTransfer] To:", params.recipient);
+    console.log("[UserPaidTransfer] Amount:", params.amount, "USDC");
 
-    // Check if simulation mode
-    const isSimulation = process.env.AGENT_SIMULATION_MODE === "true";
-
-    if (isSimulation) {
-      console.log("[GaslessTransfer] SIMULATION MODE - No real transaction");
+    if (process.env.AGENT_SIMULATION_MODE === "true") {
+      console.log("[UserPaidTransfer] SIMULATION MODE - No real transaction");
       const mockHash = `0x${Math.random().toString(16).slice(2)}${Math.random().toString(16).slice(2)}${Math.random().toString(16).slice(2)}`;
       return {
         hash: mockHash,
         success: true,
         userOpHash: `0xUserOp${Math.random().toString(16).slice(2)}`,
+        feePaid: "0.000000",
       };
     }
 
-    // Create kernel client — prefer deserialized account (new pattern)
-    let kernelClient;
-    if (params.serializedAccount) {
-      console.log("[GaslessTransfer] Using deserialized kernel client");
-      kernelClient = await createDeserializedKernelClient(params.serializedAccount);
-    } else if (params.sessionPrivateKey) {
-      console.warn("[GaslessTransfer] Using legacy session key path — user should re-register");
-      const transferSelector = encodeFunctionData({
-        abi: erc20Abi,
-        functionName: "transfer",
-        args: ["0x0000000000000000000000000000000000000000", BigInt(0)],
-      }).slice(0, 10) as `0x${string}`;
-      kernelClient = await createSessionKernelClient({
-        smartAccountAddress: params.smartAccountAddress,
-        sessionPrivateKey: params.sessionPrivateKey,
-        eip7702SignedAuth: params.eip7702SignedAuth,
-        permissions: [{ target: USDC_ADDRESS, selector: transferSelector }],
-      });
-    } else {
-      throw new Error("No serializedAccount or sessionPrivateKey provided. User must register.");
+    if (!params.serializedAccount) {
+      throw new Error("SESSION_UPGRADE_REQUIRED");
     }
 
-    // Build USDC transfer call
-    const amountInUSDC = parseUnits(params.amount, 6);
-
-    const transferCallData = encodeFunctionData({
+    // Step 1: pre-read allowance (OQ-6 optimization — skip approve when already sufficient).
+    const currentAllowance = (await baseClient.readContract({
+      address: USDC_ADDRESS,
       abi: erc20Abi,
-      functionName: "transfer",
-      args: [params.recipient, amountInUSDC],
+      functionName: "allowance",
+      args: [params.smartAccountAddress, USDC_PAYMASTER_ADDRESS],
+    })) as bigint;
+
+    const needsApprove = currentAllowance < FEE_CAP_USDC;
+    console.log(
+      `[UserPaidTransfer] allowance=${currentAllowance} cap=${FEE_CAP_USDC} needsApprove=${needsApprove}`
+    );
+
+    // Step 2+3: build batched calls.
+    const amountInUsdc = parseUnits(params.amount, 6);
+    const calls: Array<{ to: `0x${string}`; value: bigint; data: `0x${string}` }> = [];
+
+    if (needsApprove) {
+      calls.push({
+        to: USDC_ADDRESS,
+        value: 0n,
+        data: encodeFunctionData({
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [USDC_PAYMASTER_ADDRESS, FEE_CAP_USDC],
+        }),
+      });
+    }
+
+    calls.push({
+      to: USDC_ADDRESS,
+      value: 0n,
+      data: encodeFunctionData({
+        abi: erc20Abi,
+        functionName: "transfer",
+        args: [params.recipient, amountInUsdc],
+      }),
     });
 
-    console.log("[GaslessTransfer] Building transfer call...");
+    // Step 4: submit batched UserOp through the paymaster-enabled kernel client.
+    const paymaster = await createUsdcPaymaster();
+    const kernelClient = await createDeserializedKernelClient(params.serializedAccount, {
+      paymaster,
+    });
 
     const userOpHash = await kernelClient.sendUserOperation({
-      calls: withBuilderCode([{ to: USDC_ADDRESS, value: BigInt(0), data: transferCallData }]),
+      calls: withBuilderCode(calls),
     });
 
-    console.log("[GaslessTransfer] UserOp submitted:", userOpHash);
+    console.log("[UserPaidTransfer] UserOp submitted:", userOpHash);
 
-    const receipt = await kernelClient.waitForUserOperationReceipt({
-      hash: userOpHash,
-    });
+    const receipt = await kernelClient.waitForUserOperationReceipt({ hash: userOpHash });
+    console.log("[UserPaidTransfer] Transaction confirmed:", receipt.receipt.transactionHash);
 
-    console.log("[GaslessTransfer] Transaction confirmed:", receipt.receipt.transactionHash);
+    // Step 5: parse actual fee from the paymaster-treasury Transfer log.
+    let feePaid = "0";
+    try {
+      const treasury = await getPaymasterTreasury();
+      const rawFee = parsePaymasterFeeFromReceipt({
+        logs: receipt.receipt.logs as any,
+        smartAccount: params.smartAccountAddress,
+        paymasterTreasury: treasury,
+      });
+      feePaid = formatUnits(rawFee, 6);
+    } catch (err) {
+      console.warn("[UserPaidTransfer] Fee parse failed (non-fatal):", err);
+    }
 
     return {
       hash: receipt.receipt.transactionHash,
       success: true,
       userOpHash,
+      feePaid,
     };
   } catch (error: any) {
-    console.error("[GaslessTransfer] Execution error:", error);
+    console.error("[UserPaidTransfer] Execution error:", error);
     return {
       hash: "",
       success: false,
@@ -111,6 +163,12 @@ export async function executeGaslessTransfer(
     };
   }
 }
+
+/**
+ * @deprecated Use `executeUserPaidTransfer`. This alias is kept so existing
+ * callers (tests, etc.) don't break in the same PR — they should migrate.
+ */
+export const executeGaslessTransfer = executeUserPaidTransfer;
 
 /**
  * Validate transfer parameters before execution
