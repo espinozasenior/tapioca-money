@@ -4,7 +4,7 @@ import { useWalletSelection } from "./useWalletSelection";
 import { createPublicClient, http, formatUnits } from "viem";
 import { base } from "viem/chains";
 import { useMemo } from "react";
-import { USDC_ADDRESS } from "@/lib/config";
+import { CHAIN_CONFIG, USDC_ADDRESS } from "@/lib/config";
 const BALANCE_OF_ABI = [
   {
     inputs: [{ name: "account", type: "address" }],
@@ -34,12 +34,13 @@ export function useBalance(options?: UseBalanceOptions) {
   const isErc4337 = !supportsEip7702 && !!agentAddress && agentAddress !== wallet?.address;
   const balanceAddress = isErc4337 ? agentAddress : wallet?.address;
 
-  // Use configured RPC URL to avoid rate-limited public endpoint (P1-2 fix)
+  // Prefer eRPC (load-balanced) over direct provider URL — sidesteps Alchemy
+  // free-tier monthly caps that return HTML instead of JSON.
   const publicClient = useMemo(
     () =>
       createPublicClient({
         chain: base,
-        transport: http(process.env.NEXT_PUBLIC_BASE_RPC_URL || undefined),
+        transport: http(CHAIN_CONFIG.rpcUrl),
       }),
     []
   );

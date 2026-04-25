@@ -35,12 +35,37 @@ export function isUsdcPaymasterEnabledServer(): boolean {
 // The Morpho Blue SDK will use the explicit market params we provide
 // instead of requiring global address registration
 
+/**
+ * Resolve the Base (chain 8453) RPC URL with eRPC-aware suffixing.
+ *
+ * Priority order (matches sentinel/signals/onchain.ts:getClient so client +
+ * server agree):
+ * 1. NEXT_PUBLIC_ERPC_URL — the load-balanced eRPC proxy. We auto-append
+ *    `/main/evm/8453` unless it already carries the suffix or points at a
+ *    direct provider.
+ * 2. NEXT_PUBLIC_BASE_RPC_URL — legacy direct provider URL (Alchemy/etc).
+ *    Kept for back-compat; subject to per-key rate limits and monthly caps.
+ * 3. https://mainnet.base.org — public fallback, heavily rate-limited.
+ *
+ * Preferring eRPC over a direct Alchemy URL fixes the "Monthly capacity
+ * reached" HTML-returned-as-JSON error that viem chokes on, and the 429
+ * burst that followed it.
+ */
+function resolveBaseRpcUrl(): string {
+  const erpc = process.env.NEXT_PUBLIC_ERPC_URL;
+  if (erpc) {
+    const isDirect =
+      erpc.includes("/main/evm/") ||
+      /alchemy|infura|quicknode|ankr|publicnode|base\.org/i.test(erpc);
+    return isDirect ? erpc : `${erpc}/main/evm/8453`;
+  }
+  return process.env.NEXT_PUBLIC_BASE_RPC_URL || "https://mainnet.base.org";
+}
+
 export const CHAIN_CONFIG = {
   chainId: 8453,
   name: "Base",
-  // Use environment variable for RPC URL (e.g., Alchemy for better rate limits)
-  // Falls back to public endpoint if not configured
-  rpcUrl: process.env.NEXT_PUBLIC_BASE_RPC_URL || "https://mainnet.base.org",
+  rpcUrl: resolveBaseRpcUrl(),
 } as const;
 
 // USDC on Base Mainnet (Circle official)

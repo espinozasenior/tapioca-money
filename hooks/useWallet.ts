@@ -14,7 +14,7 @@ import {
 } from "viem";
 import { base } from "viem/chains";
 import { useMemo, useCallback } from "react";
-import { USDC_ADDRESS } from "@/lib/config";
+import { CHAIN_CONFIG, USDC_ADDRESS } from "@/lib/config";
 
 /**
  * Phase events emitted by the new paymaster-backed USDC send flow.
@@ -125,7 +125,7 @@ export function useWallet() {
     () =>
       createPublicClient({
         chain: base,
-        transport: http(process.env.NEXT_PUBLIC_BASE_RPC_URL || undefined),
+        transport: http(CHAIN_CONFIG.rpcUrl),
       }),
     []
   );
